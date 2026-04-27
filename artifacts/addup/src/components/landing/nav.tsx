@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import addupLogo from "@assets/Addup_Nae_1777329017881.png";
+import addupLogo from "@assets/Addup_1777332904059.png";
 
 const links = [
   { label: "How it works", id: "how-it-works" },
