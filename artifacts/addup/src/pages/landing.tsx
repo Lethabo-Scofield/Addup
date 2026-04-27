@@ -4,6 +4,7 @@ import { Hero } from "@/components/landing/hero";
 import { TrustStrip } from "@/components/landing/trust-strip";
 import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
+import { ProductPreview } from "@/components/landing/product-preview";
 import { UseCases } from "@/components/landing/use-cases";
 import { TargetMarket } from "@/components/landing/target-market";
 import { News } from "@/components/landing/news";
@@ -19,6 +20,7 @@ export default function Landing() {
         <TrustStrip />
         <NarrativeBlocks />
         <HowItWorks />
+        <ProductPreview />
         <TargetMarket />
         <UseCases />
         <News />
