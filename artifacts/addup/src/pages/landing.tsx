@@ -5,6 +5,7 @@ import { TrustStrip } from "@/components/landing/trust-strip";
 import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { UseCases } from "@/components/landing/use-cases";
+import { TargetMarket } from "@/components/landing/target-market";
 import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/landing/footer";
 
@@ -17,6 +18,7 @@ export default function Landing() {
         <TrustStrip />
         <NarrativeBlocks />
         <HowItWorks />
+        <TargetMarket />
         <UseCases />
         <WaitlistSection />
       </main>
