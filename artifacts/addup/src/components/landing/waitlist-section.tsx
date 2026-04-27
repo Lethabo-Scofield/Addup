@@ -55,23 +55,24 @@ export function WaitlistSection() {
   };
 
   return (
-    <section id="waitlist" className="py-16 sm:py-24 bg-primary text-primary-foreground relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
+    <section id="waitlist" className="py-20 sm:py-32 bg-[#0a0a0c] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,_var(--tw-gradient-stops))] from-primary/30 via-[#0a0a0c] to-[#0a0a0c] pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-primary/15 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="mx-auto max-w-3xl px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-8 sm:mb-10">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-3 sm:mb-4">
-            Get early access to Addup.
+        <div className="text-center mb-10 sm:mb-14">
+          <h2 className="text-4xl sm:text-5xl lg:text-[4rem] lg:leading-[1.05] font-semibold mb-4 sm:mb-5">
+            Get early access<br className="hidden sm:block" /> to Addup.
           </h2>
           {stats?.total && stats.total > 0 ? (
-            <p className="text-primary-foreground/70 text-base sm:text-lg">
+            <p className="text-white/60 text-lg sm:text-xl font-normal">
               Join {stats.total}+ finance teams already on the waitlist.
             </p>
           ) : null}
         </div>
 
-        <div className="bg-background/5 p-1 rounded-2xl backdrop-blur-md border border-white/10 shadow-2xl max-w-md mx-auto">
-          <div className="bg-card text-card-foreground rounded-xl p-6 sm:p-8">
+        <div className="bg-white/[0.04] p-1 rounded-[2rem] backdrop-blur-md border border-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)] max-w-md mx-auto">
+          <div className="bg-card text-card-foreground rounded-[1.75rem] p-6 sm:p-8">
             {isSuccess ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -122,8 +123,7 @@ export function WaitlistSection() {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting} 
-                  className="w-full mt-2"
-                  size="lg"
+                  className="w-full mt-2 rounded-full h-12 text-[15px] font-medium"
                 >
                   {isSubmitting ? "Joining..." : "Join waitlist"}
                 </Button>

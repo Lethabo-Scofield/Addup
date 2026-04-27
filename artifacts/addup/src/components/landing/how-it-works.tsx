@@ -20,13 +20,13 @@ export function HowItWorks() {
   const [activeTab, setActiveTab] = useState<TabId>("capture");
 
   return (
-    <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30 border-y border-border/40">
+    <section id="how-it-works" className="py-20 sm:py-32 bg-muted/40">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-4">
-            How Addup works
+        <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-20">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-5">
+            How Addup works.
           </h2>
-          <p className="text-base sm:text-lg text-muted-foreground">
+          <p className="text-lg sm:text-xl text-muted-foreground font-normal">
             A precise, automated pipeline that turns messy operational data into clean accounting truth.
           </p>
         </div>
@@ -38,16 +38,16 @@ export function HowItWorks() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center px-4 min-h-11 py-2.5 text-sm font-medium rounded-xl transition-colors whitespace-nowrap lg:whitespace-normal text-left ${
+                className={`relative flex items-center px-5 min-h-11 py-2.5 text-[14px] font-medium rounded-full transition-colors whitespace-nowrap lg:whitespace-normal text-left ${
                   activeTab === tab.id
-                    ? "text-foreground bg-background shadow-sm border border-border"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                    ? "text-foreground bg-background border border-border/60 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50 border border-transparent"
                 }`}
               >
                 {activeTab === tab.id && (
                   <motion.div
                     layoutId="activeTabIndicator"
-                    className="absolute inset-0 rounded-xl border-2 border-primary/20 pointer-events-none"
+                    className="absolute inset-0 rounded-full ring-2 ring-primary/15 pointer-events-none"
                     initial={false}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
@@ -59,7 +59,7 @@ export function HowItWorks() {
 
           {/* UI Panel */}
           <div className="lg:col-span-8">
-            <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
+            <div className="rounded-[2rem] border border-border/40 bg-card shadow-[0_15px_50px_-15px_rgba(0,0,0,0.12)] overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
               {/* Header */}
               <div className="h-12 border-b border-border/50 bg-muted/20 flex items-center px-4 gap-2 shrink-0">
                 <div className="flex gap-1.5">

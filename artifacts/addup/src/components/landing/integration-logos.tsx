@@ -23,19 +23,19 @@ export function IntegrationLogos() {
   return (
     <section
       id="trust-layer"
-      className="relative py-16 sm:py-20 bg-muted/30 border-y border-border/40 overflow-hidden"
+      className="relative py-20 sm:py-28 bg-muted/40 overflow-hidden"
     >
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 backdrop-blur px-3 py-1 text-xs font-medium text-muted-foreground mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-5">
             <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
             Trust layer
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground mb-3 sm:mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground mb-4">
             Connects to the tools your books already live in.
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground font-normal">
             Plug into the accounting platforms, payment processors, and African banks finance teams already use every day.
           </p>
         </div>
@@ -77,7 +77,7 @@ function LogoRow({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.4, delay: delayBase + i * 0.05 }}
-            className="group h-16 sm:h-20 rounded-xl border border-border/60 bg-background flex items-center justify-center px-3 transition-all hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5"
+            className="group h-16 sm:h-20 rounded-2xl border border-border/40 bg-background/70 backdrop-blur flex items-center justify-center px-3 transition-all hover:border-border hover:bg-background hover:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] hover:-translate-y-0.5"
           >
             <span
               className={`text-base sm:text-lg text-muted-foreground/80 group-hover:text-foreground transition-colors ${item.style}`}

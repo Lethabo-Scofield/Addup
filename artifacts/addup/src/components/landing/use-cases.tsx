@@ -26,38 +26,38 @@ export function UseCases() {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-background">
+    <section className="py-20 sm:py-32 bg-background">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-20">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-5">
             Built for complexity.
           </h2>
-          <p className="text-base sm:text-lg text-muted-foreground">
+          <p className="text-lg sm:text-xl text-muted-foreground font-normal">
             Whether you're closing a single entity or consolidating ten, Addup restores order to your financial data.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
           {cards.map((card, i) => (
             <motion.div
               key={card.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="bg-card rounded-2xl p-6 sm:p-8 border border-border/60 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-card rounded-[2rem] p-8 sm:p-10 border border-border/40 hover:border-border transition-all relative overflow-hidden group hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.12)]"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <h3 className="text-xl font-bold text-foreground mb-4 relative z-10">{card.title}</h3>
-              <div className="space-y-4 relative z-10">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <h3 className="text-2xl font-semibold text-foreground mb-6 relative z-10">{card.title}</h3>
+              <div className="space-y-5 relative z-10">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Before</span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{card.pain}</p>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-2">Before</span>
+                  <p className="text-[15px] text-foreground/70 leading-relaxed">{card.pain}</p>
                 </div>
-                <div className="h-px w-full bg-border/50" />
+                <div className="h-px w-full bg-border/60" />
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-primary block mb-1">With Addup</span>
-                  <p className="text-sm font-medium text-foreground leading-relaxed">{card.outcome}</p>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary block mb-2">With Addup</span>
+                  <p className="text-[15px] font-medium text-foreground leading-relaxed">{card.outcome}</p>
                 </div>
               </div>
             </motion.div>

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 function VisualPreventBadData() {
   return (
-    <div className="relative w-full aspect-[4/3] rounded-2xl bg-card border border-border/50 shadow-sm overflow-hidden p-6 flex flex-col justify-center">
+    <div className="relative w-full aspect-[4/3] rounded-[2rem] bg-card border border-border/40 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-6 sm:p-8 flex flex-col justify-center">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-500/5 via-transparent to-transparent pointer-events-none" />
       <div className="space-y-4 relative z-10">
         {/* Messy card 1 */}
@@ -48,7 +48,7 @@ function VisualPreventBadData() {
 
 function VisualMatchIntelligently() {
   return (
-    <div className="relative w-full aspect-[4/3] rounded-2xl bg-card border border-border/50 shadow-sm overflow-hidden p-6 flex items-center justify-center">
+    <div className="relative w-full aspect-[4/3] rounded-[2rem] bg-card border border-border/40 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-6 sm:p-8 flex items-center justify-center">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/5 via-transparent to-transparent pointer-events-none" />
       <div className="relative w-full max-w-[280px]">
         {/* Invoice */}
@@ -94,7 +94,7 @@ function VisualMatchIntelligently() {
 
 function VisualResolve() {
   return (
-    <div className="relative w-full aspect-[4/3] rounded-2xl bg-card border border-border/50 shadow-sm overflow-hidden p-6 flex flex-col justify-center items-center">
+    <div className="relative w-full aspect-[4/3] rounded-[2rem] bg-card border border-border/40 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-6 sm:p-8 flex flex-col justify-center items-center">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent pointer-events-none" />
       <div className="relative w-full max-w-[280px]">
         {/* Stacked cards back */}
@@ -130,7 +130,7 @@ function VisualResolve() {
 
 function VisualExplain() {
   return (
-    <div className="relative w-full aspect-[4/3] rounded-2xl bg-card border border-border/50 shadow-sm overflow-hidden p-6 flex flex-col justify-center">
+    <div className="relative w-full aspect-[4/3] rounded-[2rem] bg-card border border-border/40 shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-6 sm:p-8 flex flex-col justify-center">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
@@ -188,26 +188,26 @@ export function NarrativeBlocks() {
   ];
 
   return (
-    <section className="py-16 sm:py-24 bg-background">
-      <div className="mx-auto max-w-6xl px-6 lg:px-8 flex flex-col gap-16 sm:gap-24 md:gap-32">
+    <section className="py-20 sm:py-32 bg-background">
+      <div className="mx-auto max-w-6xl px-6 lg:px-8 flex flex-col gap-20 sm:gap-28 md:gap-36">
         {blocks.map((block, idx) => {
           const isEven = idx % 2 !== 0;
           return (
-            <div key={block.id} className={`grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 items-center ${isEven ? 'md:flex-row-reverse' : ''}`}>
+            <div key={block.id} className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-16 items-center">
               <motion.div 
                 initial={{ opacity: 0, x: isEven ? 20 : -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 className={isEven ? "md:order-2" : "md:order-1"}
               >
-                <div className="inline-flex items-center rounded-full border border-border/40 bg-muted/50 px-2.5 py-0.5 text-xs font-semibold tracking-tight text-muted-foreground mb-4">
+                <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground mb-5">
                   {block.eyebrow}
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-4">
+                <h3 className="text-3xl sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1] font-semibold text-foreground mb-5">
                   {block.heading}
                 </h3>
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-normal">
                   {block.copy}
                 </p>
               </motion.div>

@@ -12,8 +12,8 @@ export function HeroVisual() {
   ];
 
   return (
-    <div className="w-full max-w-md mx-auto relative rounded-2xl border border-border/40 bg-card/40 backdrop-blur-xl shadow-2xl p-6 lg:p-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl pointer-events-none" />
+    <div className="w-full max-w-md mx-auto relative rounded-[2rem] border border-border/40 bg-card/60 backdrop-blur-xl shadow-[0_20px_70px_-15px_rgba(0,0,0,0.15)] p-6 lg:p-8">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/0 to-transparent rounded-[2rem] pointer-events-none" />
       
       <div className="relative flex flex-col gap-6">
         {nodes.map((node, i) => (

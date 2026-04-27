@@ -7,40 +7,41 @@ const AFRICA_PATH =
 
 export function TargetMarket() {
   return (
-    <section id="built-for-africa" className="relative py-16 sm:py-24 lg:py-28 overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
-      <div className="mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-16 items-center">
+    <section id="built-for-africa" className="relative py-20 sm:py-32 overflow-hidden bg-[#0a0a0c] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/25 via-[#0a0a0c] to-[#0a0a0c] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent pointer-events-none" />
+      <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
           {/* Africa-shaped photo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            className="relative order-2 lg:order-1 mx-auto w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[460px]"
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="relative order-2 lg:order-1 mx-auto w-full max-w-[320px] sm:max-w-[420px] lg:max-w-[480px]"
           >
             <AfricaShapedImage src={targetImage} />
           </motion.div>
 
           {/* Copy */}
           <div className="order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground mb-4 sm:mb-5">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-white/70 mb-5 sm:mb-6">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
               Built for Africa
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4 sm:mb-5">
+            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold mb-5 sm:mb-6">
               Made for the businesses that move Africa forward.
             </h2>
-            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8">
+            <p className="text-lg sm:text-xl text-white/70 leading-relaxed mb-8 sm:mb-10 font-normal">
               From a single café in Cape Town to a multi-branch retailer in Lagos, Addup is built for African finance teams who need clean books without enterprise overhead. We speak Rand, naira, shilling, and cedi — and every reconciliation rule we ship reflects how local businesses actually trade.
             </p>
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {[
                 "Local bank feeds and mobile-money rails, treated as first-class data sources.",
                 "Multi-currency reconciliation that respects how cross-border trade actually happens.",
                 "Designed for owners and controllers who wear five hats before lunch.",
               ].map((line) => (
-                <li key={line} className="flex items-start gap-3 text-sm text-foreground/80">
+                <li key={line} className="flex items-start gap-3 text-[15px] text-white/85">
                   <svg
                     className="h-5 w-5 flex-shrink-0 text-primary mt-0.5"
                     viewBox="0 0 24 24"
@@ -67,7 +68,7 @@ function AfricaShapedImage({ src }: { src: string }) {
   return (
     <div className="relative w-full aspect-[540/600]">
       {/* Soft ambient glow */}
-      <div className="absolute -inset-6 bg-gradient-to-br from-primary/15 via-blue-500/10 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -inset-6 bg-gradient-to-br from-primary/35 via-blue-500/20 to-transparent blur-3xl pointer-events-none" />
 
       <svg
         viewBox="0 0 540 600"
@@ -117,7 +118,7 @@ function AfricaShapedImage({ src }: { src: string }) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60"></span>
           <span className="relative inline-flex h-3 w-3 rounded-full bg-primary border-2 border-background shadow-md"></span>
         </div>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground bg-background/90 backdrop-blur px-2 py-0.5 rounded border border-border/60 shadow-sm">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-white bg-white/10 backdrop-blur px-2 py-0.5 rounded border border-white/20 shadow-sm">
           Cape Town
         </span>
       </motion.div>

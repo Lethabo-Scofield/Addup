@@ -42,22 +42,22 @@ const items: NewsItem[] = [
 
 export function News() {
   return (
-    <section id="news" className="relative py-16 sm:py-24 bg-muted/30 border-y border-border/40 overflow-hidden">
+    <section id="news" className="relative py-20 sm:py-32 bg-background overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
         {/* Section header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10 sm:mb-14">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-12 sm:mb-16">
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 backdrop-blur px-3 py-1 text-xs font-medium text-muted-foreground mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-5">
               <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
               In the news
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold text-foreground">
               Where Addup is being talked about.
             </h2>
           </div>
-          <p className="text-base sm:text-lg text-muted-foreground sm:text-right max-w-sm">
+          <p className="text-lg sm:text-xl text-muted-foreground sm:text-right max-w-sm font-normal">
             Conversations, awards, and rooms where we're shaping the future of African finance infrastructure.
           </p>
         </div>
@@ -93,7 +93,7 @@ function NewsCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      className={`group relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 ${className}`}
+      className={`group relative overflow-hidden rounded-[2rem] border border-border/40 bg-card hover:shadow-[0_25px_70px_-20px_rgba(0,0,0,0.18)] transition-all duration-500 hover:-translate-y-1 ${className}`}
     >
       {/* Image */}
       <div
