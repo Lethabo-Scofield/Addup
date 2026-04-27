@@ -58,7 +58,7 @@ export function News() {
             </h2>
           </div>
           <p className="text-lg sm:text-xl text-muted-foreground sm:text-right max-w-sm font-normal">
-            Conversations, awards, and rooms where we're shaping the future of African finance infrastructure.
+            Press, awards, and the rooms where we're shaping the conversation.
           </p>
         </div>
 

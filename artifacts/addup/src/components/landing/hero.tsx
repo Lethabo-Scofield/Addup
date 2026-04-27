@@ -37,8 +37,8 @@ export function Hero() {
             <span className="bg-gradient-to-b from-foreground to-foreground/60 bg-clip-text text-transparent">in minutes, not days.</span>
           </h1>
 
-          <p className="text-base sm:text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-8 sm:mb-10 font-normal">
-            Addup cleans, matches, and verifies financial data so finance teams review decisions instead of chasing transactions.
+          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground leading-snug max-w-xl mx-auto mb-8 sm:mb-10 font-normal">
+            Clean books. Matched bank feeds. Audit-ready in one click.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">

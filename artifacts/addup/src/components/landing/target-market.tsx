@@ -32,14 +32,14 @@ export function TargetMarket() {
             <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold mb-5 sm:mb-6">
               Made for the businesses that move Africa forward.
             </h2>
-            <p className="text-lg sm:text-xl text-white/70 leading-relaxed mb-8 sm:mb-10 font-normal">
-              From a single café in Cape Town to a multi-branch retailer in Lagos, Addup is built for African finance teams who need clean books without enterprise overhead. We speak Rand, naira, shilling, and cedi — and every reconciliation rule we ship reflects how local businesses actually trade.
+            <p className="text-lg sm:text-xl text-white/70 leading-snug mb-8 sm:mb-10 font-normal">
+              From a Cape Town café to a Lagos retailer — clean books without the enterprise overhead.
             </p>
             <ul className="space-y-4">
               {[
-                "Local bank feeds and mobile-money rails, treated as first-class data sources.",
-                "Multi-currency reconciliation that respects how cross-border trade actually happens.",
-                "Designed for owners and controllers who wear five hats before lunch.",
+                "Local bank feeds and mobile money, as first-class data.",
+                "Multi-currency by default. Rand, naira, shilling, cedi.",
+                "Built for the controller wearing five hats before lunch.",
               ].map((line) => (
                 <li key={line} className="flex items-start gap-3 text-[15px] text-white/85">
                   <svg

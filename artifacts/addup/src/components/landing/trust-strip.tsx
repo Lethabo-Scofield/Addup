@@ -18,9 +18,9 @@ export function TrustStrip() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="text-base sm:text-lg text-muted-foreground/90 max-w-2xl mb-8 sm:mb-10 font-normal"
+            className="text-base sm:text-lg text-muted-foreground/90 max-w-xl mb-8 sm:mb-10 font-normal"
           >
-            Built for finance teams that need cleaner books, faster closes, and fewer reconciliation surprises.
+            One source of truth across every system you already use.
           </motion.p>
 
           <div className="flex flex-wrap justify-center items-center gap-x-8 sm:gap-x-12 gap-y-4">

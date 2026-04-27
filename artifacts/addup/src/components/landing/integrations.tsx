@@ -6,15 +6,15 @@ import integrationImage from "@assets/image_1777329495911.png";
 const points = [
   {
     title: "Bank statement to balance.",
-    body: "Pull statements straight from the bank, match them to entries in Xero, QuickBooks, or Sage, and watch the variance close to R 0.00.",
+    body: "Pulls bank statements. Matches your ledger. Closes the variance.",
   },
   {
-    title: "No re-keying, no exports.",
-    body: "Addup writes back into the accounting system you already use — your team keeps its workflow, just without the manual reconciliation.",
+    title: "No re-keying. No exports.",
+    body: "Writes straight back into Xero, QuickBooks, or Sage.",
   },
   {
-    title: "Confidence at a glance.",
-    body: "Every line carries a status — matched, flagged, or under review — so you always know exactly where the books stand.",
+    title: "Status at a glance.",
+    body: "Every line marked matched, flagged, or under review.",
   },
 ];
 
@@ -40,8 +40,8 @@ export function Integrations() {
             <h2 className="text-4xl sm:text-5xl lg:text-[3.25rem] lg:leading-[1.05] font-semibold text-foreground mb-5 sm:mb-6">
               Match your bank. Match your books.
             </h2>
-            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 sm:mb-10 font-normal">
-              Addup sits between your bank feeds and your accounting system, reconciling every transaction down to the cent. When the closing balance lines up, you'll know — instantly.
+            <p className="text-lg sm:text-xl text-muted-foreground leading-snug mb-8 sm:mb-10 font-normal">
+              Addup sits between your bank and your books — reconciled to the cent.
             </p>
 
             <ul className="space-y-5 sm:space-y-6">

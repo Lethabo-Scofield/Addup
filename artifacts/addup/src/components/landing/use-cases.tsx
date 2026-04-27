@@ -5,23 +5,23 @@ export function UseCases() {
   const cards = [
     {
       title: "Finance teams",
-      pain: "Spending week one of every month hunting down loose receipts and untangling messy bank feeds.",
-      outcome: "Close the books by day two with a clean, fully-matched ledger."
+      pain: "A whole week chasing receipts and bank feeds.",
+      outcome: "Close the books by day two."
     },
     {
       title: "Accountants",
-      pain: "Wasting billable hours playing middleman between client systems and the general ledger.",
-      outcome: "Focus on advisory while infrastructure handles the ingestion and formatting."
+      pain: "Billable hours lost shuffling client data.",
+      outcome: "Spend the time on advisory, not ingestion."
     },
     {
       title: "SMEs",
-      pain: "Relying on manual spreadsheets that break as transaction volume scales.",
-      outcome: "Scale operations without needing to immediately hire a larger back office."
+      pain: "Spreadsheets that break as you grow.",
+      outcome: "Scale without scaling the back office."
     },
     {
       title: "Multi-entity businesses",
-      pain: "Consolidating books across different subsidiaries, currencies, and disconnected banking portals.",
-      outcome: "Unify all transaction flows into one standardized, auditable queue."
+      pain: "Books spread across subsidiaries, currencies, and portals.",
+      outcome: "One audit-ready queue for every entity."
     }
   ];
 
@@ -33,7 +33,7 @@ export function UseCases() {
             Built for complexity.
           </h2>
           <p className="text-lg sm:text-xl text-muted-foreground font-normal">
-            Whether you're closing a single entity or consolidating ten, Addup restores order to your financial data.
+            One entity or ten — Addup keeps every book in order.
           </p>
         </div>
 

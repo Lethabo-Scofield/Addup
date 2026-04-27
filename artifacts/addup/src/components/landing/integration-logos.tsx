@@ -36,7 +36,7 @@ export function IntegrationLogos() {
             Connects to the tools your books already live in.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground font-normal">
-            Plug into the accounting platforms, payment processors, and African banks finance teams already use every day.
+            Your accounting software. Your bank. Your payment processor.
           </p>
         </div>
 

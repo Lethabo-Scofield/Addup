@@ -27,8 +27,8 @@ export function ProductPreview() {
           <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold text-foreground mb-5">
             One workspace for every reconciliation.
           </h2>
-          <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-normal">
-            See your statements, variances, and exception queue side by side — with AI-driven suggestions guiding every match.
+          <p className="text-lg sm:text-xl text-muted-foreground leading-snug font-normal">
+            Statements, variances, and exceptions — side by side.
           </p>
         </div>
 

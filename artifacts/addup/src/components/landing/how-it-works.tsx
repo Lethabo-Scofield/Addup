@@ -27,7 +27,7 @@ export function HowItWorks() {
             How Addup works.
           </h2>
           <p className="text-lg sm:text-xl text-muted-foreground font-normal">
-            A precise, automated pipeline that turns messy operational data into clean accounting truth.
+            Five steps. Zero spreadsheets.
           </p>
         </div>
 

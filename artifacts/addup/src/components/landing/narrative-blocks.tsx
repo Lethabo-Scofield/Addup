@@ -161,28 +161,28 @@ export function NarrativeBlocks() {
       id: "block-1",
       eyebrow: "Data Quality",
       heading: "Stop bad data at the source.",
-      copy: "Addup catches missing references, duplicate entries, inconsistent vendor names, and incomplete records before they break reconciliation.",
+      copy: "Catches duplicates, missing references, and bad vendor names — before they hit your ledger.",
       Visual: VisualPreventBadData
     },
     {
       id: "block-2",
       eyebrow: "Reconciliation",
       heading: "Match with confidence, not rigidity.",
-      copy: "Addup groups related payments, invoices, and bank entries using confidence-based matching, not rigid rules only.",
+      copy: "Confidence-based matching across payments, invoices, and bank lines.",
       Visual: VisualMatchIntelligently
     },
     {
       id: "block-3",
       eyebrow: "Workflows",
       heading: "Focus on exceptions, not the rule.",
-      copy: "Instead of reviewing hundreds of transactions, teams review a short decision queue.",
+      copy: "Skip the hundreds of clean lines. Review only what needs you.",
       Visual: VisualResolve
     },
     {
       id: "block-4",
       eyebrow: "Compliance",
       heading: "Leave a clear trail for auditors.",
-      copy: "Every match includes a reason, source trail, and audit-ready explanation.",
+      copy: "Every match carries a reason, a source, and an audit-ready note.",
       Visual: VisualExplain
     }
   ];
