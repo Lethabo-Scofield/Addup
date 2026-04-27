@@ -6,6 +6,7 @@ import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { ProductPreview } from "@/components/landing/product-preview";
 import { Integrations } from "@/components/landing/integrations";
+import { IntegrationLogos } from "@/components/landing/integration-logos";
 import { UseCases } from "@/components/landing/use-cases";
 import { TargetMarket } from "@/components/landing/target-market";
 import { News } from "@/components/landing/news";
@@ -23,6 +24,7 @@ export default function Landing() {
         <HowItWorks />
         <ProductPreview />
         <Integrations />
+        <IntegrationLogos />
         <TargetMarket />
         <UseCases />
         <News />
