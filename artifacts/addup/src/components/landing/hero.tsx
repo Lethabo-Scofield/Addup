@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { HeroVisual } from "./hero-visual";
+import heroBg from "@assets/image_1777330492639.png";
 
 export function Hero() {
   const scrollToHowItWorks = () => {
@@ -15,8 +16,16 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden pt-16 pb-16 sm:pt-24 sm:pb-20 md:pt-32 md:pb-28">
-      {/* Background — soft Apple-style halo */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,_var(--tw-gradient-stops))] from-primary/12 via-background to-background" />
+      {/* Background image */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-center bg-no-repeat bg-cover opacity-60"
+        style={{ backgroundImage: `url(${heroBg})` }}
+      />
+      {/* Soft white wash so text stays legible */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/70 via-background/50 to-background" />
+      {/* Apple-style halo on top */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,_var(--tw-gradient-stops))] from-primary/12 via-transparent to-transparent" />
       <div className="pointer-events-none absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-primary/8 blur-[120px] rounded-full" />
 
       <div className="mx-auto max-w-5xl px-6 lg:px-8 relative z-10">
