@@ -158,7 +158,7 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
           <div className="p-4 rounded-lg border border-border bg-background shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <div className="font-medium text-sm">Stripe Payout</div>
-              <div className="font-mono text-sm font-medium">$12,450.00</div>
+              <div className="font-mono text-sm font-medium">R 12,450.00</div>
             </div>
             <div className="flex items-center gap-4 text-sm relative">
               <div className="h-px bg-border flex-1 absolute top-1/2 left-0 w-full -z-10"></div>
@@ -182,7 +182,7 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
         <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-4">
           <div className="flex justify-between mb-2">
             <div className="font-medium text-sm">Uncategorized Wire</div>
-            <div className="font-mono text-sm">$4,000.00</div>
+            <div className="font-mono text-sm">R 4,000.00</div>
           </div>
           <div className="text-xs text-muted-foreground mb-4">No matching invoice found within 30 days.</div>
           <div className="flex gap-2">
@@ -205,9 +205,9 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
       </div>
       <div className="space-y-2">
         {[
-          { label: "Assets", val: "$1,240,500.00" },
-          { label: "Liabilities", val: "$450,200.00" },
-          { label: "Equity", val: "$790,300.00" },
+          { label: "Assets", val: "R 1,240,500.00" },
+          { label: "Liabilities", val: "R 450,200.00" },
+          { label: "Equity", val: "R 790,300.00" },
         ].map((row, i) => (
           <div key={i} className="flex justify-between items-center py-2 text-sm">
             <div className="text-muted-foreground">{row.label}</div>

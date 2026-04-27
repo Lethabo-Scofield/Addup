@@ -5,6 +5,7 @@ import {
   JoinWaitlistBody,
   GetWaitlistStatsResponse,
 } from "@workspace/api-zod";
+import { sendWaitlistConfirmationEmail } from "../lib/resend.js";
 
 const router: IRouter = Router();
 
@@ -55,6 +56,11 @@ router.post("/waitlist", async (req, res): Promise<void> => {
       role: row.role,
       createdAt: row.createdAt.toISOString(),
     });
+
+    void sendWaitlistConfirmationEmail(
+      { email: row.email, company: row.company, role: row.role },
+      req.log,
+    );
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === "23505") {

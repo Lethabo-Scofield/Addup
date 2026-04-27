@@ -39,7 +39,7 @@ function VisualPreventBadData() {
             <div className="h-3 w-32 bg-foreground/20 rounded"></div>
             <div className="h-2 w-20 bg-muted-foreground/20 rounded"></div>
           </div>
-          <div className="text-sm font-mono font-medium">$4,250.00</div>
+          <div className="text-sm font-mono font-medium">R 4,250.00</div>
         </motion.div>
       </div>
     </div>
@@ -54,7 +54,7 @@ function VisualMatchIntelligently() {
         {/* Invoice */}
         <div className="bg-background rounded-lg border border-border p-3 shadow-sm mb-16 relative z-10 w-[70%]">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Invoice INV-2023</div>
-          <div className="text-sm font-mono font-medium">$1,200.00</div>
+          <div className="text-sm font-mono font-medium">R 1,200.00</div>
         </div>
 
         {/* Connections */}
@@ -84,7 +84,7 @@ function VisualMatchIntelligently() {
         <div className="flex gap-4 justify-end relative z-10">
           <div className="bg-background rounded-lg border border-border p-3 shadow-sm w-1/2">
             <div className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Stripe</div>
-            <div className="text-sm font-mono font-medium">$1,164.00</div>
+            <div className="text-sm font-mono font-medium">R 1,164.00</div>
           </div>
         </div>
       </div>
@@ -114,7 +114,7 @@ function VisualResolve() {
               <span className="text-xs text-muted-foreground">1 of 12</span>
             </div>
             <div className="text-sm font-medium">Unlinked Payment</div>
-            <div className="text-lg font-mono mt-1">$8,450.00</div>
+            <div className="text-lg font-mono mt-1">R 8,450.00</div>
           </div>
           <div className="grid grid-cols-2 gap-px bg-border/50">
             <button className="bg-background py-2 text-xs font-medium hover:bg-muted transition-colors text-emerald-600">Accept</button>
