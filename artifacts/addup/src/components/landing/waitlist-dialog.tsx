@@ -145,13 +145,13 @@ function WaitlistDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-3xl">
-        <div className="px-6 sm:px-8 pt-7 sm:pt-8 pb-2">
+      <DialogContent className="sm:max-w-lg w-[calc(100vw-1.5rem)] p-0 rounded-3xl gap-0 max-h-[92dvh] flex flex-col overflow-hidden">
+        <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-2 shrink-0">
           <DialogHeader>
-            <DialogTitle className="text-2xl sm:text-[28px] font-semibold tracking-tight">
+            <DialogTitle className="text-xl sm:text-[28px] font-semibold tracking-tight pr-6">
               {isSuccess ? "You're on the list." : "Join the waitlist"}
             </DialogTitle>
-            <DialogDescription className="text-[15px] text-muted-foreground">
+            <DialogDescription className="text-[14px] sm:text-[15px] text-muted-foreground pr-6">
               {isSuccess
                 ? "We'll reach out as early access opens up."
                 : "Tell us a bit about your company so we can prioritise the right finance teams."}
@@ -159,7 +159,7 @@ function WaitlistDialog({
           </DialogHeader>
         </div>
 
-        <div className="px-6 sm:px-8 pb-7 sm:pb-8">
+        <div className="px-5 sm:px-8 pb-6 sm:pb-8 overflow-y-auto flex-1 [-webkit-overflow-scrolling:touch]">
           {isSuccess ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
