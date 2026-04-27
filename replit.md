@@ -16,6 +16,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+- **`addup`** (`/`) — Stripe-style landing page for Addup (a financial data reliability layer). Hero with animated data-pipeline visual, four narrative blocks, an interactive "How Addup works" section, use cases, a wired waitlist form, and footer. Built with React + Vite + Tailwind v4 + Framer Motion.
+- **`api-server`** (`/api`) — Express 5 API. Endpoints: `/api/waitlist` (POST), `/api/waitlist/stats` (GET), `/api/healthz`.
+
+## Database
+
+- `waitlist` — id (uuid), email (unique, lowercased), company (nullable), role (nullable), created_at.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

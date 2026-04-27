@@ -5,9 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
 
 export interface WaitlistJoinRequest {
   /**
@@ -28,26 +25,4 @@ export interface WaitlistJoinRequest {
    * @nullable
    */
   role?: string | null;
-}
-
-export interface WaitlistEntry {
-  id: string;
-  email: string;
-  /** @nullable */
-  company: string | null;
-  /** @nullable */
-  role: string | null;
-  createdAt: string;
-}
-
-export interface WaitlistStats {
-  /**
-   * Total people on the waitlist
-   * @minimum 0
-   */
-  total: number;
-}
-
-export interface ErrorResponse {
-  error: string;
 }

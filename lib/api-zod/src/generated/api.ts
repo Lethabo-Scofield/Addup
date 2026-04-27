@@ -14,3 +14,46 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Adds an email to the Addup early access waitlist.
+ * @summary Join the Addup waitlist
+ */
+export const joinWaitlistBodyEmailMin = 3;
+export const joinWaitlistBodyEmailMax = 254;
+
+export const joinWaitlistBodyCompanyMax = 120;
+
+export const joinWaitlistBodyRoleMax = 120;
+
+export const JoinWaitlistBody = zod.object({
+  email: zod
+    .string()
+    .email()
+    .min(joinWaitlistBodyEmailMin)
+    .max(joinWaitlistBodyEmailMax)
+    .describe("Valid work email"),
+  company: zod
+    .string()
+    .max(joinWaitlistBodyCompanyMax)
+    .nullish()
+    .describe("Optional company name"),
+  role: zod
+    .string()
+    .max(joinWaitlistBodyRoleMax)
+    .nullish()
+    .describe("Optional role \/ job title"),
+});
+
+/**
+ * Returns lightweight aggregate stats about the waitlist.
+ * @summary Public waitlist stats
+ */
+export const getWaitlistStatsResponseTotalMin = 0;
+
+export const GetWaitlistStatsResponse = zod.object({
+  total: zod
+    .number()
+    .min(getWaitlistStatsResponseTotalMin)
+    .describe("Total people on the waitlist"),
+});

@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: waitlist
+    description: Waitlist operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /waitlist:
+    post:
+      operationId: joinWaitlist
+      tags: [waitlist]
+      summary: Join the Addup waitlist
+      description: Adds an email to the Addup early access waitlist.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WaitlistJoinRequest"
+      responses:
+        "201":
+          description: Successfully joined the waitlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already on waitlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /waitlist/stats:
+    get:
+      operationId: getWaitlistStats
+      tags: [waitlist]
+      summary: Public waitlist stats
+      description: Returns lightweight aggregate stats about the waitlist.
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistStats"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +79,58 @@ components:
           type: string
       required:
         - status
-
+    WaitlistJoinRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+          description: Valid work email
+        company:
+          type: ["string", "null"]
+          maxLength: 120
+          description: Optional company name
+        role:
+          type: ["string", "null"]
+          maxLength: 120
+          description: Optional role / job title
+      required:
+        - email
+    WaitlistEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        company:
+          type: ["string", "null"]
+        role:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - company
+        - role
+        - createdAt
+    WaitlistStats:
+      type: object
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: Total people on the waitlist
+      required:
+        - total
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
