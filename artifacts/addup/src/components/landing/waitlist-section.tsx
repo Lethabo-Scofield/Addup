@@ -55,16 +55,16 @@ export function WaitlistSection() {
   };
 
   return (
-    <section id="waitlist" className="py-24 bg-primary text-primary-foreground relative overflow-hidden">
+    <section id="waitlist" className="py-16 sm:py-24 bg-primary text-primary-foreground relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
       
       <div className="mx-auto max-w-3xl px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-3 sm:mb-4">
             Get early access to Addup.
           </h2>
           {stats?.total && stats.total > 0 ? (
-            <p className="text-primary-foreground/70 text-lg">
+            <p className="text-primary-foreground/70 text-base sm:text-lg">
               Join {stats.total}+ finance teams already on the waitlist.
             </p>
           ) : null}
@@ -92,9 +92,12 @@ export function WaitlistSection() {
                   <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground">Work Email <span className="text-destructive">*</span></Label>
                   <Input 
                     id="email" 
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     placeholder="jane@company.com" 
                     {...register("email")}
-                    className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
+                    className={`h-11 ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   />
                   {errors.email && (
                     <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
@@ -104,11 +107,11 @@ export function WaitlistSection() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="company" className="text-xs font-semibold text-muted-foreground">Company Name</Label>
-                    <Input id="company" placeholder="Acme Inc." {...register("company")} />
+                    <Input id="company" placeholder="Acme Inc." autoComplete="organization" className="h-11" {...register("company")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role" className="text-xs font-semibold text-muted-foreground">Role</Label>
-                    <Input id="role" placeholder="Controller" {...register("role")} />
+                    <Input id="role" placeholder="Controller" autoComplete="organization-title" className="h-11" {...register("role")} />
                   </div>
                 </div>
 

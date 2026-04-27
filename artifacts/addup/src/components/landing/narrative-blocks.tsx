@@ -188,12 +188,12 @@ export function NarrativeBlocks() {
   ];
 
   return (
-    <section className="py-24 bg-background">
-      <div className="mx-auto max-w-6xl px-6 lg:px-8 flex flex-col gap-24 md:gap-32">
+    <section className="py-16 sm:py-24 bg-background">
+      <div className="mx-auto max-w-6xl px-6 lg:px-8 flex flex-col gap-16 sm:gap-24 md:gap-32">
         {blocks.map((block, idx) => {
           const isEven = idx % 2 !== 0;
           return (
-            <div key={block.id} className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${isEven ? 'md:flex-row-reverse' : ''}`}>
+            <div key={block.id} className={`grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 items-center ${isEven ? 'md:flex-row-reverse' : ''}`}>
               <motion.div 
                 initial={{ opacity: 0, x: isEven ? 20 : -20 }}
                 whileInView={{ opacity: 1, x: 0 }}

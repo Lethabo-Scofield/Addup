@@ -17,7 +17,7 @@ export function Nav() {
             onClick={() => {
               document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="rounded-full shadow-xs px-5 h-9"
+            className="rounded-full shadow-xs px-4 sm:px-5 h-10 text-sm"
           >
             Join the waitlist
           </Button>

@@ -7,31 +7,31 @@ const AFRICA_PATH =
 
 export function TargetMarket() {
   return (
-    <section id="built-for-africa" className="relative py-24 sm:py-28 overflow-hidden bg-background">
+    <section id="built-for-africa" className="relative py-16 sm:py-24 lg:py-28 overflow-hidden bg-background">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-16 items-center">
           {/* Africa-shaped photo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="relative order-2 lg:order-1 mx-auto w-full max-w-[460px]"
+            className="relative order-2 lg:order-1 mx-auto w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[460px]"
           >
             <AfricaShapedImage src={targetImage} />
           </motion.div>
 
           {/* Copy */}
           <div className="order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground mb-4 sm:mb-5">
               <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
               Built for Africa
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-5">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4 sm:mb-5">
               Made for the businesses that move Africa forward.
             </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8">
               From a single café in Cape Town to a multi-branch retailer in Lagos, Addup is built for African finance teams who need clean books without enterprise overhead. We speak Rand, naira, shilling, and cedi — and every reconciliation rule we ship reflects how local businesses actually trade.
             </p>
             <ul className="space-y-3">

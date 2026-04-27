@@ -20,25 +20,25 @@ export function HowItWorks() {
   const [activeTab, setActiveTab] = useState<TabId>("capture");
 
   return (
-    <section id="how-it-works" className="py-24 bg-muted/30 border-y border-border/40">
+    <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30 border-y border-border/40">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-4">
             How Addup works
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             A precise, automated pipeline that turns messy operational data into clean accounting truth.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12">
           {/* Tabs */}
-          <div className="lg:col-span-4 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-4 lg:pb-0 scrollbar-none">
+          <div className="lg:col-span-4 -mx-6 px-6 lg:mx-0 lg:px-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-4 lg:pb-0 scrollbar-none">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors whitespace-nowrap lg:whitespace-normal text-left ${
+                className={`relative flex items-center px-4 min-h-11 py-2.5 text-sm font-medium rounded-xl transition-colors whitespace-nowrap lg:whitespace-normal text-left ${
                   activeTab === tab.id
                     ? "text-foreground bg-background shadow-sm border border-border"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
@@ -59,9 +59,9 @@ export function HowItWorks() {
 
           {/* UI Panel */}
           <div className="lg:col-span-8">
-            <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden h-[400px] flex flex-col">
+            <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
               {/* Header */}
-              <div className="h-12 border-b border-border/50 bg-muted/20 flex items-center px-4 gap-2">
+              <div className="h-12 border-b border-border/50 bg-muted/20 flex items-center px-4 gap-2 shrink-0">
                 <div className="flex gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-border"></div>
                   <div className="w-3 h-3 rounded-full bg-border"></div>
@@ -73,7 +73,7 @@ export function HowItWorks() {
               </div>
               
               {/* Content */}
-              <div className="flex-1 p-6 bg-background relative overflow-hidden">
+              <div className="flex-1 p-4 sm:p-6 bg-background relative overflow-y-auto">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -81,7 +81,6 @@ export function HowItWorks() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute inset-6"
                   >
                     <MockPanelContent activeTab={activeTab} />
                   </motion.div>
@@ -124,28 +123,30 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
     return (
       <div className="space-y-4">
         <div className="text-sm font-semibold mb-4 border-b pb-2">Standardizing Formats</div>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-muted-foreground text-xs uppercase border-b">
-              <th className="pb-2 font-medium">Raw Input</th>
-              <th className="pb-2 font-medium">Cleaned Output</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            <tr>
-              <td className="py-3 text-muted-foreground font-mono text-xs">aws_sub_1234_usd</td>
-              <td className="py-3 font-medium">Amazon Web Services</td>
-            </tr>
-            <tr>
-              <td className="py-3 text-muted-foreground font-mono text-xs">stripe*inv_4992</td>
-              <td className="py-3 font-medium">Stripe</td>
-            </tr>
-            <tr>
-              <td className="py-3 text-muted-foreground font-mono text-xs">ACH // GITHUB // 000</td>
-              <td className="py-3 font-medium">GitHub</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full text-left text-sm min-w-[280px]">
+            <thead>
+              <tr className="text-muted-foreground text-xs uppercase border-b">
+                <th className="pb-2 font-medium">Raw Input</th>
+                <th className="pb-2 font-medium">Cleaned Output</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              <tr>
+                <td className="py-3 pr-2 text-muted-foreground font-mono text-[11px] sm:text-xs break-all">aws_sub_1234_usd</td>
+                <td className="py-3 font-medium text-sm">Amazon Web Services</td>
+              </tr>
+              <tr>
+                <td className="py-3 pr-2 text-muted-foreground font-mono text-[11px] sm:text-xs break-all">stripe*inv_4992</td>
+                <td className="py-3 font-medium text-sm">Stripe</td>
+              </tr>
+              <tr>
+                <td className="py-3 pr-2 text-muted-foreground font-mono text-[11px] sm:text-xs break-all">ACH // GITHUB // 000</td>
+                <td className="py-3 font-medium text-sm">GitHub</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -156,15 +157,14 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
         <div className="text-sm font-semibold mb-4 border-b pb-2">Confidence Matching</div>
         <div className="space-y-4">
           <div className="p-4 rounded-lg border border-border bg-background shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div className="font-medium text-sm">Stripe Payout</div>
-              <div className="font-mono text-sm font-medium">R 12,450.00</div>
+            <div className="flex justify-between items-start gap-3 mb-4">
+              <div className="font-medium text-sm min-w-0 truncate">Stripe Payout</div>
+              <div className="font-mono text-sm font-medium whitespace-nowrap">R 12,450.00</div>
             </div>
-            <div className="flex items-center gap-4 text-sm relative">
-              <div className="h-px bg-border flex-1 absolute top-1/2 left-0 w-full -z-10"></div>
-              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground ml-8 z-10">Inv-201</div>
-              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground z-10">Inv-202</div>
-              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 px-2 py-1 rounded-full text-[10px] font-bold ml-auto z-10">98% Match</div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground">Inv-201</div>
+              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground">Inv-202</div>
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 px-2 py-1 rounded-full text-[10px] font-bold ml-auto">98% Match</div>
             </div>
           </div>
         </div>
@@ -180,14 +180,14 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
           <div className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded font-medium">3 needs review</div>
         </div>
         <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-4">
-          <div className="flex justify-between mb-2">
-            <div className="font-medium text-sm">Uncategorized Wire</div>
-            <div className="font-mono text-sm">R 4,000.00</div>
+          <div className="flex justify-between gap-3 mb-2">
+            <div className="font-medium text-sm min-w-0 truncate">Uncategorized Wire</div>
+            <div className="font-mono text-sm whitespace-nowrap">R 4,000.00</div>
           </div>
           <div className="text-xs text-muted-foreground mb-4">No matching invoice found within 30 days.</div>
-          <div className="flex gap-2">
-            <button className="px-3 py-1.5 bg-background border rounded text-xs font-medium hover:bg-muted">Request Info</button>
-            <button className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs font-medium">Manual Link</button>
+          <div className="flex flex-wrap gap-2">
+            <button className="px-3 py-2 bg-background border rounded text-xs font-medium hover:bg-muted">Request Info</button>
+            <button className="px-3 py-2 bg-primary text-primary-foreground rounded text-xs font-medium">Manual Link</button>
           </div>
         </div>
       </div>
@@ -209,9 +209,9 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
           { label: "Liabilities", val: "R 450,200.00" },
           { label: "Equity", val: "R 790,300.00" },
         ].map((row, i) => (
-          <div key={i} className="flex justify-between items-center py-2 text-sm">
+          <div key={i} className="flex justify-between items-center gap-3 py-2 text-sm">
             <div className="text-muted-foreground">{row.label}</div>
-            <div className="font-mono font-medium">{row.val}</div>
+            <div className="font-mono font-medium whitespace-nowrap">{row.val}</div>
           </div>
         ))}
       </div>
