@@ -10,27 +10,28 @@ import { IntegrationLogos } from "@/components/landing/integration-logos";
 import { UseCases } from "@/components/landing/use-cases";
 import { TargetMarket } from "@/components/landing/target-market";
 import { News } from "@/components/landing/news";
-import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/landing/footer";
+import { WaitlistProvider } from "@/components/landing/waitlist-dialog";
 
 export default function Landing() {
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background selection:bg-primary/10">
-      <Nav />
-      <main className="flex-1">
-        <Hero />
-        <LogoMarquee />
-        <NarrativeBlocks />
-        <HowItWorks />
-        <ProductPreview />
-        <Integrations />
-        <IntegrationLogos />
-        <TargetMarket />
-        <UseCases />
-        <News />
-        <WaitlistSection />
-      </main>
-      <Footer />
-    </div>
+    <WaitlistProvider>
+      <div className="flex min-h-[100dvh] flex-col bg-background selection:bg-primary/10">
+        <Nav />
+        <main className="flex-1">
+          <Hero />
+          <LogoMarquee />
+          <NarrativeBlocks />
+          <HowItWorks />
+          <ProductPreview />
+          <Integrations />
+          <IntegrationLogos />
+          <TargetMarket />
+          <UseCases />
+          <News />
+        </main>
+        <Footer />
+      </div>
+    </WaitlistProvider>
   );
 }

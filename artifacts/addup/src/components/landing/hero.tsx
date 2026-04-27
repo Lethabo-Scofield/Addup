@@ -4,14 +4,12 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { HeroVisual } from "./hero-visual";
 import heroBg from "@assets/a-chosen-soul-Cp4xHgvXt0M-unsplash_1777332357410.jpg";
+import { useWaitlist } from "./waitlist-dialog";
 
 export function Hero() {
+  const { open: openWaitlist } = useWaitlist();
   const scrollToHowItWorks = () => {
     document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const scrollToWaitlist = () => {
-    document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -48,7 +46,7 @@ export function Hero() {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
             <Button
-              onClick={scrollToWaitlist}
+              onClick={openWaitlist}
               className="rounded-full h-12 px-7 text-[15px] font-medium w-full sm:w-auto shadow-none"
             >
               Join the waitlist

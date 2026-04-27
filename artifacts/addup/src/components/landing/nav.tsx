@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import addupLogo from "@assets/Addup_1777332904059.png";
+import { useWaitlist } from "./waitlist-dialog";
 
 const links = [
   { label: "How it works", id: "how-it-works" },
@@ -12,6 +13,7 @@ const links = [
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const { open: openWaitlist } = useWaitlist();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -50,7 +52,7 @@ export function Nav() {
         </nav>
 
         <Button
-          onClick={() => scrollTo("waitlist")}
+          onClick={openWaitlist}
           className="rounded-full px-4 sm:px-5 h-8 sm:h-9 text-[13px] font-medium shadow-none"
         >
           Join waitlist
