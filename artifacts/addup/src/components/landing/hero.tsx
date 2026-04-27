@@ -15,7 +15,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden pt-16 pb-16 sm:pt-24 sm:pb-20 md:pt-32 md:pb-28 bg-black">
+    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-20 md:pt-48 md:pb-28 bg-black">
       {/* Background image */}
       <div
         aria-hidden

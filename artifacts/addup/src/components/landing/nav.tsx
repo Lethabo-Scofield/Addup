@@ -25,12 +25,12 @@ export function Nav() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full pt-3 sm:pt-4 px-3 sm:px-6">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full pt-3 sm:pt-4 px-3 sm:px-6">
       <div
         className={`mx-auto flex max-w-5xl items-center justify-between rounded-full border px-3 sm:px-4 h-12 sm:h-14 transition-all duration-300 ${
           scrolled
             ? "bg-background/75 backdrop-blur-xl border-border/60 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.08)]"
-            : "bg-background/50 backdrop-blur-md border-border/40"
+            : "bg-white/80 backdrop-blur-xl border-white/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]"
         }`}
       >
         <Link href="/" className="flex items-center pl-1 transition-opacity hover:opacity-80" aria-label="Addup home">
