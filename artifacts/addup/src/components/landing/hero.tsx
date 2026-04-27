@@ -41,14 +41,10 @@ export function Hero() {
             Built for African finance teams
           </div>
 
-          <h1 className="text-[2.5rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] lg:leading-[1.02] font-semibold text-white mb-5 sm:mb-7">
+          <h1 className="text-[2.5rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] lg:leading-[1.02] font-semibold text-white mb-8 sm:mb-10">
             Close your books<br className="hidden sm:block" />
             <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">in minutes, not days.</span>
           </h1>
-
-          <p className="text-lg sm:text-xl md:text-2xl text-white/70 leading-snug max-w-xl mx-auto mb-8 sm:mb-10 font-normal">
-            Clean books. Matched bank feeds. Audit-ready in one click.
-          </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
             <Button
