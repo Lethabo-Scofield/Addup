@@ -1,7 +1,7 @@
 import React from "react";
 import { Nav } from "@/components/landing/nav";
 import { Hero } from "@/components/landing/hero";
-import { TrustStrip } from "@/components/landing/trust-strip";
+import { LogoMarquee } from "@/components/landing/logo-marquee";
 import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { ProductPreview } from "@/components/landing/product-preview";
@@ -19,7 +19,7 @@ export default function Landing() {
       <Nav />
       <main className="flex-1">
         <Hero />
-        <TrustStrip />
+        <LogoMarquee />
         <NarrativeBlocks />
         <HowItWorks />
         <ProductPreview />

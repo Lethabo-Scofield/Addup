@@ -236,7 +236,23 @@
   h1 { letter-spacing: -0.034em; }
 }
 
+@keyframes addup-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 @layer utilities {
+  .animate-marquee {
+    animation: addup-marquee 40s linear infinite;
+  }
+  .group:hover .animate-marquee,
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee { animation: none; }
+  }
+
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
