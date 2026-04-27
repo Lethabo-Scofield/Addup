@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import hubImage from "@assets/image_1777329893638.png";
 
 const accountingTools = [
   { name: "Xero", style: "font-bold tracking-tight" },
@@ -39,6 +40,23 @@ export function IntegrationLogos() {
             Your accounting software. Your bank. Your payment processor.
           </p>
         </div>
+
+        {/* Hub diagram */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mx-auto max-w-2xl mb-14 sm:mb-20"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent blur-2xl pointer-events-none" />
+          <img
+            src={hubImage}
+            alt="Addup connecting Excel, Tableau, Power BI, Xero, CRM, HRIS, and planning tools"
+            loading="lazy"
+            className="relative w-full h-auto block"
+          />
+        </motion.div>
 
         {/* Accounting platforms */}
         <LogoRow label="Accounting platforms" items={accountingTools} delayBase={0} />
