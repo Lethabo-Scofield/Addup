@@ -6,6 +6,7 @@ import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { UseCases } from "@/components/landing/use-cases";
 import { TargetMarket } from "@/components/landing/target-market";
+import { News } from "@/components/landing/news";
 import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/landing/footer";
 
@@ -20,6 +21,7 @@ export default function Landing() {
         <HowItWorks />
         <TargetMarket />
         <UseCases />
+        <News />
         <WaitlistSection />
       </main>
       <Footer />
