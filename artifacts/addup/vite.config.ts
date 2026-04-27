@@ -5,24 +5,21 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
+const port = rawPort ? Number(rawPort) : undefined;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
+if (rawPort && (Number.isNaN(port) || (port ?? 0) <= 0)) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+// Default base path to "/" for standalone production builds (e.g. Vercel).
+// On Replit the BASE_PATH env var is provided so the artifact is served under
+// its proxied path prefix.
+const basePath = process.env.BASE_PATH ?? "/";
 
-if (!basePath) {
+const isServeCommand = process.argv.includes("serve") || process.argv.includes("preview");
+if (isServeCommand && !port) {
   throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
+    "PORT environment variable is required to start the dev/preview server.",
   );
 }
 
