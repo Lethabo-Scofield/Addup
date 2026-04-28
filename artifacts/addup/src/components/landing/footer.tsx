@@ -1,6 +1,7 @@
 import React from "react";
 import { Linkedin, Twitter, Github, Mail, MapPin } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
+import footerBg from "@assets/image_1777333498297.png";
 import { Button } from "@/components/ui/button";
 import { useWaitlist } from "./waitlist-dialog";
 
@@ -55,6 +56,15 @@ export function Footer() {
 
   return (
     <footer className="relative bg-[#0a0a0c] text-white/80 overflow-hidden">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: `url(${footerBg})` }}
+        aria-hidden="true"
+      />
+      {/* Darkening + readability overlays */}
+      <div className="absolute inset-0 bg-[#0a0a0c]/70 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0c]/95 via-[#0a0a0c]/55 to-[#0a0a0c]/95 pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8 pt-16 pb-10 sm:pt-20 sm:pb-12">
