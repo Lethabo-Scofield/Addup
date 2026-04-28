@@ -33,9 +33,9 @@ export function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 text-center lg:text-left"
+            className="lg:col-span-5 text-center lg:text-left"
           >
-            <h1 className="text-[2.5rem] leading-[1.05] sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.02] font-semibold text-white mb-8 sm:mb-10">
+            <h1 className="text-[2.5rem] leading-[1.05] sm:text-5xl md:text-[3.5rem] lg:text-[3.75rem] lg:leading-[1.04] font-semibold text-white mb-8 sm:mb-10">
               Close your books{" "}
               <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
                 in minutes, not days.
@@ -64,13 +64,13 @@ export function Hero() {
             initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 relative"
+            className="lg:col-span-7 relative lg:-mr-8 xl:-mr-16"
           >
-            <div className="relative mx-auto lg:mx-0 max-w-lg lg:max-w-none">
+            <div className="relative mx-auto lg:mx-0 max-w-xl lg:max-w-none lg:scale-110 xl:scale-115 origin-center lg:origin-left">
               {/* Soft glow behind the mockup */}
               <div
                 aria-hidden
-                className="absolute -inset-6 sm:-inset-10 rounded-[3rem] bg-primary/20 blur-3xl opacity-60 pointer-events-none"
+                className="absolute -inset-8 sm:-inset-12 rounded-[3rem] bg-primary/20 blur-3xl opacity-60 pointer-events-none"
               />
               <img
                 src={heroMockup}
