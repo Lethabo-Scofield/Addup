@@ -13,7 +13,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-36 sm:pb-20 md:pt-40 md:pb-24 bg-black">
+    <section className="relative overflow-hidden min-h-[100svh] flex items-center pt-28 pb-16 sm:pt-32 sm:pb-20 md:pt-36 md:pb-24 bg-black">
       {/* Background image */}
       <div
         aria-hidden
@@ -26,7 +26,7 @@ export function Hero() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,_transparent_0%,_rgba(0,0,0,0.45)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
 
-      <div className="mx-auto max-w-6xl px-6 lg:px-8 relative z-10">
+      <div className="mx-auto max-w-6xl px-6 lg:px-8 relative z-10 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
           {/* Left: text */}
           <motion.div
