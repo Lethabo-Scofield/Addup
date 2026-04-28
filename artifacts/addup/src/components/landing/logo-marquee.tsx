@@ -103,7 +103,7 @@ export function LogoMarquee() {
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-10">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Plugs into the banks and platforms African finance teams already use
+            Trusted partners
           </span>
         </div>
 
