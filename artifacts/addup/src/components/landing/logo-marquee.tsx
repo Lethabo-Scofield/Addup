@@ -27,7 +27,7 @@ export function LogoMarquee() {
   const items = [...logos, ...logos];
 
   return (
-    <section className="relative py-14 sm:py-20 border-y border-border/50 bg-background">
+    <section className="relative py-10 sm:py-14 border-y border-border/50 bg-background">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-10">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

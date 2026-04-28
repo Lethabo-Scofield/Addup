@@ -7,18 +7,18 @@ const AFRICA_PATH =
 
 export function TargetMarket() {
   return (
-    <section id="built-for-africa" className="relative py-20 sm:py-32 overflow-hidden bg-[#0a0a0c] text-white">
+    <section id="built-for-africa" className="relative py-16 sm:py-24 overflow-hidden bg-[#0a0a0c] text-white">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/25 via-[#0a0a0c] to-[#0a0a0c] pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent pointer-events-none" />
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 items-center">
           {/* Africa-shaped photo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="relative order-2 lg:order-1 mx-auto w-full max-w-[320px] sm:max-w-[420px] lg:max-w-[480px]"
+            className="relative order-2 lg:order-1 mx-auto w-full max-w-[280px] sm:max-w-[360px] lg:max-w-[420px]"
           >
             <AfricaShapedImage src={targetImage} />
           </motion.div>
@@ -29,13 +29,13 @@ export function TargetMarket() {
               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
               Built for Africa
             </div>
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold mb-5 sm:mb-6">
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] lg:leading-[1.05] font-semibold mb-4">
               Made for the businesses that move Africa forward.
             </h2>
-            <p className="text-lg sm:text-xl text-white/70 leading-snug mb-8 sm:mb-10 font-normal">
+            <p className="text-base sm:text-lg text-white/70 leading-snug mb-7">
               From a Cape Town café to a Lagos retailer — clean books without the enterprise overhead.
             </p>
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {[
                 "Local bank feeds and mobile money, as first-class data.",
                 "Multi-currency by default. Rand, naira, shilling, cedi.",

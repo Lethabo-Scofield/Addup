@@ -42,22 +42,22 @@ const items: NewsItem[] = [
 
 export function News() {
   return (
-    <section id="news" className="relative py-20 sm:py-32 bg-background overflow-hidden">
+    <section id="news" className="relative py-16 sm:py-24 bg-muted/40 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
         {/* Section header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-12 sm:mb-16">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-10 sm:mb-12">
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-4">
               <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
               In the news
             </div>
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold text-foreground">
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] lg:leading-[1.05] font-semibold text-foreground">
               Where Addup is being talked about.
             </h2>
           </div>
-          <p className="text-lg sm:text-xl text-muted-foreground sm:text-right max-w-sm font-normal">
+          <p className="text-base sm:text-lg text-muted-foreground sm:text-right max-w-sm">
             Press, awards, and the rooms where we're shaping the conversation.
           </p>
         </div>

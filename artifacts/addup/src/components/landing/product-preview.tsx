@@ -12,22 +12,22 @@ const featureChips = [
 
 export function ProductPreview() {
   return (
-    <section id="product" className="relative py-20 sm:py-32 bg-background overflow-hidden">
+    <section id="product" className="relative py-16 sm:py-24 bg-muted/40 overflow-hidden">
       {/* Soft background accents */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/8 via-transparent to-transparent" />
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
 
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14 sm:mb-20">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-5">
+        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-5">
             <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
             Inside Addup
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05] font-semibold text-foreground mb-5">
+          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] lg:leading-[1.05] font-semibold text-foreground mb-4">
             One workspace for every reconciliation.
           </h2>
-          <p className="text-lg sm:text-xl text-muted-foreground leading-snug font-normal">
+          <p className="text-base sm:text-lg text-muted-foreground leading-snug">
             Statements, variances, and exceptions — side by side.
           </p>
         </div>
@@ -65,7 +65,7 @@ export function ProductPreview() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-10 sm:mt-14 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
+          className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3"
         >
           {featureChips.map((chip) => (
             <div
