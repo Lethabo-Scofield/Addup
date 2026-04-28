@@ -1,13 +1,10 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import heroBg from "@assets/a-chosen-soul-Cp4xHgvXt0M-unsplash_1777332357410.jpg";
 import heroMockup from "@assets/image_1777334043100.png";
-import { useWaitlist } from "./waitlist-dialog";
 
 export function Hero() {
-  const { open: openWaitlist } = useWaitlist();
   const scrollToHowItWorks = () => {
     document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -42,16 +39,10 @@ export function Hero() {
               </span>
             </h1>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-center">
-              <Button
-                onClick={openWaitlist}
-                className="rounded-full h-12 px-7 text-[15px] font-medium w-full sm:w-auto shadow-none"
-              >
-                Join the waitlist
-              </Button>
+            <div className="flex justify-center lg:justify-start">
               <button
                 onClick={scrollToHowItWorks}
-                className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-white hover:text-white/80 transition-colors h-12 px-2"
+                className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-white hover:text-white/80 transition-colors h-12"
               >
                 See how it works
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
