@@ -4,7 +4,6 @@ import { Hero } from "@/components/landing/hero";
 import { LogoMarquee } from "@/components/landing/logo-marquee";
 import { NarrativeBlocks } from "@/components/landing/narrative-blocks";
 import { HowItWorks } from "@/components/landing/how-it-works";
-import { ProductPreview } from "@/components/landing/product-preview";
 import { Integrations } from "@/components/landing/integrations";
 import { UseCases } from "@/components/landing/use-cases";
 import { TargetMarket } from "@/components/landing/target-market";
@@ -22,7 +21,6 @@ export default function Landing() {
           <LogoMarquee />
           <NarrativeBlocks />
           <HowItWorks />
-          <ProductPreview />
           <Integrations />
           <TargetMarket />
           <UseCases />
