@@ -33,9 +33,7 @@ export default function Landing() {
           <Panel>
             <NarrativeBlocks />
           </Panel>
-          <Panel>
-            <HowItWorks />
-          </Panel>
+          <HowItWorks />
           <Integrations />
           <TargetMarket />
           <Panel>
