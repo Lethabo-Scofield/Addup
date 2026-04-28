@@ -5,10 +5,9 @@ import addupLogo from "@assets/Addup_1777332904059.png";
 import { useWaitlist } from "./waitlist-dialog";
 
 const links = [
-  { label: "How it works", id: "how-it-works" },
-  { label: "Product", id: "product" },
+  { label: "Pricing", id: "pricing" },
+  { label: "About", id: "about" },
   { label: "Integrations", id: "integrations" },
-  { label: "News", id: "news" },
 ];
 
 export function Nav() {
