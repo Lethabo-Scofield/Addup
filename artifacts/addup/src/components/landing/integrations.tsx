@@ -41,7 +41,7 @@ export function Integrations() {
               Connects to everything your books already live in.
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground leading-snug mb-7">
-              Addup sits between your bank, your accounting platform, and your payment processor — reconciled to the cent.
+              Addup sits between your bank, your accounting platform, and your payment processor, reconciled to the cent.
             </p>
 
             <ul className="space-y-4">

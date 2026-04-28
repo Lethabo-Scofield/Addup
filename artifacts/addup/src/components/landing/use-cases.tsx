@@ -33,7 +33,7 @@ export function UseCases() {
             Built for complexity.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground">
-            One entity or ten — Addup keeps every book in order.
+            One entity or ten. Addup keeps every book in order.
           </p>
         </div>
 

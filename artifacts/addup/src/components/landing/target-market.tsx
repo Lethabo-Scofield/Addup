@@ -33,7 +33,7 @@ export function TargetMarket() {
               Made for the businesses that move Africa forward.
             </h2>
             <p className="text-base sm:text-lg text-white/70 leading-snug mb-7">
-              From a Cape Town café to a Lagos retailer — clean books without the enterprise overhead.
+              From a Cape Town café to a Lagos retailer. Clean books without the enterprise overhead.
             </p>
             <ul className="space-y-3">
               {[

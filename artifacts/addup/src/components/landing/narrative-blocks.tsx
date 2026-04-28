@@ -147,7 +147,7 @@ const blocks = [
     eyebrow: "Data Quality",
     label: "Prevent",
     heading: "Stop bad data at the source.",
-    copy: "Catches duplicates, missing references, and bad vendor names — before they hit your ledger.",
+    copy: "Catches duplicates, missing references, and bad vendor names before they hit your ledger.",
     Visual: VisualPreventBadData,
   },
   {
