@@ -35,12 +35,6 @@ export function Hero() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-6 text-center lg:text-left"
           >
-            {/* Eyebrow pill */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 backdrop-blur px-3 py-1 text-[12px] font-medium text-white/80 mb-6">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              Built for African finance teams
-            </div>
-
             <h1 className="text-[2.5rem] leading-[1.05] sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.02] font-semibold text-white mb-8 sm:mb-10">
               Close your books{" "}
               <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
