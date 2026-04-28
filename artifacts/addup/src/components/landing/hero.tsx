@@ -41,16 +41,12 @@ export function Hero() {
               Built for African finance teams
             </div>
 
-            <h1 className="text-[2.5rem] leading-[1.05] sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.02] font-semibold text-white mb-6 sm:mb-7">
+            <h1 className="text-[2.5rem] leading-[1.05] sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.02] font-semibold text-white mb-8 sm:mb-10">
               Close your books{" "}
               <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
                 in minutes, not days.
               </span>
             </h1>
-
-            <p className="text-[16px] sm:text-[17px] leading-relaxed text-white/70 max-w-xl lg:max-w-none mb-8 mx-auto lg:mx-0">
-              Addup is the financial data reliability layer for African finance teams. Connect your banks and platforms, reconcile in one click, and close with confidence.
-            </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-center">
               <Button
