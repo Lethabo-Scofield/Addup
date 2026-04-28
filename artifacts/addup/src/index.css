@@ -240,17 +240,27 @@
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
+@keyframes addup-marquee-reverse {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
 
 @layer utilities {
   .animate-marquee {
     animation: addup-marquee 40s linear infinite;
   }
+  .animate-marquee-reverse {
+    animation: addup-marquee-reverse 50s linear infinite;
+  }
   .group:hover .animate-marquee,
-  .animate-marquee:hover {
+  .animate-marquee:hover,
+  .group:hover .animate-marquee-reverse,
+  .animate-marquee-reverse:hover {
     animation-play-state: paused;
   }
   @media (prefers-reduced-motion: reduce) {
-    .animate-marquee { animation: none; }
+    .animate-marquee,
+    .animate-marquee-reverse { animation: none; }
   }
 
   input[type="search"]::-webkit-search-cancel-button {
