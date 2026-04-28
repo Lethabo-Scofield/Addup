@@ -33,7 +33,7 @@ export function TargetMarket() {
               Made for the businesses that move Africa forward.
             </h2>
             <p className="text-base sm:text-lg text-white/70 leading-snug mb-7">
-              From a Cape Town café to a Lagos retailer. Clean books without the enterprise overhead.
+              From a Johannesburg café to a Lagos retailer. Clean books without the enterprise overhead.
             </p>
             <ul className="space-y-3">
               {[
@@ -119,7 +119,7 @@ function AfricaShapedImage({ src }: { src: string }) {
           <span className="relative inline-flex h-3 w-3 rounded-full bg-primary border-2 border-background shadow-md"></span>
         </div>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-white bg-white/10 backdrop-blur px-2 py-0.5 rounded border border-white/20 shadow-sm">
-          Cape Town
+          Johannesburg
         </span>
       </motion.div>
     </div>

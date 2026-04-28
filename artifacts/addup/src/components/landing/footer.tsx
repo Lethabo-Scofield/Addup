@@ -75,7 +75,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-14 sm:mt-16 pt-8 border-t border-border/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
           <p className="text-[12px] text-muted-foreground">
-            © {year} Addup. Cape Town, South Africa.
+            © {year} Addup. Johannesburg, South Africa.
           </p>
 
           <div className="flex items-center gap-5">
