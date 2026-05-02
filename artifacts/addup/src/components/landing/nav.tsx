@@ -4,11 +4,6 @@ import { Link } from "wouter";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import { useWaitlist } from "./waitlist-dialog";
 
-const links = [
-  { label: "How it works", id: "how-it-works" },
-  { label: "Integrations", id: "integrations" },
-  { label: "Built for Africa", id: "built-for-africa" },
-];
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -20,10 +15,6 @@ export function Nav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
 
   return (
     <header
@@ -43,20 +34,6 @@ export function Nav() {
             className="w-auto h-8 sm:h-9"
           />
         </Link>
-
-        <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => scrollTo(l.id)}
-              className={`px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 ${
-                scrolled ? "text-foreground/70 hover:text-foreground" : "text-white/85 hover:text-white"
-              }`}
-            >
-              {l.label}
-            </button>
-          ))}
-        </nav>
 
         <Button
           onClick={openWaitlist}
