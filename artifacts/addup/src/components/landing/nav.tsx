@@ -40,7 +40,7 @@ export function Nav() {
           <img
             src={addupLogo}
             alt="Addup"
-            className={`w-auto h-8 sm:h-9 transition-all duration-300 ${scrolled ? "" : "brightness-0 invert"}`}
+            className="w-auto h-8 sm:h-9"
           />
         </Link>
 
