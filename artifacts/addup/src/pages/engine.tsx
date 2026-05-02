@@ -3,9 +3,10 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, CheckCircle2, AlertCircle,
-  X, Check, FileText, Upload,
+  X, Check, FileText, Upload, Download,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
+import jsPDF from "jspdf";
 
 /* ─────────────────────────────────────────────
    STEPS
@@ -126,6 +127,158 @@ export default function Engine() {
   const stepId = STEPS[step].id;
   const isLast = step === STEPS.length - 1;
   const resolve = (id: string) => setResolved(p => new Set([...p, id]));
+
+  function generatePDF() {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210;
+    const margin = 18;
+    const col = margin;
+    let y = 0;
+
+    const right = (text: string, yy: number, size = 9) => {
+      doc.setFontSize(size);
+      doc.text(text, W - margin, yy, { align: "right" });
+    };
+    const line = (yy: number) => {
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, yy, W - margin, yy);
+    };
+    const sectionLabel = (text: string, yy: number) => {
+      doc.setFontSize(7.5);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont("helvetica", "bold");
+      doc.text(text.toUpperCase(), col, yy);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 30);
+      return yy + 5;
+    };
+
+    /* ── Header band ── */
+    doc.setFillColor(17, 17, 17);
+    doc.rect(0, 0, W, 22, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Addup", col, 14);
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.text("Reconciliation Report — April 2026", col + 22, 14);
+    doc.setFontSize(8);
+    right(new Date().toLocaleDateString("en-ZA", { day: "2-digit", month: "long", year: "numeric" }), 14);
+    y = 32;
+
+    /* ── Summary headline ── */
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("April 2026 is reconciled", col, y);
+    y += 7;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("7 out of 9 bank transactions matched your ledger. 2 entries are flagged for follow-up.", col, y);
+    y += 12;
+    line(y); y += 8;
+
+    /* ── Key stats ── */
+    y = sectionLabel("Summary", y);
+    const stats = [
+      ["Transactions matched", "7 / 9"],
+      ["Average confidence",   `${AVG_CONF}%`],
+      ["Issues reviewed",      "4"],
+      ["Unmatched entries",    "2"],
+    ];
+    doc.setFontSize(9);
+    stats.forEach(([label, val]) => {
+      doc.setTextColor(90, 90, 90);  doc.text(label, col, y);
+      doc.setTextColor(17, 17, 17);  doc.setFont("helvetica", "bold");
+      right(val, y, 9);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+    });
+    y += 4; line(y); y += 8;
+
+    /* ── Match breakdown ── */
+    y = sectionLabel("How matches were found", y);
+    const breakdown = [
+      ["Perfect match — same amount and date",      MATCHES.filter(m => m.quality === "perfect").length],
+      ["Close match — same amount, date off by 1",  MATCHES.filter(m => m.quality === "close").length  ],
+      ["Amount match — date differed significantly", MATCHES.filter(m => m.quality === "amount").length  ],
+      ["No match found",                            MISSING.length                                       ],
+    ];
+    doc.setFontSize(9);
+    breakdown.forEach(([label, count]) => {
+      doc.setTextColor(90, 90, 90);  doc.text(String(label), col, y);
+      doc.setTextColor(17, 17, 17);  doc.setFont("helvetica", "bold");
+      right(String(count), y, 9);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+    });
+    y += 4; line(y); y += 8;
+
+    /* ── All matches ── */
+    y = sectionLabel("Transaction matches", y);
+    const colW = [28, 60, 38, 25, 22];
+    const headers = ["Bank ID", "Description", "Amount", "Confidence", "Result"];
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 120, 120);
+    doc.setFont("helvetica", "bold");
+    let cx = col;
+    headers.forEach((h, i) => { doc.text(h, cx, y); cx += colW[i]; });
+    doc.setFont("helvetica", "normal");
+    y += 1.5;
+    line(y); y += 4;
+
+    doc.setFontSize(8.5);
+    MATCHES.forEach((m) => {
+      const qualLabel = m.quality === "perfect" ? "Perfect" : m.quality === "close" ? "Close" : "Amount";
+      cx = col;
+      doc.setTextColor(90, 90, 90);   doc.text(m.bank.id, cx, y);   cx += colW[0];
+      doc.setTextColor(17, 17, 17);   doc.text(m.bank.desc.slice(0, 28), cx, y); cx += colW[1];
+      doc.text(fmtAmt(m.bank.amt).replace("−", "-"), cx, y);       cx += colW[2];
+      doc.setTextColor(90, 90, 90);   doc.text(`${m.conf}%`, cx, y);              cx += colW[3];
+      doc.text(qualLabel, cx, y);
+      y += 5.5;
+    });
+
+    /* Unmatched */
+    MISSING.forEach((m) => {
+      cx = col;
+      doc.setTextColor(90, 90, 90);   doc.text(m.id, cx, y);        cx += colW[0];
+      doc.setTextColor(200, 80, 80);  doc.text(m.desc.slice(0, 28), cx, y); cx += colW[1];
+      doc.text(fmtAmt(m.amt).replace("−", "-"), cx, y);             cx += colW[2];
+      doc.setTextColor(200, 80, 80);  doc.text("—", cx, y);         cx += colW[3];
+      doc.text("No match", cx, y);
+      y += 5.5;
+    });
+
+    y += 4; line(y); y += 8;
+
+    /* ── Issues ── */
+    y = sectionLabel("Issues flagged", y);
+    doc.setFontSize(8.5);
+    ISSUES.forEach((iss) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setTextColor(17, 17, 17);
+      doc.setFont("helvetica", "bold");
+      doc.text(iss.title, col, y); y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(90, 90, 90);
+      const wrapped = doc.splitTextToSize(iss.plain, W - margin * 2);
+      doc.text(wrapped, col, y);
+      y += wrapped.length * 4.5 + 4;
+    });
+
+    y += 2; line(y); y += 8;
+
+    /* ── Footer ── */
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 160, 160);
+    doc.text(`Generated by Addup on ${new Date().toISOString()}`, col, y);
+    right("addup.co", y, 7.5);
+
+    doc.save("addup-reconciliation-april-2026.pdf");
+  }
 
   const visibleMatches =
     filter === "clean"   ? MATCHES.filter(m => m.flags.length === 0) :
@@ -543,9 +696,12 @@ export default function Engine() {
                 </Callout>
 
                 <div className="flex flex-col sm:flex-row items-center gap-3 mt-8">
-                  <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-7 h-11 text-sm font-semibold hover:bg-gray-700 transition-colors">
-                    Export report
-                    <ArrowRight className="h-4 w-4" />
+                  <button
+                    onClick={generatePDF}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-7 h-11 text-sm font-semibold hover:bg-gray-700 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF report
                   </button>
                   <Link href="/" className="w-full sm:w-auto">
                     <button className="w-full inline-flex items-center justify-center h-11 px-7 text-sm font-medium text-gray-400 hover:text-gray-700 border border-gray-200 hover:border-gray-300 transition-colors">
