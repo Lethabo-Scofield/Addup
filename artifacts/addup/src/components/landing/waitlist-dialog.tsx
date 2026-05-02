@@ -11,14 +11,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -30,23 +22,11 @@ import { CheckCircle2 } from "lucide-react";
 
 const waitlistSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  fullName: z.string().min(1, "Please enter your name").max(120),
-  company: z.string().min(1, "Please enter your company name").max(160),
-  role: z.string().min(1, "Please enter your role").max(120),
-  companySize: z.string().optional(),
-  country: z.string().optional(),
-  notes: z.string().max(500).optional(),
+  company: z.string().max(120).optional(),
+  role: z.string().max(120).optional(),
 });
 
 type WaitlistFormValues = z.infer<typeof waitlistSchema>;
-
-const sizeOptions = [
-  "1-10",
-  "11-50",
-  "51-200",
-  "201-500",
-  "500+",
-];
 
 type WaitlistContextValue = {
   open: () => void;
@@ -87,7 +67,6 @@ function WaitlistDialog({
   const queryClient = useQueryClient();
   const [isSuccess, setIsSuccess] = useState(false);
   const joinMutation = useJoinWaitlist();
-  const [companySize, setCompanySize] = useState<string>("");
 
   const {
     register,
@@ -102,31 +81,20 @@ function WaitlistDialog({
   const handleClose = (next: boolean) => {
     onOpenChange(next);
     if (!next) {
-      // small delay so the closing animation isn't visually disrupted
       setTimeout(() => {
         setIsSuccess(false);
-        setCompanySize("");
         reset();
       }, 200);
     }
   };
 
   const onSubmit = async (data: WaitlistFormValues) => {
-    // The current API persists email, company, role only.
-    // We pack the additional company details into the role field so nothing is lost.
-    const extras: string[] = [];
-    if (data.fullName) extras.push(`Name: ${data.fullName}`);
-    if (data.role) extras.push(`Role: ${data.role}`);
-    if (companySize) extras.push(`Size: ${companySize}`);
-    if (data.country?.trim()) extras.push(`Country: ${data.country.trim()}`);
-    if (data.notes?.trim()) extras.push(`Notes: ${data.notes.trim()}`);
-
     try {
       await joinMutation.mutateAsync({
         data: {
           email: data.email,
-          company: data.company || null,
-          role: extras.join(" | ") || null,
+          company: data.company?.trim() || null,
+          role: data.role?.trim() || null,
         },
       });
       setIsSuccess(true);
@@ -145,7 +113,7 @@ function WaitlistDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg w-[calc(100vw-1.5rem)] p-0 rounded-3xl gap-0 max-h-[92dvh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-md w-[calc(100vw-1.5rem)] p-0 rounded-3xl gap-0 max-h-[92dvh] flex flex-col overflow-hidden">
         <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-2 shrink-0">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-[28px] font-semibold tracking-tight pr-6">
@@ -154,7 +122,7 @@ function WaitlistDialog({
             <DialogDescription className="text-[14px] sm:text-[15px] text-muted-foreground pr-6">
               {isSuccess
                 ? "We'll reach out as early access opens up."
-                : "Tell us a bit about your company so we can prioritise the right finance teams."}
+                : "Get early access to Addup — close your books in minutes, not days."}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -180,22 +148,7 @@ function WaitlistDialog({
               </Button>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <Field
-                id="fullName"
-                label="Full name"
-                required
-                error={errors.fullName?.message}
-              >
-                <Input
-                  id="fullName"
-                  autoComplete="name"
-                  placeholder="Jane Khumalo"
-                  className="h-11"
-                  {...register("fullName")}
-                />
-              </Field>
-
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
               <Field
                 id="email"
                 label="Work email"
@@ -213,77 +166,31 @@ function WaitlistDialog({
                 />
               </Field>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
+              <Field
+                id="company"
+                label="Company"
+                error={errors.company?.message}
+              >
+                <Input
                   id="company"
-                  label="Company"
-                  required
-                  error={errors.company?.message}
-                >
-                  <Input
-                    id="company"
-                    autoComplete="organization"
-                    placeholder="Acme Pty Ltd"
-                    className="h-11"
-                    {...register("company")}
-                  />
-                </Field>
-                <Field
-                  id="role"
-                  label="Role"
-                  required
-                  error={errors.role?.message}
-                >
-                  <Input
-                    id="role"
-                    autoComplete="organization-title"
-                    placeholder="Financial Controller"
-                    className="h-11"
-                    {...register("role")}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field id="companySize" label="Company size">
-                  <Select
-                    value={companySize}
-                    onValueChange={setCompanySize}
-                  >
-                    <SelectTrigger id="companySize" className="h-11">
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sizeOptions.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt} employees
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field id="country" label="Country">
-                  <Input
-                    id="country"
-                    autoComplete="country-name"
-                    placeholder="South Africa"
-                    className="h-11"
-                    {...register("country")}
-                  />
-                </Field>
-              </div>
+                  autoComplete="organization"
+                  placeholder="Acme Pty Ltd"
+                  className="h-11"
+                  {...register("company")}
+                />
+              </Field>
 
               <Field
-                id="notes"
-                label="What are you hoping Addup solves?"
-                error={errors.notes?.message}
+                id="role"
+                label="Role"
+                error={errors.role?.message}
               >
-                <Textarea
-                  id="notes"
-                  rows={3}
-                  placeholder="Optional"
-                  className="resize-none"
-                  {...register("notes")}
+                <Input
+                  id="role"
+                  autoComplete="organization-title"
+                  placeholder="Financial Controller"
+                  className="h-11"
+                  {...register("role")}
                 />
               </Field>
 

@@ -12,25 +12,12 @@ const productLinks: LinkItem[] = [
 ];
 
 const companyLinks: LinkItem[] = [
-  { label: "About", href: "#" },
-  { label: "Careers", href: "#" },
-  { label: "Press", href: "#" },
   { label: "Contact", href: "mailto:hello@addup.finance" },
 ];
 
-const resourceLinks: LinkItem[] = [
-  { label: "Help centre", href: "#" },
-  { label: "Changelog", href: "#" },
-  { label: "Status", href: "#" },
-  { label: "Security", href: "#" },
-];
+const resourceLinks: LinkItem[] = [];
 
-const legalLinks: LinkItem[] = [
-  { label: "Privacy", href: "#" },
-  { label: "Terms", href: "#" },
-  { label: "POPIA", href: "#" },
-  { label: "Cookies", href: "#" },
-];
+const legalLinks: LinkItem[] = [];
 
 const socials = [
   { label: "LinkedIn", href: "https://www.linkedin.com/", Icon: Linkedin },
@@ -65,11 +52,9 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Link columns */}
+          {/* Link columns — only render columns with items */}
           <FooterColumn title="Product" items={productLinks} onClick={handleNavClick} />
-          <FooterColumn title="Company" items={companyLinks} onClick={handleNavClick} />
-          <FooterColumn title="Resources" items={resourceLinks} onClick={handleNavClick} />
-          <FooterColumn title="Legal" items={legalLinks} onClick={handleNavClick} />
+          {companyLinks.length > 0 && <FooterColumn title="Company" items={companyLinks} onClick={handleNavClick} />}
         </div>
 
         {/* Bottom bar */}
