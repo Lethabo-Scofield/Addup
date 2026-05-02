@@ -26,18 +26,24 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h1 className="text-[2.75rem] leading-[1.05] sm:text-5xl md:text-[4rem] lg:text-[5rem] lg:leading-[1.02] font-semibold text-white mb-8 sm:mb-10">
-            Close your books{" "}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50 mb-6">
+            Financial reconciliation
+          </p>
+          <h1 className="text-[2.75rem] leading-[1.05] sm:text-5xl md:text-[4rem] lg:text-[5rem] lg:leading-[1.02] font-semibold text-white mb-6 sm:mb-8">
+            Reconcile your books{" "}
             <span className="bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
               in minutes, not days.
             </span>
           </h1>
+          <p className="text-base sm:text-lg text-white/60 mb-10 max-w-xl mx-auto leading-relaxed">
+            Addup matches bank feeds, invoices, and payment data automatically — so your finance team closes fast and auditors find nothing to question.
+          </p>
 
           <button
             onClick={scrollToHowItWorks}
             className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-white hover:text-white/80 transition-colors h-12"
           >
-            See how it works
+            See how reconciliation works
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </motion.div>

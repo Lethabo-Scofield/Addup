@@ -183,10 +183,10 @@ export function NarrativeBlocks() {
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground mb-4">
-            Four layers, one clean ledger.
+            How Addup reconciles your books.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground">
-            Tap a layer to see how Addup handles it.
+            Four layers of reconciliation intelligence, working together.
           </p>
         </div>
 

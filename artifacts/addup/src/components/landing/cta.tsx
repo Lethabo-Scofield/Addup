@@ -32,10 +32,10 @@ export function CTA() {
             Early access
           </p>
           <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] lg:leading-[1.06] font-semibold text-white mb-6">
-            See Addup close a real set of books.
+            Ready to reconcile in minutes?
           </h2>
           <p className="text-base sm:text-lg text-white/55 leading-relaxed mb-10 max-w-xl mx-auto">
-            No slides. No demo environment. We'll walk through your actual data and show you exactly what changes.
+            Join the waitlist and be first to run reconciliation on your real data — no spreadsheets, no manual matching, no chasing exceptions.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
