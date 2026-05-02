@@ -1,0 +1,47 @@
+.924 
+> vite build --config vite.config.ts
+23:34:45.924 
+23:34:46.288 
+vite v7.3.2 building client environment for production...
+23:34:46.430 
+transforming...
+23:34:46.919 
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+23:34:48.664 
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+23:34:50.771 
+✓ 2256 modules transformed.
+23:34:51.208 
+rendering chunks...
+23:34:51.230 
+computing gzip size...
+23:34:51.254 
+dist/public/index.html                                                                0.93 kB │ gzip:   0.51 kB
+23:34:51.255 
+dist/public/assets/capitec-Dcz5NeSX.png                                              30.07 kB
+23:34:51.255 
+dist/public/assets/gtbank-Bt54jTmX.png                                               41.66 kB
+23:34:51.255 
+dist/public/assets/nedbank-Xv14na8Q.png                                              45.35 kB
+23:34:51.255 
+dist/public/assets/equity-F2dhqO_j.png                                               74.51 kB
+23:34:51.256 
+dist/public/assets/ecobank-BJr2-DUo.png                                              86.07 kB
+23:34:51.256 
+dist/public/assets/fnb-dNdVDpus.png                                                 141.40 kB
+23:34:51.256 
+dist/public/assets/absa-LuhhUXg9.png                                                161.00 kB
+23:34:51.256 
+dist/public/assets/standardbank-4Hig2c3Z.png                                        169.33 kB
+23:34:51.256 
+dist/public/assets/Addup_1777332904059-CCn4MVyG.png                                 313.39 kB
+23:34:51.256 
+dist/public/assets/image_1777329893638-Dhj-vDRR.png                                 386.93 kB
+23:34:51.257 
+dist/public/assets/image_1777329299792-D4Ach9dz.png                                 799.07 kB
+23:34:51.257 
+dist/public/assets/image_1777329171721-ChK_eSg-.png                               1,221.15 kB
+23:34:51.257 
+dist/public/assets/image_1777329386613-5lWbFmx5.png                               1,442.95 kB
+23:34:51.257 
+dist/public/assets/a-chosen-soul-Cp4xHgvXt0M-unsplash_1777332357410-BMtBsFCI.jpg  2,546.51 kB
