@@ -35,7 +35,7 @@ export function CTA() {
             Ready to reconcile in minutes?
           </h2>
           <p className="text-base sm:text-lg text-white/55 leading-relaxed mb-10 max-w-xl mx-auto">
-            Join the waitlist and be first to run reconciliation on your real data — no spreadsheets, no manual matching, no chasing exceptions.
+            Join the waitlist and be first to run reconciliation on your real data. No spreadsheets, no manual matching, no chasing exceptions.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

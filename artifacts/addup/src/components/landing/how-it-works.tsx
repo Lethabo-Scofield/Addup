@@ -48,18 +48,19 @@ export function HowItWorks() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12">
-          {/* Tabs */}
-          <div className="lg:col-span-4 -mx-6 px-6 lg:mx-0 lg:px-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-0 pb-4 lg:pb-0 scrollbar-none border-b lg:border-b-0 lg:border-r border-border/40">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-8 lg:gap-12">
+          {/* Tabs — horizontal scroll on mobile, vertical list on desktop */}
+          <div className="lg:col-span-4 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible scrollbar-none border-b lg:border-b-0 lg:border-r border-border/40 mb-6 lg:mb-0">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
-                className={`relative flex items-center px-5 min-h-11 py-3 text-[14px] font-medium transition-colors whitespace-nowrap lg:whitespace-normal text-left border-b border-border/30 last:border-b-0 ${
-                  activeTab === tab.id
-                    ? "text-foreground bg-background border-l-2 border-l-primary lg:border-l-2"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+                className={`relative flex items-center justify-center lg:justify-start px-5 h-11 lg:min-h-11 lg:py-3 text-[14px] font-medium transition-colors whitespace-nowrap lg:whitespace-normal text-left shrink-0 lg:shrink
+                  border-b-2 lg:border-b-0 lg:border-l-2
+                  ${activeTab === tab.id
+                    ? "text-foreground bg-background border-b-primary lg:border-l-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50 border-b-transparent lg:border-l-transparent"
+                  }`}
               >
                 {tab.label}
               </button>
@@ -68,7 +69,7 @@ export function HowItWorks() {
 
           {/* UI Panel */}
           <div className="lg:col-span-8">
-            <div className="border border-border/40 bg-card shadow-[0_15px_50px_-15px_rgba(0,0,0,0.12)] overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
+            <div className="border border-border/40 bg-card shadow-[0_15px_50px_-15px_rgba(0,0,0,0.12)] overflow-hidden min-h-[300px] sm:h-[400px] flex flex-col">
               {/* Header */}
               <div className="h-10 border-b border-border/50 bg-muted/30 flex items-center px-4 gap-3 shrink-0">
                 <div className="flex gap-1.5">

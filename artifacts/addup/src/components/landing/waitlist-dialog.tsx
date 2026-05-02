@@ -122,7 +122,7 @@ function WaitlistDialog({
             <DialogDescription className="text-[14px] sm:text-[15px] text-muted-foreground pr-6">
               {isSuccess
                 ? "We'll reach out as early access opens up."
-                : "Get early access to Addup — close your books in minutes, not days."}
+                : "Get early access to Addup. Close your books in minutes, not days."}
             </DialogDescription>
           </DialogHeader>
         </div>
