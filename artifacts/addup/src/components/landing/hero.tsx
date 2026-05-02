@@ -35,10 +35,6 @@ export function Hero() {
               in minutes, not days.
             </span>
           </h1>
-          <p className="text-base sm:text-lg text-white/60 mb-10 max-w-xl mx-auto leading-relaxed">
-            Addup matches bank feeds, invoices, and payment data automatically — so your finance team closes fast and auditors find nothing to question.
-          </p>
-
           <button
             onClick={scrollToHowItWorks}
             className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-white hover:text-white/80 transition-colors h-12"
