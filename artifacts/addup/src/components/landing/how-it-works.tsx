@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type TabId = "capture" | "clean" | "match" | "resolve" | "verify";
@@ -18,6 +18,23 @@ const tabs: Tab[] = [
 
 export function HowItWorks() {
   const [activeTab, setActiveTab] = useState<TabId>("capture");
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const interval = setInterval(() => {
+      setActiveTab((current) => {
+        const idx = tabs.findIndex((t) => t.id === current);
+        return tabs[(idx + 1) % tabs.length].id;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [paused]);
+
+  const handleTabClick = (id: TabId) => {
+    setActiveTab(id);
+    setPaused(true);
+  };
 
   return (
     <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30">
@@ -37,7 +54,7 @@ export function HowItWorks() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`relative flex items-center px-5 min-h-11 py-3 text-[14px] font-medium transition-colors whitespace-nowrap lg:whitespace-normal text-left border-b border-border/30 last:border-b-0 ${
                   activeTab === tab.id
                     ? "text-foreground bg-background border-l-2 border-l-primary lg:border-l-2"
