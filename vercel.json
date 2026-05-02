@@ -1,6 +1,0 @@
-{
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @workspace/addup run build",
-  "outputDirectory": "artifacts/addup/dist/public",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
