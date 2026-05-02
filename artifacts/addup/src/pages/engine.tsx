@@ -1,438 +1,1242 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle2, AlertCircle, Check, FileText, Upload,
-  Download, X, ArrowRight, ArrowLeft, Camera, Sparkles,
-  BarChart2, ListChecks, Workflow, FolderInput,
-  ChevronDown, RefreshCw,
+  LayoutDashboard, Upload, Briefcase, AlertCircle, Clock, Settings2,
+  CheckCircle2, XCircle, AlertTriangle, HelpCircle,
+  Download, FileText, Sparkles, RefreshCw, X, Check, Search,
+  ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
+  BarChart3, Shield, Activity, Eye, Info, ChevronDown,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
 
-// ── Loader ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const LOADER_LINES = [
-  { ms: 0,    text: "Connecting to reconciliation engine..." },
-  { ms: 550,  text: "Loading bank.csv — 19 transactions"    },
-  { ms: 1050, text: "Loading ledger.csv — 11 entries"       },
-  { ms: 1500, text: "Normalizing date formats..."           },
-  { ms: 1950, text: "Ready."                                },
+type NavId = "dashboard" | "uploads" | "jobs" | "review" | "audit" | "settings";
+type TxStatus = "matched" | "possible_match" | "manual_review" | "invalid_row" | "unmatched_bank" | "unmatched_ledger";
+type ActionType = "approve_match" | "reject_match" | "mark_manual" | "edit_field" | "export_json" | "export_pdf";
+
+interface RawField { raw: string; normalized: string; confidence: number; issue?: string }
+interface Tx {
+  id: string; date: string; desc: string; amt: number;
+  rawDate?: RawField; rawAmt?: RawField; rawDesc?: RawField;
+  issues?: string[];
+}
+interface ReconRow {
+  id: string; status: TxStatus;
+  bank?: Tx; ledger?: Tx;
+  confidence: number; dateDiff: number; amtDiff: number; descSim: number;
+  reasons: string[]; warnings: string[]; action: string;
+  userStatus?: "approved" | "rejected" | "manual";
+}
+interface AuditEntry {
+  ts: string; job_id: string; action: ActionType; target_id: string;
+  prev?: string; next?: string; user: string;
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+const JOB_ID = "rec_20260502151654_001";
+const PERIOD = "April 2026";
+const COMPANY = "Acme Trading (Pty) Ltd";
+const BANK_INST = "FNB Business";
+const LEDGER_SOFT = "Xero";
+
+const BANK: Tx[] = [
+  { id:"B001", date:"2026-04-01", desc:"CHECKERS HYPER POS #4412",   amt:-2850.00 },
+  { id:"B002", date:"2026-04-03", desc:"PICK N PAY STORES #221",      amt:-1240.50 },
+  { id:"B003", date:"2026-04-05", desc:"ESKOM PAYMENT ONLINE",        amt:-5600.00 },
+  { id:"B004", date:"2026-04-25", desc:"SALARY CREDIT OLYXEE",        amt: 45000.00 },
+  { id:"B005", date:"2026-04-07", desc:"MTN MOBILE MONTHLY",          amt: -799.00 },
+  { id:"B006", date:"2026-04-10", desc:"UBER EATS ORDER",             amt: -340.00 },
+  { id:"B007", date:"2026-04-15", desc:"NEDBANK EFT TRANSFER",        amt:-15000.00 },
+  { id:"B008", date:"2026-04-20", desc:"COFFEE SHOP DOWNTOWN",        amt:    -4.50 },
+  { id:"B009", date:"2026-04-28", desc:"WIRE TRANSFER INCOMING",      amt: 10000.00 },
 ];
-const LOADER_MS = 2600;
 
-function EngineLoader({ onDone }: { onDone: () => void }) {
-  const [visible, setVisible] = useState<number[]>([]);
-  useEffect(() => {
-    const ts: ReturnType<typeof setTimeout>[] = [];
-    LOADER_LINES.forEach((l, i) => ts.push(setTimeout(() => setVisible(p => [...p, i]), l.ms)));
-    ts.push(setTimeout(onDone, LOADER_MS));
-    return () => ts.forEach(clearTimeout);
-  }, [onDone]);
+const LEDGER: Tx[] = [
+  { id:"L001", date:"2026-04-01", desc:"Checkers Hyper",              amt:-2850.00 },
+  { id:"L002", date:"2026-04-04", desc:"Pik n Pay",                   amt:-1240.50,
+    rawDesc:{ raw:"Pik n Pay", normalized:"Pick n Pay", confidence:0.72, issue:"Spelling variation" } },
+  { id:"L003", date:"2026-04-05", desc:"Esk0m - electricity",         amt: -560.00,
+    rawAmt:{ raw:"-560.00", normalized:"-5600.00", confidence:0.40, issue:"Possible OCR decimal shift" },
+    rawDesc:{ raw:"Esk0m", normalized:"Eskom", confidence:0.65, issue:"OCR: letter O substituted for digit 0" },
+    issues:["ocr_symbol","amount_mismatch"] },
+  { id:"L004", date:"2026-04-25", desc:"Salary Payment",              amt: 45000.00 },
+  { id:"L005", date:"2026-04-07", desc:"MTN Mobile",                  amt:  -799.00 },
+  { id:"L006", date:"2026-04-11", desc:"Ubereats",                    amt:  -340.00 },
+  { id:"L007", date:"2026-04-16", desc:"Bank Transfer EFT",           amt:-15000.00 },
+  { id:"L008", date:"2O26-O4-O8", desc:"Office supplies",             amt:  -650.00,
+    rawDate:{ raw:"2O26-O4-O8", normalized:"2026-04-08", confidence:0.0, issue:"OCR: letter O for digit 0 — unparseable" },
+    issues:["invalid_date","ocr_symbol"] },
+  { id:"L009", date:"2026-04-12", desc:"Refund received",             amt:-99999.00,
+    rawAmt:{ raw:"-99,999.00", normalized:"unknown", confidence:0.0, issue:"Amount exceeds plausible threshold" },
+    issues:["impossible_amount"] },
+  { id:"L010", date:"2026-04-01", desc:"Checkers Hyper (duplicate)",  amt:-2850.00, issues:["duplicate"] },
+  { id:"L011", date:"2026-04-22", desc:"Vodacom contract",            amt:  -599.00 },
+];
+
+const ROWS: ReconRow[] = [
+  { id:"R001", status:"matched",         bank:BANK[0], ledger:LEDGER[0],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.92,
+    reasons:["Exact amount match","Exact date match","High description similarity"], warnings:[], action:"auto_approve" },
+  { id:"R002", status:"matched",         bank:BANK[3], ledger:LEDGER[3],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.85,
+    reasons:["Exact amount match","Exact date match"], warnings:[], action:"auto_approve" },
+  { id:"R003", status:"matched",         bank:BANK[4], ledger:LEDGER[4],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.95,
+    reasons:["Exact amount match","Exact date match","Exact vendor match"], warnings:[], action:"auto_approve" },
+  { id:"R004", status:"possible_match",  bank:BANK[1], ledger:LEDGER[1],  confidence:85,  dateDiff:1, amtDiff:0,    descSim:0.72,
+    reasons:["Exact amount match","Date off by 1 day","Similar description"],
+    warnings:["Spelling differs: 'PICK N PAY' vs 'Pik n Pay' — possible OCR error","Date discrepancy: bank 2026-04-03, ledger 2026-04-04"], action:"review" },
+  { id:"R005", status:"possible_match",  bank:BANK[5], ledger:LEDGER[5],  confidence:88,  dateDiff:1, amtDiff:0,    descSim:0.78,
+    reasons:["Exact amount match","Date off by 1 day"],
+    warnings:["Date discrepancy: bank 2026-04-10, ledger 2026-04-11"], action:"review" },
+  { id:"R006", status:"possible_match",  bank:BANK[6], ledger:LEDGER[6],  confidence:82,  dateDiff:1, amtDiff:0,    descSim:0.68,
+    reasons:["Exact amount match","Date off by 1 day"],
+    warnings:["Description differs: 'NEDBANK EFT TRANSFER' vs 'Bank Transfer EFT'","Date discrepancy: bank 2026-04-15, ledger 2026-04-16"], action:"review" },
+  { id:"R007", status:"manual_review",   bank:BANK[2], ledger:LEDGER[2],  confidence:45,  dateDiff:0, amtDiff:5040, descSim:0.55,
+    reasons:["Date match","Vendor name partially similar"],
+    warnings:["Amount mismatch: bank R5,600 vs ledger R560 — 10x difference","OCR issue: '0' in 'Esk0m' may be letter O","Possible OCR decimal parsing error in ledger amount"], action:"manual_review" },
+  { id:"R008", status:"manual_review",   bank:undefined, ledger:LEDGER[9], confidence:20, dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["Duplicate detected: same amount and date as L001 — likely double-entry"], action:"manual_review" },
+  { id:"R009", status:"invalid_row",     bank:undefined, ledger:LEDGER[7], confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["Invalid date format '2O26-O4-O8' — OCR substituted letter O for digit 0","Row cannot be processed until date is corrected"], action:"fix_data" },
+  { id:"R010", status:"invalid_row",     bank:undefined, ledger:LEDGER[8], confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["Impossible amount: R99,999 credit flagged as likely OCR error","Exceeds typical transaction threshold — manual verification required"], action:"fix_data" },
+  { id:"R011", status:"unmatched_bank",  bank:BANK[7],  ledger:undefined, confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["No ledger entry found for this bank transaction","Small amount (R4.50) — may be unrecorded petty cash"], action:"create_entry" },
+  { id:"R012", status:"unmatched_bank",  bank:BANK[8],  ledger:undefined, confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["Large unrecorded credit: R10,000","Incoming wire — verify source and record in ledger"], action:"create_entry" },
+  { id:"R013", status:"unmatched_ledger",bank:undefined, ledger:LEDGER[10],confidence:0, dateDiff:0, amtDiff:0,    descSim:0,
+    reasons:[], warnings:["No bank transaction found for this ledger entry","May be an outstanding payment or direct debit not yet cleared"], action:"create_entry" },
+];
+
+const OVERALL_CONF = Math.round(
+  ROWS.filter(r => r.status === "matched").length / BANK.length * 100
+);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmt(n: number) {
+  const abs = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${n < 0 ? "-" : "+"}R ${abs}`;
+}
+function fmtDate(d: string) {
+  try { return new Date(d).toLocaleDateString("en-ZA", { day:"2-digit", month:"short", year:"numeric" }); }
+  catch { return d; }
+}
+function now() { return new Date().toISOString(); }
+
+const STATUS_CFG: Record<TxStatus, { label: string; short: string; bg: string; text: string; border: string; dot: string }> = {
+  matched:          { label:"Matched",          short:"Matched",    bg:"bg-emerald-50",  text:"text-emerald-700", border:"border-emerald-200", dot:"bg-emerald-500"  },
+  possible_match:   { label:"Possible Match",   short:"Possible",   bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    dot:"bg-blue-500"     },
+  manual_review:    { label:"Manual Review",    short:"Manual",     bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   dot:"bg-amber-500"    },
+  invalid_row:      { label:"Invalid Row",      short:"Invalid",    bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     dot:"bg-red-500"      },
+  unmatched_bank:   { label:"Unmatched Bank",   short:"No Ledger",  bg:"bg-orange-50",   text:"text-orange-700",  border:"border-orange-200",  dot:"bg-orange-500"   },
+  unmatched_ledger: { label:"Unmatched Ledger", short:"No Bank",    bg:"bg-purple-50",   text:"text-purple-700",  border:"border-purple-200",  dot:"bg-purple-500"   },
+};
+
+const ACTION_LABELS: Record<ActionType, string> = {
+  approve_match: "Approved match",
+  reject_match:  "Rejected match",
+  mark_manual:   "Marked manual review",
+  edit_field:    "Edited field",
+  export_json:   "Exported JSON report",
+  export_pdf:    "Exported PDF report",
+};
+
+// ── useGrokExplain hook ───────────────────────────────────────────────────────
+
+function useGrokExplain() {
+  const [resp, setResp]       = useState("");
+  const [streaming, setStr]   = useState(false);
+  const [error, setErr]       = useState("");
+  const abort = useRef<AbortController | null>(null);
+
+  const explain = useCallback(async (question: string, ctx?: string) => {
+    abort.current?.abort();
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setResp(""); setErr(""); setStr(true);
+    try {
+      const res = await fetch("/api/explain", {
+        method:"POST", signal: ctrl.signal,
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ question, context: ctx }),
+      });
+      if (!res.ok || !res.body) { setErr("Could not reach Grok."); setStr(false); return; }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n"); buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const p = JSON.parse(line.slice(6));
+            if (p.content) setResp(r => r + p.content);
+            if (p.done)    setStr(false);
+            if (p.error)   { setErr(p.error); setStr(false); }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (e: any) { if (e.name !== "AbortError") setErr("Something went wrong."); }
+    finally { setStr(false); }
+  }, []);
+
+  const reset = useCallback(() => { abort.current?.abort(); setResp(""); setErr(""); setStr(false); }, []);
+  return { resp, streaming, error, explain, reset };
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: TxStatus }) {
+  const c = STATUS_CFG[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+      <span className={`w-1.5 h-1.5 shrink-0 ${c.dot}`} />
+      {c.label}
+    </span>
+  );
+}
+
+// ── Confidence bar ─────────────────────────────────────────────────────────────
+
+function ConfBar({ pct }: { pct: number }) {
+  const color = pct >= 90 ? "bg-emerald-500" : pct >= 70 ? "bg-blue-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
+  const textColor = pct >= 90 ? "text-emerald-700" : pct >= 70 ? "text-blue-700" : pct >= 40 ? "text-amber-700" : "text-red-700";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-100">
+        <div className={`h-full ${color} transition-all`} style={{ width:`${pct}%` }} />
+      </div>
+      <span className={`text-[11px] font-bold w-8 text-right shrink-0 ${textColor}`}>{pct}%</span>
+    </div>
+  );
+}
+
+// ── Transaction card (side-by-side review) ────────────────────────────────────
+
+function TxCard({ tx, side, highlight }: { tx?: Tx; side: "bank" | "ledger"; highlight?: string[] }) {
+  if (!tx) return (
+    <div className="flex-1 border border-dashed border-gray-200 flex items-center justify-center min-h-[200px] text-gray-300">
+      <div className="text-center">
+        <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p className="text-xs">No {side} entry</p>
+      </div>
+    </div>
+  );
+  const isBank = side === "bank";
+  const fields = [
+    { label:"Transaction ID", val: tx.id },
+    { label:"Date",           val: tx.date, raw: tx.rawDate },
+    { label:"Description",    val: tx.desc, raw: tx.rawDesc },
+    { label:"Amount",         val: fmt(tx.amt), raw: tx.rawAmt },
+  ];
+  return (
+    <div className={`flex-1 border ${isBank ? "border-gray-200" : "border-gray-200"}`}>
+      <div className={`px-4 py-2.5 border-b ${isBank ? "bg-gray-900" : "bg-gray-700"} flex items-center justify-between`}>
+        <span className="text-white text-xs font-bold uppercase tracking-wider">{isBank ? "Bank Statement" : "General Ledger"}</span>
+        <span className="text-gray-400 text-[10px] font-mono">{tx.id}</span>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {fields.map(({ label, val, raw }) => (
+          <div key={label} className="px-4 py-3">
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">{label}</p>
+            <p className={`text-sm font-medium ${highlight?.includes(label) ? "text-amber-700" : "text-gray-900"}`}>{val}</p>
+            {raw && (
+              <div className="mt-1 flex items-start gap-1">
+                <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-600">Raw: <span className="font-mono">{raw.raw}</span> — {raw.issue}</p>
+              </div>
+            )}
+          </div>
+        ))}
+        {tx.issues && tx.issues.length > 0 && (
+          <div className="px-4 py-3 bg-red-50">
+            {tx.issues.map(iss => (
+              <p key={iss} className="text-[10px] text-red-600 font-semibold flex items-center gap-1">
+                <XCircle className="h-3 w-3" />{iss.replace(/_/g, " ")}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Review panel ──────────────────────────────────────────────────────────────
+
+function ReviewPanel({
+  row, onClose, onApprove, onReject, onManual,
+}: {
+  row: ReconRow; onClose: () => void;
+  onApprove: () => void; onReject: () => void; onManual: () => void;
+}) {
+  const { resp, streaming, error, explain, reset } = useGrokExplain();
+  const [grokOpen, setGrokOpen] = useState(false);
+
+  const diffHighlights: string[] = [];
+  if (row.dateDiff > 0)  diffHighlights.push("Date");
+  if (row.amtDiff  > 0)  diffHighlights.push("Amount");
+  if (row.descSim  < 0.8) diffHighlights.push("Description");
 
   return (
     <motion.div
-      initial={{ opacity: 1 }} exit={{ opacity: 0 }}
-      transition={{ duration: 0.4, ease: "easeInOut" }}
-      className="fixed inset-0 z-[999] bg-white flex flex-col items-center justify-center px-6"
+      initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+      transition={{ type:"spring", stiffness:300, damping:30 }}
+      className="fixed right-0 top-0 h-full w-full max-w-[680px] bg-white border-l border-gray-200 z-40 flex flex-col shadow-2xl"
     >
-      <motion.img src={addupLogo} alt="Addup"
-        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }} className="h-8 w-auto mb-14"
-      />
-      <div className="w-full max-w-xs space-y-3">
-        {LOADER_LINES.map((l, i) => (
-          <AnimatePresence key={i}>
-            {visible.includes(i) && (
-              <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.25 }} className="flex items-center gap-3"
-              >
-                {i === LOADER_LINES.length - 1
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  : <span className="h-3.5 w-3.5 flex items-center justify-center shrink-0">
-                      <span className="h-1.5 w-1.5 bg-gray-300 rounded-full" />
-                    </span>
-                }
-                <span className={`font-mono text-xs ${i === LOADER_LINES.length - 1 ? "text-gray-900 font-semibold" : "text-gray-400"}`}>
-                  {l.text}
-                </span>
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">Side-by-side Review</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{row.id} · {STATUS_CFG[row.status].label}</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-gray-100 transition-colors">
+          <X className="h-4 w-4 text-gray-400" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Match confidence */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Match confidence</span>
+            <StatusBadge status={row.status} />
+          </div>
+          <ConfBar pct={row.confidence} />
+          {row.confidence > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {[
+                { label:"Date diff",     val: row.dateDiff === 0 ? "Exact" : `${row.dateDiff}d apart`, ok: row.dateDiff === 0 },
+                { label:"Amount diff",   val: row.amtDiff  === 0 ? "Exact" : `R ${row.amtDiff.toFixed(2)}`,  ok: row.amtDiff === 0  },
+                { label:"Desc similarity", val: `${Math.round(row.descSim * 100)}%`,                    ok: row.descSim >= 0.8  },
+              ].map(({ label, val, ok }) => (
+                <div key={label} className="border border-gray-100 px-3 py-2">
+                  <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                  <p className={`text-xs font-bold ${ok ? "text-emerald-600" : "text-amber-600"}`}>{val}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Side-by-side cards */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Transactions</p>
+          <div className="flex gap-3">
+            <TxCard tx={row.bank}   side="bank"   highlight={diffHighlights} />
+            <TxCard tx={row.ledger} side="ledger" highlight={diffHighlights} />
+          </div>
+        </div>
+
+        {/* Explanation */}
+        {(row.reasons.length > 0 || row.warnings.length > 0) && (
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Match explanation</p>
+            {row.reasons.map(r => (
+              <div key={r} className="flex items-start gap-2 mb-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-700">{r}</p>
+              </div>
+            ))}
+            {row.warnings.map(w => (
+              <div key={w} className="flex items-start gap-2 mb-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">{w}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Ask Grok */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <button
+            onClick={() => {
+              setGrokOpen(true);
+              if (!resp && !streaming) {
+                explain(
+                  `Explain this reconciliation item: ${row.bank?.desc ?? row.ledger?.desc ?? row.id}`,
+                  `Status: ${row.status}. Confidence: ${row.confidence}%. Warnings: ${row.warnings.join("; ")}. Reasons: ${row.reasons.join("; ")}.`
+                );
+              }
+            }}
+            className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            {grokOpen ? "Grok explanation" : "Ask Grok to explain this"}
+            <ChevronDown className={`h-3 w-3 transition-transform ${grokOpen ? "rotate-180" : ""}`} />
+          </button>
+          <AnimatePresence>
+            {grokOpen && (
+              <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:"auto" }} exit={{ opacity:0, height:0 }}>
+                <div className="mt-3 border border-gray-100 bg-gray-50 p-3 min-h-[80px]">
+                  {error && <p className="text-xs text-red-500">{error}</p>}
+                  {!resp && !error && streaming && (
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <motion.div animate={{ rotate:360 }} transition={{ duration:1, repeat:Infinity, ease:"linear" }}>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </motion.div>
+                      Grok is thinking...
+                    </div>
+                  )}
+                  {resp && <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{resp}</p>}
+                </div>
+                {resp && !streaming && (
+                  <button onClick={() => { reset(); explain(`Explain: ${row.bank?.desc ?? row.ledger?.desc ?? row.id}`, `Status: ${row.status}.`); }}
+                    className="mt-2 text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" /> Regenerate
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
-        ))}
+        </div>
       </div>
-      <div className="mt-14 w-full max-w-xs h-[1px] bg-gray-100 overflow-hidden">
-        <motion.div className="h-full bg-gray-900"
-          initial={{ width: "0%" }} animate={{ width: "100%" }}
-          transition={{ duration: LOADER_MS / 1000 - 0.2, ease: "linear" }}
-        />
+
+      {/* Action buttons */}
+      <div className="px-5 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
+        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-3">Actions</p>
+        <div className="flex gap-2 flex-wrap">
+          {row.status !== "invalid_row" && (
+            <button onClick={onApprove}
+              className="flex items-center gap-1.5 h-9 px-4 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors">
+              <ThumbsUp className="h-3.5 w-3.5" /> Approve match
+            </button>
+          )}
+          <button onClick={onReject}
+            className="flex items-center gap-1.5 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+            <ThumbsDown className="h-3.5 w-3.5" /> Reject
+          </button>
+          <button onClick={onManual}
+            className="flex items-center gap-1.5 h-9 px-4 border border-amber-200 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors">
+            <Edit3 className="h-3.5 w-3.5" /> Mark manual review
+          </button>
+        </div>
+        {row.userStatus && (
+          <p className="mt-2 text-[10px] text-gray-400">
+            Current decision: <span className="font-bold text-gray-600">{row.userStatus}</span>
+          </p>
+        )}
       </div>
     </motion.div>
   );
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Row table ─────────────────────────────────────────────────────────────────
 
-type View = "workflow" | "results" | "resolves" | "explain";
-type StepId = "upload" | "read" | "match" | "review" | "report";
-
-const STEPS: { id: StepId; label: string; desc: string }[] = [
-  { id: "upload", label: "Upload",  desc: "Add your files"       },
-  { id: "read",   label: "Read",    desc: "Parse & normalize"     },
-  { id: "match",  label: "Match",   desc: "Compare transactions"  },
-  { id: "review", label: "Review",  desc: "Resolve flagged items" },
-  { id: "report", label: "Report",  desc: "Export reconciliation" },
+const STATUS_ORDER: TxStatus[] = [
+  "matched", "possible_match", "manual_review", "invalid_row", "unmatched_bank", "unmatched_ledger"
 ];
 
-const DATE_FORMATS = [
-  { raw: "2026-04-01",    norm: "2026-04-01", note: "Standard — no change"  },
-  { raw: "01/04/2026",    norm: "2026-04-01", note: "Day/Month/Year"         },
-  { raw: "07-04-2026",    norm: "2026-04-07", note: "Dash-separated"         },
-  { raw: '"09 Apr 2026"', norm: "2026-04-09", note: "Written month"          },
-  { raw: "4/5/2026",      norm: "2026-04-05", note: "Short US format"        },
-];
+function ReconTable({
+  rows, onSelect, selectedId, filter,
+}: {
+  rows: ReconRow[]; onSelect: (r: ReconRow) => void;
+  selectedId?: string; filter: TxStatus | "all";
+}) {
+  const visible = filter === "all" ? rows : rows.filter(r => r.status === filter);
+  const grouped = STATUS_ORDER.map(s => ({
+    status: s, items: visible.filter(r => r.status === s),
+  })).filter(g => g.items.length > 0);
 
-const MATCHES = [
-  { bank: { id: "B-001", date: "1 Apr",  desc: "Salary Payment",            amt:  3500.00 },
-    ledger:{ id: "L-001", date: "1 Apr",  desc: "Salary",                    amt:  3500.00 },
-    quality: "perfect" as const, conf: 100, flags: [] },
-  { bank: { id: "B-002", date: "2 Apr",  desc: "Online Transfer to Savings", amt:  -500.00 },
-    ledger:{ id: "L-002", date: "3 Apr",  desc: "Savings Transfer",           amt:  -500.00 },
-    quality: "close"   as const, conf: 84,  flags: ["Different descriptions"] },
-  { bank: { id: "B-004", date: "6 Apr",  desc: "Direct Debit Electricity",   amt:   -95.67 },
-    ledger:{ id: "L-003", date: "28 Mar", desc: "Electricity DD",             amt:   -95.67 },
-    quality: "amount"  as const, conf: 78,  flags: ["Dates 9 days apart"]     },
-  { bank: { id: "B-005", date: "7 Apr",  desc: "Online Payment - Amazon",    amt:   -87.99 },
-    ledger:{ id: "L-004", date: "7 Apr",  desc: "Online Purchase",            amt:   -87.99 },
-    quality: "perfect" as const, conf: 100, flags: ["Different descriptions"] },
-  { bank: { id: "B-006", date: "10 Apr", desc: "Check Deposit",              amt:   500.00 },
-    ledger:{ id: "L-005", date: "10 Apr", desc: "Check Deposit",              amt:   500.00 },
-    quality: "perfect" as const, conf: 100, flags: [] },
-  { bank: { id: "B-007", date: "12 Apr", desc: "Interest Credit",            amt:     2.35 },
-    ledger:{ id: "L-006", date: "15 Apr", desc: "Interest",                   amt:     2.35 },
-    quality: "amount"  as const, conf: 78,  flags: ["Dates 3 days apart"]     },
-  { bank: { id: "B-009", date: "19 Apr", desc: "Payroll Tax",                amt:  -450.00 },
-    ledger:{ id: "L-007", date: "19 Apr", desc: "Payroll Tax",                amt:  -450.00 },
-    quality: "perfect" as const, conf: 100, flags: [] },
-];
+  if (visible.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-24 text-gray-300">
+      <FileText className="h-12 w-12 mb-3 opacity-40" />
+      <p className="text-sm">No items in this filter</p>
+    </div>
+  );
 
-const MISSING = [
-  { id: "B-003", desc: "Coffee Shop, Downtown",  amt:    -4.50, why: "No ledger entry found for this amount on this date."        },
-  { id: "B-008", desc: "Wire Transfer Incoming", amt: 10000.00, why: "Large credit in the bank — nothing recorded in the ledger." },
-];
-
-const ISSUES = [
-  { id: "B-002::L-002", kind: "desc" as const,
-    title: "Bank and ledger use different names",
-    bank: "Online Transfer to Savings", ledger: "Savings Transfer", amt: -500.00,
-    plain: "The bank says 'Online Transfer to Savings', your ledger says 'Savings Transfer'. These are likely the same transaction — the wording is just different.",
-    action: "Accept as match" },
-  { id: "B-004::L-003", kind: "date" as const,
-    title: "Dates are 9 days apart",
-    bank: "Bank: 6 Apr 2026", ledger: "Ledger: 28 Mar 2026", amt: -95.67,
-    plain: "The electricity direct debit appears on 6 April in the bank but 28 March in the ledger. The amounts match exactly — this may be a posting delay or a recording error.",
-    action: "Confirm and accept" },
-  { id: "B-005::L-004", kind: "desc" as const,
-    title: "Amazon payment recorded generically",
-    bank: "Online Payment - Amazon", ledger: "Online Purchase", amt: -87.99,
-    plain: "The bank identifies this as an Amazon payment. The ledger just says 'Online Purchase'. Consider updating the ledger description for clarity.",
-    action: "Accept as match" },
-  { id: "B-007::L-006", kind: "date" as const,
-    title: "Interest credit dates are 3 days apart",
-    bank: "Bank: 12 Apr 2026", ledger: "Ledger: 15 Apr 2026", amt: 2.35,
-    plain: "Small interest credit — the bank shows it on the 12th, the ledger on the 15th. Timing differences like this are common for interest postings.",
-    action: "Apply fix" },
-  { id: "B-003", kind: "missing" as const,
-    title: "Coffee shop charge not in ledger",
-    bank: "Coffee Shop, Downtown", ledger: "—", amt: -4.50,
-    plain: "A R4.50 charge appears in your bank statement but nothing matches in your ledger. This could be an unrecorded petty cash expense.",
-    action: "Add to ledger" },
-  { id: "B-008", kind: "missing" as const,
-    title: "R10,000 wire transfer not recorded",
-    bank: "Wire Transfer Incoming", ledger: "—", amt: 10000.00,
-    plain: "A R10,000 incoming wire appears in your bank with no matching ledger entry. This is a significant amount — confirm the source and record it.",
-    action: "Request data" },
-];
-
-const AVG_CONF = Math.round(MATCHES.reduce((s, m) => s + m.conf, 0) / MATCHES.length);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtAmt(n: number) {
-  const abs = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${n < 0 ? "\u2212" : "+"}R\u00a0${abs}`;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Source</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">Description</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+            <th className="text-right px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">Confidence</th>
+            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+            <th className="px-4 py-3 w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {grouped.map(({ status, items }) => (
+            <React.Fragment key={status}>
+              <tr>
+                <td colSpan={9} className="px-4 py-2 bg-gray-50 border-y border-gray-100">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    {STATUS_CFG[status].label} — {items.length}
+                  </span>
+                </td>
+              </tr>
+              {items.map((row, i) => {
+                const tx = row.bank ?? row.ledger;
+                const isSelected = row.id === selectedId;
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => onSelect(row)}
+                    className={`border-b border-gray-100 cursor-pointer transition-colors
+                      ${isSelected ? "bg-gray-900 text-white" : i % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50/50 hover:bg-gray-100/50"}`}
+                  >
+                    <td className="px-4 py-3 font-mono text-gray-400 text-[10px]">{i + 1}</td>
+                    <td className="px-4 py-3">
+                      {isSelected
+                        ? <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${STATUS_CFG[status].text}`}>
+                            <span className={`w-1.5 h-1.5 ${STATUS_CFG[status].dot}`} />{STATUS_CFG[status].short}
+                          </span>
+                        : <StatusBadge status={status} />
+                      }
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className={`text-[10px] font-semibold uppercase tracking-wider ${isSelected ? "text-gray-300" : "text-gray-400"}`}>
+                        {row.bank && row.ledger ? "Both" : row.bank ? "Bank" : "Ledger"}
+                      </div>
+                      <div className={`text-[10px] font-mono ${isSelected ? "text-gray-400" : "text-gray-300"}`}>
+                        {row.bank?.id}{row.bank && row.ledger && " / "}{row.ledger?.id}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`font-medium text-[12px] ${isSelected ? "text-white" : "text-gray-800"}`}>
+                        {tx?.desc.slice(0, 36)}{(tx?.desc.length ?? 0) > 36 && "…"}
+                      </span>
+                      {tx?.issues && tx.issues.length > 0 && (
+                        <AlertTriangle className={`inline ml-1 h-3 w-3 ${isSelected ? "text-amber-300" : "text-amber-500"}`} />
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 font-mono text-[11px] ${isSelected ? "text-gray-300" : "text-gray-500"}`}>
+                      {tx?.date}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-mono font-bold text-[12px]
+                      ${isSelected ? (tx && tx.amt >= 0 ? "text-emerald-300" : "text-red-300")
+                                   : (tx && tx.amt >= 0 ? "text-emerald-600" : "text-red-500")}`}>
+                      {tx ? fmt(tx.amt) : "—"}
+                    </td>
+                    <td className="px-4 py-3 min-w-[140px]">
+                      {row.confidence > 0
+                        ? <ConfBar pct={row.confidence} />
+                        : <span className={`text-[11px] ${isSelected ? "text-gray-400" : "text-gray-300"}`}>—</span>
+                      }
+                    </td>
+                    <td className={`px-4 py-3 text-[10px] font-semibold uppercase tracking-wider
+                      ${isSelected ? "text-gray-300" : "text-gray-400"}`}>
+                      {row.action.replace(/_/g, " ")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ChevronRight className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-gray-300"}`} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-function qualityChip(q: "perfect" | "close" | "amount") {
-  if (q === "perfect") return { label: "Perfect match", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-  if (q === "close")   return { label: "Off by 1 day",  cls: "bg-blue-50 text-blue-700 border-blue-200"         };
-  return                      { label: "Amount match",  cls: "bg-amber-50 text-amber-700 border-amber-200"      };
-}
+// ── Dashboard view ────────────────────────────────────────────────────────────
 
-// ── Grok explain hook ─────────────────────────────────────────────────────────
+function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) => void }) {
+  const matched  = rows.filter(r => r.status === "matched").length;
+  const possible = rows.filter(r => r.status === "possible_match").length;
+  const manual   = rows.filter(r => r.status === "manual_review").length;
+  const invalid  = rows.filter(r => r.status === "invalid_row").length;
+  const uBank    = rows.filter(r => r.status === "unmatched_bank").length;
+  const uLedger  = rows.filter(r => r.status === "unmatched_ledger").length;
 
-function useGrokExplain() {
-  const [response, setResponse]     = useState("");
-  const [streaming, setStreaming]   = useState(false);
-  const [error, setError]           = useState("");
-  const abortRef = useRef<AbortController | null>(null);
-
-  const explain = useCallback(async (question: string, context?: string) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    setResponse("");
-    setError("");
-    setStreaming(true);
-
-    try {
-      const res = await fetch("/api/explain", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, context }),
-        signal: ctrl.signal,
-      });
-
-      if (!res.ok) { setError("Could not reach the explain service."); setStreaming(false); return; }
-      if (!res.body) { setError("No response received."); setStreaming(false); return; }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const parsed = JSON.parse(line.slice(6));
-            if (parsed.content) setResponse(p => p + parsed.content);
-            if (parsed.done)    setStreaming(false);
-            if (parsed.error)   { setError(parsed.error); setStreaming(false); }
-          } catch { /* skip malformed */ }
-        }
-      }
-    } catch (e: any) {
-      if (e.name !== "AbortError") setError("Something went wrong. Please try again.");
-    } finally {
-      setStreaming(false);
-    }
-  }, []);
-
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    setResponse(""); setError(""); setStreaming(false);
-  }, []);
-
-  return { response, streaming, error, explain, reset };
-}
-
-// ── Sidebar step node ─────────────────────────────────────────────────────────
-
-function StepNode({ n, status }: { n: number; status: "done" | "active" | "pending" }) {
-  if (status === "done")   return <span className="w-6 h-6 flex items-center justify-center bg-emerald-500 shrink-0"><Check className="h-3 w-3 text-white" strokeWidth={2.5} /></span>;
-  if (status === "active") return <span className="w-6 h-6 flex items-center justify-center bg-gray-900 shrink-0"><span className="text-white text-[11px] font-bold">{n}</span></span>;
-  return                          <span className="w-6 h-6 flex items-center justify-center border border-gray-200 shrink-0"><span className="text-gray-300 text-[11px] font-medium">{n}</span></span>;
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
-
-export default function Engine() {
-  const [loading,       setLoading]       = useState(true);
-  const [view,          setView]          = useState<View>("workflow");
-  const [step,          setStep]          = useState(0);
-  const [filter,        setFilter]        = useState<"all" | "clean" | "flagged">("all");
-  const [resolved,      setResolved]      = useState<Set<string>>(new Set());
-  const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [bankFile,      setBankFile]      = useState<string | null>(null);
-  const [ledgerFile,    setLedgerFile]    = useState<string | null>(null);
-  const [companyName,   setCompanyName]   = useState("Acme Trading (Pty) Ltd");
-  const [bankInst,      setBankInst]      = useState("FNB Business");
-  const [ledgerSoft,    setLedgerSoft]    = useState("Xero");
-  const [pdfLoading,    setPdfLoading]    = useState(false);
-  const [explainTarget, setExplainTarget] = useState<{ id: string; title: string; context: string } | null>(null);
-
-  const { response: grokResponse, streaming: grokStreaming, error: grokError, explain: grokExplain, reset: grokReset } = useGrokExplain();
-
-  const handleLoaderDone = useCallback(() => setLoading(false), []);
-  const resolve = (id: string) => setResolved(p => new Set([...p, id]));
-
-  const stepId   = STEPS[step].id;
-  const isLast   = step === STEPS.length - 1;
-  const isMobile = typeof window !== "undefined" && /Mobi|Android/i.test(navigator.userAgent);
-
-  const visibleMatches =
-    filter === "clean"   ? MATCHES.filter(m => m.flags.length === 0) :
-    filter === "flagged" ? MATCHES.filter(m => m.flags.length  >  0) : MATCHES;
-
-  function openExplain(id: string, title: string, context: string) {
-    setExplainTarget({ id, title, context });
-    setView("explain");
-    grokReset();
-    setSidebarOpen(false);
-  }
-
-  useEffect(() => {
-    if (view === "explain" && explainTarget && !grokResponse && !grokStreaming) {
-      grokExplain(
-        `Explain this reconciliation item to me in plain English: "${explainTarget.title}"`,
-        explainTarget.context
-      );
-    }
-  }, [view, explainTarget]);
-
-  // ── Shared sidebar nav ────────────────────────────────────────────────────
-
-  const NAV_ITEMS: { id: View; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: "workflow", label: "Workflow",  icon: <Workflow   className="h-4 w-4" /> },
-    { id: "results",  label: "Results",   icon: <BarChart2  className="h-4 w-4" /> },
-    { id: "resolves", label: "Resolves",  icon: <ListChecks className="h-4 w-4" />,
-      badge: resolved.size < ISSUES.length ? `${ISSUES.length - resolved.size}` : undefined },
-    { id: "explain",  label: "Ask Grok",  icon: <Sparkles  className="h-4 w-4" /> },
+  const cards = [
+    { label:"Bank transactions",   val: BANK.length,   sub:"Loaded",                  color:"text-gray-900",     bg:"bg-white" },
+    { label:"Ledger entries",      val: LEDGER.length, sub:"Loaded",                  color:"text-gray-900",     bg:"bg-white" },
+    { label:"Matched",             val: matched,       sub:"Auto-approved",            color:"text-emerald-700",  bg:"bg-emerald-50" },
+    { label:"Possible matches",    val: possible,      sub:"Needs review",             color:"text-blue-700",     bg:"bg-blue-50" },
+    { label:"Manual review",       val: manual,        sub:"Flagged items",            color:"text-amber-700",    bg:"bg-amber-50" },
+    { label:"Invalid rows",        val: invalid,       sub:"Data quality issues",      color:"text-red-700",      bg:"bg-red-50" },
+    { label:"Unmatched bank",      val: uBank,         sub:"No ledger entry",          color:"text-orange-700",   bg:"bg-orange-50" },
+    { label:"Unmatched ledger",    val: uLedger,       sub:"No bank transaction",      color:"text-purple-700",   bg:"bg-purple-50" },
   ];
 
-  function SidebarInner() {
-    const bankRef   = useRef<HTMLInputElement>(null);
-    const ledgerRef = useRef<HTMLInputElement>(null);
-    const scanRef   = useRef<HTMLInputElement>(null);
+  return (
+    <div className="p-6 max-w-5xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{JOB_ID}</span> · {PERIOD} · {COMPANY}</p>
+      </div>
 
+      {/* Overall confidence */}
+      <div className="border border-gray-200 p-5 mb-6 bg-white">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Overall reconciliation confidence</p>
+            <p className="text-3xl font-bold text-gray-900">{OVERALL_CONF}%</p>
+          </div>
+          <div className="text-right">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+              <span className="w-1.5 h-1.5 bg-emerald-500" />
+              {matched} of {BANK.length} auto-matched
+            </span>
+            <p className="text-[10px] text-gray-400 mt-1.5">{BANK_INST} · {LEDGER_SOFT}</p>
+          </div>
+        </div>
+        <div className="h-3 bg-gray-100 w-full">
+          <div className="h-full bg-emerald-500 transition-all" style={{ width:`${OVERALL_CONF}%` }} />
+        </div>
+        <div className="flex gap-4 mt-3">
+          {[
+            { label:"Matched",  pct: Math.round(matched / BANK.length * 100),  color:"bg-emerald-500" },
+            { label:"Review",   pct: Math.round(possible / BANK.length * 100), color:"bg-blue-500"    },
+            { label:"Issues",   pct: Math.round((manual + invalid) / BANK.length * 100), color:"bg-amber-500" },
+            { label:"No match", pct: Math.round((uBank + uLedger) / BANK.length * 100), color:"bg-red-400" },
+          ].map(({ label, pct, color }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className={`w-2.5 h-2.5 ${color}`} />
+              <span className="text-[11px] text-gray-500">{label} <b className="text-gray-900">{pct}%</b></span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {cards.map(({ label, val, sub, color, bg }) => (
+          <div key={label} className={`border border-gray-200 p-4 ${bg}`}>
+            <p className={`text-2xl font-bold ${color}`}>{val}</p>
+            <p className="text-xs font-semibold text-gray-700 mt-0.5">{label}</p>
+            <p className="text-[10px] text-gray-400">{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { label:"Open reconciliation workspace", icon:<Briefcase className="h-4 w-4"/>, nav:"jobs"   as NavId, desc:"View and review all transactions" },
+          { label:"Go to review queue",            icon:<AlertCircle className="h-4 w-4"/>, nav:"review" as NavId, desc:`${possible + manual + invalid} items need attention` },
+          { label:"View audit log",                icon:<Clock className="h-4 w-4"/>,      nav:"audit"  as NavId, desc:"Track all actions on this job" },
+        ].map(({ label, icon, nav, desc }) => (
+          <button key={nav} onClick={() => onNav(nav)}
+            className="flex items-start gap-3 border border-gray-200 p-4 text-left hover:bg-gray-50 hover:border-gray-300 transition-colors bg-white">
+            <span className="mt-0.5 text-gray-400">{icon}</span>
+            <div>
+              <p className="text-xs font-semibold text-gray-800">{label}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{desc}</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-300 ml-auto mt-0.5 shrink-0" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Uploads view ──────────────────────────────────────────────────────────────
+
+function UploadsView() {
+  const bankRef   = useRef<HTMLInputElement>(null);
+  const ledgerRef = useRef<HTMLInputElement>(null);
+  const [bank, setBank]     = useState<string | null>(null);
+  const [ledger, setLedger] = useState<string | null>(null);
+
+  return (
+    <div className="p-6 max-w-2xl">
+      <h1 className="text-xl font-bold text-gray-900 mb-1">Upload Files</h1>
+      <p className="text-sm text-gray-400 mb-6">Upload your bank statement and general ledger export to start reconciliation.</p>
+
+      <div className="space-y-4">
+        {[
+          { label:"Bank Statement", sub:"FNB Business · CSV or XLSX", ref:bankRef, file:bank, set:setBank, accept:".csv,.xlsx,.xls", demo:"bank_statement_april_2026.csv" },
+          { label:"General Ledger", sub:"Xero export · CSV or XLSX",  ref:ledgerRef, file:ledger, set:setLedger, accept:".csv,.xlsx,.xls", demo:"xero_gl_april_2026.csv" },
+        ].map(({ label, sub, ref, file, set, accept, demo }) => (
+          <div key={label} className="border border-gray-200 bg-white">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{label}</p>
+                <p className="text-[10px] text-gray-400">{sub}</p>
+              </div>
+              {file && <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold"><Check className="h-3 w-3"/>Loaded</span>}
+            </div>
+            <div className="p-5">
+              {file
+                ? <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200">
+                    <FileText className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-medium text-emerald-700 flex-1">{file}</span>
+                    <button onClick={() => set(null)} className="text-emerald-500 hover:text-emerald-700"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                : <button onClick={() => ref.current?.click()}
+                    className="w-full flex flex-col items-center justify-center py-8 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
+                    <Upload className="h-6 w-6 text-gray-300 group-hover:text-gray-500 mb-2" />
+                    <p className="text-xs text-gray-400 group-hover:text-gray-600">Click to upload or drag and drop</p>
+                    <p className="text-[10px] text-gray-300 mt-1">CSV, XLSX up to 10MB</p>
+                  </button>
+              }
+              <input ref={ref} type="file" accept={accept} className="hidden" onChange={e => set(e.target.files?.[0]?.name ?? null)} />
+              {!file && (
+                <button onClick={() => set(demo)} className="mt-2 text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                  <Info className="h-3 w-3" />Use demo file ({demo})
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {bank && ledger && (
+        <div className="mt-5 flex items-center justify-between p-4 border border-emerald-200 bg-emerald-50">
+          <div>
+            <p className="text-sm font-bold text-emerald-800">Ready to reconcile</p>
+            <p className="text-xs text-emerald-600">Both files loaded — click to run the reconciliation engine.</p>
+          </div>
+          <button className="h-9 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors">
+            Run now
+          </button>
+        </div>
+      )}
+
+      <div className="mt-6 border border-gray-200 p-4 bg-gray-50">
+        <p className="text-xs font-semibold text-gray-600 mb-2">Demo job already loaded</p>
+        <p className="text-[11px] text-gray-400">Job <span className="font-mono text-gray-600">{JOB_ID}</span> · {BANK.length} bank transactions · {LEDGER.length} ledger entries · {PERIOD}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Jobs / workspace view ─────────────────────────────────────────────────────
+
+function JobsView({
+  rows, setRows, addAudit,
+}: {
+  rows: ReconRow[];
+  setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
+  addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
+}) {
+  const [selected, setSelected] = useState<ReconRow | null>(null);
+  const [filter, setFilter]     = useState<TxStatus | "all">("all");
+  const [search, setSearch]     = useState("");
+
+  const counts: Record<string, number> = useMemo(() => {
+    const c: Record<string, number> = { all: rows.length };
+    STATUS_ORDER.forEach(s => { c[s] = rows.filter(r => r.status === s).length; });
+    return c;
+  }, [rows]);
+
+  const searched = search
+    ? rows.filter(r =>
+        r.bank?.desc.toLowerCase().includes(search.toLowerCase()) ||
+        r.ledger?.desc.toLowerCase().includes(search.toLowerCase()) ||
+        r.bank?.id.toLowerCase().includes(search.toLowerCase()) ||
+        r.ledger?.id.toLowerCase().includes(search.toLowerCase())
+      )
+    : rows;
+
+  function handleAction(row: ReconRow, action: "approve" | "reject" | "manual") {
+    const actionType: ActionType = action === "approve" ? "approve_match" : action === "reject" ? "reject_match" : "mark_manual";
+    const userStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "manual";
+    setRows(prev => prev.map(r => r.id === row.id ? { ...r, userStatus } : r));
+    addAudit({ job_id: JOB_ID, action: actionType, target_id: row.id, prev: row.userStatus, next: userStatus });
+    setSelected(null);
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Job header */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-gray-900">Reconciliation Workspace</h1>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">{JOB_ID} · {PERIOD} · {COMPANY}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-gray-400">{BANK_INST} + {LEDGER_SOFT}</span>
+            <span className="h-4 w-px bg-gray-200" />
+            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+              <Activity className="h-3 w-3" />{OVERALL_CONF}% confidence
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter tabs + search */}
+      <div className="px-6 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3 overflow-x-auto">
+        {(["all", ...STATUS_ORDER] as const).map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            className={`shrink-0 flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold transition-colors border
+              ${filter === s
+                ? "bg-gray-900 text-white border-gray-900"
+                : "text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800"
+              }`}
+          >
+            {s === "all" ? "All" : STATUS_CFG[s as TxStatus].short}
+            <span className={`text-[10px] px-1.5 py-0.5 font-bold min-w-[20px] text-center
+              ${filter === s ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+              {counts[s] ?? 0}
+            </span>
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-2 border border-gray-200 px-3 h-8 shrink-0">
+          <Search className="h-3.5 w-3.5 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+            className="w-32 text-xs outline-none bg-transparent text-gray-700 placeholder-gray-300" />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <ReconTable rows={searched} onSelect={setSelected} selectedId={selected?.id} filter={filter} />
+      </div>
+
+      {/* Review panel */}
+      <AnimatePresence>
+        {selected && (
+          <>
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:0.3 }} exit={{ opacity:0 }}
+              className="fixed inset-0 bg-black z-30" onClick={() => setSelected(null)} />
+            <ReviewPanel
+              row={selected}
+              onClose={() => setSelected(null)}
+              onApprove={() => handleAction(selected, "approve")}
+              onReject={() => handleAction(selected, "reject")}
+              onManual={() => handleAction(selected, "manual")}
+            />
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Review Queue view ─────────────────────────────────────────────────────────
+
+function ReviewQueueView({
+  rows, setRows, addAudit,
+}: {
+  rows: ReconRow[];
+  setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
+  addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
+}) {
+  const [confFilter, setConfFilter] = useState(100);
+  const [statusFilter, setStatusFilter] = useState<TxStatus | "all">("all");
+  const [selected, setSelected] = useState<ReconRow | null>(null);
+
+  const queue = rows.filter(r =>
+    (r.status === "possible_match" || r.status === "manual_review" ||
+     r.status === "invalid_row"   || r.status === "unmatched_bank" ||
+     r.status === "unmatched_ledger") &&
+    r.confidence <= confFilter &&
+    (statusFilter === "all" || r.status === statusFilter) &&
+    !r.userStatus
+  );
+
+  function handleAction(row: ReconRow, action: "approve" | "reject" | "manual") {
+    const actionType: ActionType = action === "approve" ? "approve_match" : action === "reject" ? "reject_match" : "mark_manual";
+    const userStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "manual";
+    setRows(prev => prev.map(r => r.id === row.id ? { ...r, userStatus } : r));
+    addAudit({ job_id: JOB_ID, action: actionType, target_id: row.id, next: userStatus });
+    setSelected(null);
+  }
+
+  return (
+    <div className="p-6 max-w-5xl">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Review Queue</h1>
+          <p className="text-sm text-gray-400 mt-1">{queue.length} items requiring your attention</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-400 font-semibold">CONFIDENCE MAX</span>
+          <select value={confFilter} onChange={e => setConfFilter(Number(e.target.value))}
+            className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+            {[100, 90, 80, 70, 50].map(v => <option key={v} value={v}>{v}%</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
+            className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+            <option value="all">All statuses</option>
+            {(["possible_match","manual_review","invalid_row","unmatched_bank","unmatched_ledger"] as TxStatus[]).map(s =>
+              <option key={s} value={s}>{STATUS_CFG[s].label}</option>
+            )}
+          </select>
+        </div>
+      </div>
+
+      {queue.length === 0 ? (
+        <div className="border border-gray-200 py-24 flex flex-col items-center bg-white">
+          <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
+          <p className="text-sm font-semibold text-gray-600">All items reviewed</p>
+          <p className="text-xs text-gray-400 mt-1">No items match your current filters</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {queue.map(row => {
+            const tx = row.bank ?? row.ledger;
+            return (
+              <div key={row.id} className="border border-gray-200 bg-white hover:border-gray-300 transition-colors">
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className={`w-1 self-stretch ${STATUS_CFG[row.status].dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StatusBadge status={row.status} />
+                      {row.warnings.length > 0 && (
+                        <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                          <AlertTriangle className="h-3 w-3" />{row.warnings.length} warning{row.warnings.length > 1 && "s"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{tx?.desc ?? "—"}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{tx?.id} · {tx?.date}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-bold ${tx && tx.amt >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {tx ? fmt(tx.amt) : "—"}
+                    </p>
+                    <div className="mt-1 w-32"><ConfBar pct={row.confidence} /></div>
+                  </div>
+                  <button onClick={() => setSelected(row)}
+                    className="h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0">
+                    <Eye className="h-3.5 w-3.5" /> Review
+                  </button>
+                </div>
+                {row.warnings.slice(0, 2).map(w => (
+                  <div key={w} className="flex items-start gap-2 px-5 py-2 bg-amber-50 border-t border-amber-100">
+                    <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-700">{w}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {selected && (
+          <>
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:0.3 }} exit={{ opacity:0 }}
+              className="fixed inset-0 bg-black z-30" onClick={() => setSelected(null)} />
+            <ReviewPanel
+              row={selected}
+              onClose={() => setSelected(null)}
+              onApprove={() => handleAction(selected, "approve")}
+              onReject={() => handleAction(selected, "reject")}
+              onManual={() => handleAction(selected, "manual")}
+            />
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Audit log view ────────────────────────────────────────────────────────────
+
+function AuditLogView({ log, onExport }: { log: AuditEntry[]; onExport: () => void }) {
+  return (
+    <div className="p-6 max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
+          <p className="text-sm text-gray-400 mt-1">{log.length} entries · {JOB_ID}</p>
+        </div>
+        <button onClick={onExport}
+          className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+          <Download className="h-3.5 w-3.5" /> Export JSON
+        </button>
+      </div>
+
+      {log.length === 0 ? (
+        <div className="border border-gray-200 py-24 flex flex-col items-center bg-white">
+          <Clock className="h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-sm text-gray-500">No actions recorded yet</p>
+          <p className="text-xs text-gray-400 mt-1">Actions in the Review Queue and Workspace will appear here</p>
+        </div>
+      ) : (
+        <div className="border border-gray-200 bg-white overflow-hidden">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {["Timestamp","Action","Target ID","Previous","New value","User"].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...log].reverse().map((entry, i) => (
+                <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                  <td className="px-4 py-3 font-mono text-gray-500 text-[10px]">{new Date(entry.ts).toLocaleTimeString("en-ZA")}</td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-1.5 font-semibold text-gray-700">
+                      {entry.action === "approve_match" && <ThumbsUp className="h-3 w-3 text-emerald-500" />}
+                      {entry.action === "reject_match"  && <ThumbsDown className="h-3 w-3 text-red-500" />}
+                      {entry.action === "mark_manual"   && <Edit3 className="h-3 w-3 text-amber-500" />}
+                      {(entry.action === "export_json" || entry.action === "export_pdf") && <Download className="h-3 w-3 text-gray-400" />}
+                      {ACTION_LABELS[entry.action]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-gray-400">{entry.target_id}</td>
+                  <td className="px-4 py-3 text-gray-400">{entry.prev ?? "—"}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-700">{entry.next ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-400">{entry.user}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Settings view ─────────────────────────────────────────────────────────────
+
+function SettingsView({ company, setCompany, bank, setBank, ledger, setLedger }:
+  { company:string; setCompany:(v:string)=>void; bank:string; setBank:(v:string)=>void; ledger:string; setLedger:(v:string)=>void }) {
+  return (
+    <div className="p-6 max-w-xl">
+      <h1 className="text-xl font-bold text-gray-900 mb-1">Settings</h1>
+      <p className="text-sm text-gray-400 mb-6">Configure company info and matching preferences.</p>
+
+      <div className="border border-gray-200 bg-white divide-y divide-gray-100">
+        {[
+          { label:"Company name",        val:company, set:setCompany, placeholder:"e.g. Acme Trading (Pty) Ltd" },
+          { label:"Bank institution",    val:bank,    set:setBank,    placeholder:"e.g. FNB Business" },
+          { label:"Ledger software",     val:ledger,  set:setLedger,  placeholder:"e.g. Xero" },
+        ].map(({ label, val, set, placeholder }) => (
+          <div key={label} className="px-5 py-4 flex items-center gap-4">
+            <label className="text-xs font-semibold text-gray-600 w-40 shrink-0">{label}</label>
+            <input value={val} onChange={e => set(e.target.value)} placeholder={placeholder}
+              className="flex-1 h-8 border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-400" />
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 border border-gray-200 bg-white divide-y divide-gray-100">
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-700">Date tolerance</p>
+            <p className="text-[10px] text-gray-400">Max days apart for a possible match</p>
+          </div>
+          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+            <option>1 day</option><option>2 days</option><option>3 days</option><option>7 days</option>
+          </select>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-700">Confidence threshold</p>
+            <p className="text-[10px] text-gray-400">Minimum confidence to auto-approve</p>
+          </div>
+          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+            <option>100%</option><option>95%</option><option>90%</option>
+          </select>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-700">OCR validation</p>
+            <p className="text-[10px] text-gray-400">Flag rows with suspected OCR errors</p>
+          </div>
+          <button className="relative w-10 h-5 bg-emerald-500 flex items-center">
+            <span className="absolute right-0.5 w-4 h-4 bg-white shadow-sm" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PDF + JSON export helpers ─────────────────────────────────────────────────
+
+async function loadImgDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = reject; img.src = url;
+  });
+}
+
+async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: string, bankInst: string, ledgerSoft: string) {
+  const logoData = await loadImgDataUrl(addupLogo).catch(() => null);
+  const doc = new jsPDF({ unit:"mm", format:"a4" }); const W=210, M=16, R=W-M;
+  const fill=(c:[number,number,number])=>doc.setFillColor(...c);
+  const stroke=(c:[number,number,number])=>doc.setDrawColor(...c);
+  const color=(c:[number,number,number])=>doc.setTextColor(...c);
+  const font=(f:"normal"|"bold")=>doc.setFont("helvetica",f);
+  const sz=(s:number)=>doc.setFontSize(s);
+  const txt=(t:string,x:number,y:number,o?:any)=>doc.text(t,x,y,o);
+  const hline=(y:number)=>{stroke([229,231,235]);doc.setLineWidth(0.2);doc.line(M,y,R,y);};
+
+  fill([17,17,17]);doc.rect(0,0,W,28,"F");
+  if(logoData)doc.addImage(logoData,"PNG",M,9,28,9);
+  else{color([255,255,255]);font("bold");sz(14);txt("Addup",M,19);}
+  color([156,163,175]);font("normal");sz(7.5);txt("RECONCILIATION REPORT",R,14,{align:"right"});
+  color([255,255,255]);sz(8.5);txt(new Date().toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"}),R,22,{align:"right"});
+  fill([16,185,129]);doc.rect(0,28,W,1.5,"F");
+
+  let y=36;
+  color([107,114,128]);font("bold");sz(7);txt("PREPARED FOR",M,y);y+=5;
+  color([17,17,17]);font("bold");sz(12);txt(company||"—",M,y);y+=6;
+  color([107,114,128]);font("bold");sz(7);txt("BANK",M,y);txt("LEDGER",M+60,y);y+=4;
+  color([55,65,81]);font("normal");sz(8.5);txt(bankInst||"—",M,y);txt(ledgerSoft||"—",M+60,y);y+=8;
+  hline(y);y+=6;
+
+  const matched=rows.filter(r=>r.status==="matched").length;
+  const conf=Math.round(matched/BANK.length*100);
+  color([17,17,17]);font("bold");sz(18);txt(`${PERIOD} is reconciled`,M,y);y+=7;
+  color([107,114,128]);font("normal");sz(9);
+  const sub=doc.splitTextToSize(`${matched} of ${BANK.length} transactions matched across ${bankInst} and ${ledgerSoft}. Overall confidence: ${conf}%.`,W-M*2);
+  doc.text(sub,M,y);y+=sub.length*5+6;
+
+  const boxes=[
+    {val:`${matched}/${BANK.length}`,lbl:"Matched",c:[16,185,129] as [number,number,number]},
+    {val:`${conf}%`,lbl:"Confidence",c:[17,17,17] as [number,number,number]},
+    {val:`${rows.filter(r=>r.status==="possible_match").length}`,lbl:"Possible",c:[59,130,246] as [number,number,number]},
+    {val:`${rows.filter(r=>r.status==="manual_review"||r.status==="invalid_row").length}`,lbl:"Issues",c:[217,119,6] as [number,number,number]},
+  ];
+  const bw=(W-M*2-9)/4;
+  boxes.forEach((b,i)=>{
+    const bx=M+i*(bw+3);
+    stroke([229,231,235]);fill([249,250,251]);doc.setLineWidth(0.2);doc.rect(bx,y,bw,20,"FD");
+    fill(b.c);doc.rect(bx,y,bw,2,"F");
+    color([17,17,17]);font("bold");sz(13);doc.text(b.val,bx+bw/2,y+12,{align:"center"});
+    color([107,114,128]);font("normal");sz(7);doc.text(b.lbl,bx+bw/2,y+18,{align:"center"});
+  });
+  y+=26;hline(y);y+=6;
+
+  color([156,163,175]);font("bold");sz(7);txt("TRANSACTION SUMMARY",M,y);y+=5;
+  const statuses:TxStatus[]=[...STATUS_ORDER];
+  statuses.forEach(s=>{
+    const n=rows.filter(r=>r.status===s).length;if(!n)return;
+    if(y>270){doc.addPage();y=20;}
+    color([55,65,81]);font("normal");sz(8.5);txt(STATUS_CFG[s].label,M,y);
+    color([17,17,17]);font("bold");doc.text(String(n),R,y,{align:"right"});y+=6;
+  });
+
+  y+=4;hline(y);y+=6;
+  if(auditLog.length>0){
+    color([156,163,175]);font("bold");sz(7);txt("AUDIT LOG",M,y);y+=5;
+    auditLog.slice(-10).forEach(e=>{
+      if(y>270){doc.addPage();y=20;}
+      color([107,114,128]);font("normal");sz(7.5);
+      txt(`${new Date(e.ts).toLocaleTimeString("en-ZA")}  ·  ${ACTION_LABELS[e.action]}  ·  ${e.target_id}`,M,y);y+=5;
+    });
+    y+=2;
+  }
+
+  hline(y+2);
+  if(logoData)doc.addImage(logoData,"PNG",M,y+5,14,5);
+  else{color([17,17,17]);font("bold");sz(8);txt("Addup",M,y+9);}
+  color([156,163,175]);font("normal");sz(7);
+  txt("Generated by Addup  ·  addup.co",M+17,y+9);
+  doc.text(new Date().toLocaleDateString("en-ZA"),R,y+9,{align:"right"});
+
+  const slug=(company||"report").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-$/,"");
+  doc.save(`addup-${slug}-april-2026.pdf`);
+}
+
+function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string) {
+  const data = {
+    meta: { job_id: JOB_ID, period: PERIOD, company, generated: now(), version:"1.0" },
+    summary: {
+      bank_transactions: BANK.length, ledger_entries: LEDGER.length,
+      matched: rows.filter(r=>r.status==="matched").length,
+      possible_match: rows.filter(r=>r.status==="possible_match").length,
+      manual_review: rows.filter(r=>r.status==="manual_review").length,
+      invalid_rows: rows.filter(r=>r.status==="invalid_row").length,
+      unmatched_bank: rows.filter(r=>r.status==="unmatched_bank").length,
+      unmatched_ledger: rows.filter(r=>r.status==="unmatched_ledger").length,
+      overall_confidence: Math.round(rows.filter(r=>r.status==="matched").length / BANK.length * 100),
+    },
+    rows: rows.map(r=>({ id:r.id, status:r.status, confidence:r.confidence,
+      bank_id: r.bank?.id, ledger_id: r.ledger?.id,
+      reasons: r.reasons, warnings: r.warnings, user_decision: r.userStatus })),
+    audit_log: auditLog,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `addup-${JOB_ID}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Main Engine ───────────────────────────────────────────────────────────────
+
+export default function Engine() {
+  const [nav,        setNav]        = useState<NavId>("dashboard");
+  const [sidebarOpen,setSidebarOpen]= useState(false);
+  const [rows,       setRows]       = useState<ReconRow[]>(ROWS);
+  const [auditLog,   setAuditLog]   = useState<AuditEntry[]>([]);
+  const [company,    setCompany]    = useState(COMPANY);
+  const [bankInst,   setBankInst]   = useState(BANK_INST);
+  const [ledgerSoft, setLedgerSoft] = useState(LEDGER_SOFT);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const addAudit = useCallback((a: Omit<AuditEntry, "ts" | "user">) => {
+    setAuditLog(prev => [...prev, { ...a, ts: now(), user: "local_user" }]);
+  }, []);
+
+  const reviewCount = rows.filter(r =>
+    (r.status === "possible_match" || r.status === "manual_review" ||
+     r.status === "invalid_row" || r.status === "unmatched_bank" ||
+     r.status === "unmatched_ledger") && !r.userStatus
+  ).length;
+
+  const NAV = [
+    { id:"dashboard" as NavId, label:"Dashboard",    icon:<LayoutDashboard className="h-4 w-4"/> },
+    { id:"uploads"   as NavId, label:"Uploads",      icon:<Upload className="h-4 w-4"/>          },
+    { id:"jobs"      as NavId, label:"Reconciliation Jobs", icon:<Briefcase className="h-4 w-4"/> },
+    { id:"review"    as NavId, label:"Review Queue", icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
+    { id:"audit"     as NavId, label:"Audit Log",    icon:<Clock className="h-4 w-4"/>, badge: auditLog.length > 0 ? auditLog.length : undefined },
+    { id:"settings"  as NavId, label:"Settings",     icon:<Settings2 className="h-4 w-4"/>       },
+  ];
+
+  function SidebarContent() {
     return (
-      <div className="flex flex-col h-full overflow-y-auto">
-
+      <div className="flex flex-col h-full">
         {/* Logo */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
+        <div className="px-5 pt-5 pb-4 border-b border-white/10 shrink-0">
           <Link href="/" onClick={() => setSidebarOpen(false)}>
             <img src={addupLogo} alt="Addup" className="h-6 w-auto" />
           </Link>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">
             Reconciliation Engine
           </p>
         </div>
 
-        {/* Sources */}
-        <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-1.5 mb-3">
-            <FolderInput className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Sources</span>
-          </div>
-
-          {/* Company name */}
-          <div className="mb-3">
-            <label className="block text-[10px] font-semibold text-gray-500 mb-1">Company name</label>
-            <input
-              type="text" value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400"
-              placeholder="e.g. Acme Trading (Pty) Ltd"
-            />
-          </div>
-
-          {/* Bank statement */}
-          <div className="mb-2.5">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-semibold text-gray-500">Bank statement</label>
-              {bankFile && <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5" /> Loaded</span>}
+        {/* Job summary */}
+        <div className="px-4 py-3 border-b border-white/10 shrink-0">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-2">Active Job</p>
+          <p className="text-[10px] font-mono text-gray-400 truncate">{JOB_ID}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">{PERIOD} · {company}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1 bg-white/10">
+              <div className="h-full bg-emerald-500" style={{ width:`${OVERALL_CONF}%` }} />
             </div>
-            <input
-              type="text" value={bankInst}
-              onChange={e => setBankInst(e.target.value)}
-              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400 mb-1.5"
-              placeholder="e.g. FNB Business"
-            />
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => bankRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1 h-7 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Upload className="h-3 w-3" />
-                {bankFile ? bankFile : "Upload CSV"}
-              </button>
-            </div>
-            <input ref={bankRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
-              onChange={e => setBankFile(e.target.files?.[0]?.name ?? null)} />
-          </div>
-
-          {/* Ledger */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-semibold text-gray-500">General ledger</label>
-              {ledgerFile && <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5" /> Loaded</span>}
-            </div>
-            <input
-              type="text" value={ledgerSoft}
-              onChange={e => setLedgerSoft(e.target.value)}
-              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400 mb-1.5"
-              placeholder="e.g. Xero"
-            />
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => ledgerRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1 h-7 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Upload className="h-3 w-3" />
-                {ledgerFile ? ledgerFile : "Upload CSV"}
-              </button>
-              {isMobile && (
-                <button
-                  onClick={() => scanRef.current?.click()}
-                  title="Scan with camera"
-                  className="w-8 h-8 flex items-center justify-center border border-dashed border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            <input ref={ledgerRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
-              onChange={e => setLedgerFile(e.target.files?.[0]?.name ?? null)} />
-            <input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden"
-              onChange={e => setLedgerFile(e.target.files?.[0]?.name ?? "Scanned ledger")} />
-            {!isMobile && (
-              <p className="text-[10px] text-gray-400 mt-1">On mobile, you can scan a printed ledger.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Period */}
-        <div className="px-4 py-3 border-b border-gray-100 shrink-0">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 font-medium">Period</span>
-            <span className="text-[11px] font-bold text-gray-900 bg-gray-100 px-2 py-0.5">April 2026</span>
-          </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[10px] text-gray-400 font-medium">Status</span>
-            <span className={`text-[9px] font-bold px-2 py-0.5 border ${
-              isLast && view === "workflow"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-amber-50 text-amber-700 border-amber-200"
-            }`}>
-              {isLast && view === "workflow" ? "Complete" : "In progress"}
-            </span>
+            <span className="text-[10px] font-bold text-emerald-400">{OVERALL_CONF}%</span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 py-3 space-y-0.5 shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 px-2 mb-2">Navigate</p>
-          {NAV_ITEMS.map(item => (
-            <button key={item.id}
-              onClick={() => { setView(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors
-                ${view === item.id
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+          {NAV.map(item => (
+            <button key={item.id} onClick={() => { setNav(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors
+                ${nav === item.id ? "bg-white/10 text-white" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}`}
             >
-              <span className={view === item.id ? "text-white" : "text-gray-400"}>{item.icon}</span>
+              <span className={nav === item.id ? "text-emerald-400" : "text-gray-500"}>{item.icon}</span>
               <span className="text-xs font-semibold flex-1">{item.label}</span>
-              {item.badge && (
+              {item.badge !== undefined && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] text-center
-                  ${view === item.id ? "bg-white/20 text-white" : "bg-red-100 text-red-600"}`}
-                >
+                  ${nav === item.id ? "bg-white/20 text-white" : "bg-red-500 text-white"}`}>
                   {item.badge}
                 </span>
               )}
@@ -440,1068 +1244,92 @@ export default function Engine() {
           ))}
         </nav>
 
-        {/* Workflow steps (visible when on workflow view) */}
-        {view === "workflow" && (
-          <div className="px-3 pb-3 shrink-0">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 px-2 mb-2">Steps</p>
-            <div className="space-y-0.5">
-              {STEPS.map((s, i) => {
-                const status = i < step ? "done" : i === step ? "active" : "pending";
-                const canClick = i <= step;
-                return (
-                  <button key={s.id}
-                    onClick={() => { if (canClick) setStep(i); }}
-                    disabled={!canClick}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors
-                      ${status === "active" ? "bg-gray-50 border-l-2 border-gray-900"
-                        : canClick ? "hover:bg-gray-50 border-l-2 border-transparent"
-                        : "border-l-2 border-transparent opacity-40 cursor-default"}`}
-                  >
-                    <StepNode n={i + 1} status={status} />
-                    <div className="min-w-0">
-                      <div className={`text-[11px] font-semibold leading-tight ${
-                        status === "active" ? "text-gray-900" : status === "done" ? "text-gray-500" : "text-gray-300"
-                      }`}>{s.label}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Live summary */}
-        {step >= 2 && (
-          <div className="px-4 py-3 mx-3 mb-3 bg-gray-50 shrink-0">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Run summary</p>
-            {[
-              { lbl: "Matched",   val: "7 / 9",         cls: "text-emerald-600" },
-              { lbl: "Unmatched", val: "2",              cls: "text-amber-600"   },
-              { lbl: "Issues",    val: `${ISSUES.length - resolved.size} left`,
-                cls: resolved.size === ISSUES.length ? "text-emerald-600" : "text-red-500" },
-              { lbl: "Avg conf.", val: `${AVG_CONF}%`,   cls: "text-gray-900"   },
-            ].map(({ lbl, val, cls }) => (
-              <div key={lbl} className="flex items-center justify-between">
-                <span className="text-[10px] text-gray-400">{lbl}</span>
-                <span className={`text-[10px] font-bold font-mono ${cls}`}>{val}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Spacer + exit */}
-        <div className="flex-1" />
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
-          <Link href="/" className="flex items-center gap-2 text-[11px] text-gray-400 hover:text-gray-700 transition-colors">
-            <X className="h-3.5 w-3.5" />
-            Exit reconciliation
-          </Link>
+        {/* Export buttons */}
+        <div className="px-4 py-4 border-t border-white/10 space-y-2 shrink-0">
+          <button
+            onClick={async () => {
+              setPdfLoading(true);
+              addAudit({ job_id:JOB_ID, action:"export_pdf", target_id:JOB_ID });
+              await exportPDF(rows, auditLog, company, bankInst, ledgerSoft);
+              setPdfLoading(false);
+            }}
+            disabled={pdfLoading}
+            className="w-full flex items-center justify-center gap-2 h-9 bg-white/10 text-gray-200 text-[11px] font-semibold hover:bg-white/20 transition-colors disabled:opacity-50"
+          >
+            {pdfLoading
+              ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-3.5 w-3.5"/></motion.div>Generating...</>
+              : <><FileText className="h-3.5 w-3.5"/>Export PDF</>
+            }
+          </button>
+          <button
+            onClick={() => {
+              addAudit({ job_id:JOB_ID, action:"export_json", target_id:JOB_ID });
+              exportJSON(rows, auditLog, company);
+            }}
+            className="w-full flex items-center justify-center gap-2 h-9 border border-white/10 text-gray-400 text-[11px] font-semibold hover:bg-white/5 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5"/>Export JSON
+          </button>
         </div>
       </div>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-
   return (
-    <>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-[240px] bg-gray-900 flex-col shrink-0 border-r border-white/5">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile sidebar drawer */}
       <AnimatePresence>
-        {loading && <EngineLoader onDone={handleLoaderDone} />}
+        {sidebarOpen && (
+          <>
+            <motion.div initial={{opacity:0}} animate={{opacity:0.5}} exit={{opacity:0}}
+              className="fixed inset-0 bg-black z-40 lg:hidden" onClick={()=>setSidebarOpen(false)} />
+            <motion.aside initial={{x:"-100%"}} animate={{x:0}} exit={{x:"-100%"}}
+              transition={{type:"spring",stiffness:300,damping:30}}
+              className="fixed left-0 top-0 h-full w-[240px] bg-gray-900 z-50 lg:hidden">
+              <SidebarContent />
+            </motion.aside>
+          </>
+        )}
       </AnimatePresence>
 
-      <div className="flex h-[100svh] bg-white overflow-hidden">
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-gray-100 h-full">
-          <SidebarInner />
-        </aside>
-
-        {/* Mobile overlay sidebar */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40 bg-black/20 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
-              />
-              <motion.aside
-                initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed left-0 top-0 bottom-0 z-50 w-60 bg-white border-r border-gray-100 lg:hidden"
-              >
-                <SidebarInner />
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Main */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-          {/* Mobile topbar */}
-          <div className="lg:hidden flex items-center justify-between px-4 h-13 border-b border-gray-100 shrink-0">
-            <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2">
-              <img src={addupLogo} alt="Addup" className="h-5 w-auto" />
-            </button>
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] text-gray-400 font-medium capitalize">{view}</span>
-              <Link href="/"><X className="h-4 w-4 text-gray-400" /></Link>
-            </div>
-          </div>
-
-          {/* Progress strip */}
-          <div className="h-[2px] bg-gray-100 shrink-0">
-            <motion.div className="h-full bg-gray-900"
-              animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            />
-          </div>
-
-          {/* Content */}
-          <main className="flex-1 overflow-y-auto">
-            <AnimatePresence mode="wait">
-              <motion.div key={`${view}-${step}`}
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                className="min-h-full"
-              >
-                <div className="max-w-2xl mx-auto px-5 py-10 sm:py-12">
-
-                  {/* ══ WORKFLOW VIEW ══ */}
-                  {view === "workflow" && (
-                    <>
-                      {/* STEP 1 */}
-                      {stepId === "upload" && <>
-                        <StepMeta n={1} title="Upload your two files"
-                          sub="Addup needs your bank statement and your accounting ledger — then it compares them automatically."
-                        />
-                        <div className="grid sm:grid-cols-2 gap-4 mb-8">
-                          {[
-                            { label:"Bank Statement", file:"bank.csv",   rows:19, size:"4.2 KB", note:"FNB Business · April 2026",  tip:"Export from your online banking portal." },
-                            { label:"General Ledger", file:"ledger.csv", rows:11, size:"2.8 KB", note:"Xero export · April 2026",    tip:"Export from Xero, QuickBooks, or Sage."  },
-                          ].map(f=>(
-                            <div key={f.file} className="border border-gray-100 p-5 hover:border-gray-200 transition-colors">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="w-8 h-8 bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                                  <FileText className="h-4 w-4 text-gray-400" />
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-sm text-gray-900">{f.label}</div>
-                                  <div className="text-xs text-gray-400">{f.note}</div>
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-400 mb-3">{f.tip}</p>
-                              <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 px-3 py-2 mb-3">
-                                <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                                <span className="font-mono text-xs text-gray-700 flex-1 truncate">{f.file}</span>
-                                <span className="text-xs text-gray-400 shrink-0">{f.rows}r · {f.size}</span>
-                              </div>
-                              <button className="w-full h-8 flex items-center justify-center gap-1.5 border border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
-                                <Upload className="h-3 w-3" /> Replace file
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <Note>Sample April 2026 data is pre-loaded so you can walk through the full workflow right now.</Note>
-                      </>}
-
-                      {/* STEP 2 */}
-                      {stepId === "read" && <>
-                        <StepMeta n={2} title="Files read successfully"
-                          sub="19 bank transactions and 11 ledger entries found. All dates were standardized to one format."
-                        />
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
-                          {[["19","Bank transactions"],["11","Ledger entries"],["5","Date formats"],["0","Invalid rows"]].map(([v,l])=>(
-                            <StatCard key={l} val={v} label={l} />
-                          ))}
-                        </div>
-                        <SectionLabel>Date formats recognized automatically</SectionLabel>
-                        <div className="border border-gray-100 mb-8">
-                          <div className="grid grid-cols-3 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                            {["In your file","Format","Converted to"].map(h=>(<span key={h} className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{h}</span>))}
-                          </div>
-                          {DATE_FORMATS.map((r,i)=>(
-                            <div key={i} className="grid grid-cols-3 px-4 py-3 border-b border-gray-50 last:border-0 items-center">
-                              <span className="font-mono text-[11px] text-gray-500">{r.raw}</span>
-                              <span className="text-xs text-gray-400">{r.note}</span>
-                              <span className="font-mono text-xs text-gray-900 font-medium flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-500 shrink-0" />{r.norm}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <Note>Your files don't need consistent formatting. Addup handles mixed date styles, extra columns, and different delimiters automatically.</Note>
-                      </>}
-
-                      {/* STEP 3 */}
-                      {stepId === "match" && <>
-                        <StepMeta n={3} title="Comparing bank vs. ledger"
-                          sub="Every bank entry is compared using three passes — exact match, fuzzy match, then amount-only."
-                        />
-                        <div className="grid grid-cols-3 gap-px bg-gray-100 border border-gray-100 mb-6">
-                          {[{val:"7",lbl:"Matched",cls:"text-emerald-600"},{val:`${AVG_CONF}%`,lbl:"Avg confidence",cls:"text-gray-900"},{val:"2",lbl:"No match",cls:"text-amber-600"}].map(({val,lbl,cls})=>(
-                            <div key={lbl} className="bg-white px-4 py-4 text-center">
-                              <div className={`text-xl font-bold font-mono ${cls}`}>{val}</div>
-                              <div className="text-[11px] text-gray-400 mt-0.5">{lbl}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex flex-wrap gap-2 mb-5">
-                          {[{cls:"bg-emerald-50 text-emerald-700 border-emerald-200",lbl:"Perfect — same amount + date"},{cls:"bg-blue-50 text-blue-700 border-blue-200",lbl:"Off by 1 day"},{cls:"bg-amber-50 text-amber-700 border-amber-200",lbl:"Amount match only"}].map(({cls,lbl})=>(
-                            <span key={lbl} className={`text-[10px] font-semibold px-2 py-1 border ${cls}`}>{lbl}</span>
-                          ))}
-                        </div>
-                        <div className="flex border border-gray-100 mb-5">
-                          {(["all","clean","flagged"] as const).map(f=>(
-                            <button key={f} onClick={()=>setFilter(f)}
-                              className={`flex-1 h-9 text-xs font-medium transition-colors border-r border-gray-100 last:border-0 ${filter===f?"bg-gray-900 text-white":"text-gray-400 hover:bg-gray-50"}`}
-                            >
-                              {f==="all"?`All (${MATCHES.length})`:f==="clean"?`Clean (${MATCHES.filter(m=>m.flags.length===0).length})`:`Flagged (${MATCHES.filter(m=>m.flags.length>0).length})`}
-                            </button>
-                          ))}
-                        </div>
-                        <MatchList matches={visibleMatches} missing={filter!=="clean"?MISSING:[]} onExplain={openExplain} />
-                      </>}
-
-                      {/* STEP 4 */}
-                      {stepId === "review" && <>
-                        <div className="flex items-end justify-between gap-4 mb-6">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Step 4 of 5</p>
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{ISSUES.length} items need attention</h1>
-                            <p className="text-gray-500 text-sm mt-2 leading-relaxed">Everything else matched cleanly. Read each one and decide what to do.</p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <div className="text-2xl font-bold font-mono text-gray-900">{resolved.size}<span className="text-gray-300">/{ISSUES.length}</span></div>
-                            <div className="text-[10px] text-gray-400 font-medium">resolved</div>
-                          </div>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 mb-8">
-                          <motion.div className="h-full bg-emerald-500"
-                            animate={{ width: `${(resolved.size/ISSUES.length)*100}%` }}
-                            transition={{ duration: 0.4 }}
-                          />
-                        </div>
-                        <IssueList issues={ISSUES} resolved={resolved} onResolve={resolve} onExplain={openExplain} />
-                      </>}
-
-                      {/* STEP 5 */}
-                      {stepId === "report" && <>
-                        <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} transition={{duration:0.35}} className="flex flex-col items-center text-center mb-12">
-                          <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-5">
-                            <CheckCircle2 className="h-7 w-7 text-emerald-500" />
-                          </div>
-                          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">April 2026 is reconciled</h1>
-                          <p className="text-gray-500 text-sm max-w-sm">7 of 9 transactions matched. 2 flagged for follow-up. Your books are ready to close.</p>
-                        </motion.div>
-                        <div className="grid grid-cols-3 gap-px bg-gray-100 border border-gray-100 mb-6">
-                          {[{val:"7 / 9",lbl:"Matched",sub:"2 need follow-up"},{val:`${AVG_CONF}%`,lbl:"Avg confidence",sub:"Across all matches"},{val:"4",lbl:"Issues reviewed",sub:"All actioned"}].map(({val,lbl,sub})=>(
-                            <div key={lbl} className="bg-white px-3 py-4 text-center">
-                              <div className="text-lg font-bold font-mono text-gray-900">{val}</div>
-                              <div className="text-xs font-semibold text-gray-600 mt-0.5">{lbl}</div>
-                              <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="border border-gray-100 mb-6">
-                          <div className="px-4 py-3 border-b border-gray-50 bg-gray-50">
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">How matches were found</span>
-                          </div>
-                          {[
-                            {lbl:"Perfect — same amount and date",       val:MATCHES.filter(m=>m.quality==="perfect").length, cls:"text-emerald-600"},
-                            {lbl:"Close — same amount, date off by 1",   val:MATCHES.filter(m=>m.quality==="close").length,   cls:"text-blue-600"},
-                            {lbl:"Amount match — date differed",         val:MATCHES.filter(m=>m.quality==="amount").length,  cls:"text-amber-600"},
-                            {lbl:"No match found",                       val:MISSING.length,                                  cls:"text-red-500"},
-                          ].map(({lbl,val,cls})=>(
-                            <div key={lbl} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                              <span className="text-sm text-gray-500">{lbl}</span>
-                              <span className={`font-mono text-sm font-bold shrink-0 ${cls}`}>{val}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <Note>In production, your bank feed and ledger connect directly. Addup runs this automatically every period.</Note>
-                        <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                          <button
-                            onClick={async () => {
-                              setPdfLoading(true);
-                              await generatePDF({ resolved, logoUrl: addupLogo, companyName, bankInst, ledgerSoft });
-                              setPdfLoading(false);
-                            }}
-                            disabled={pdfLoading}
-                            className="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-6 h-11 text-sm font-bold hover:bg-gray-700 transition-colors disabled:opacity-60"
-                          >
-                            {pdfLoading
-                              ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-4 w-4" /></motion.div>Generating...</>
-                              : <><Download className="h-4 w-4" />Download PDF report</>
-                            }
-                          </button>
-                          <button onClick={()=>openExplain("full","Explain this reconciliation",
-                            "April 2026 reconciliation: 9 bank transactions, 7 matched, 2 unmatched. 6 issues flagged (4 description mismatches/date gaps, 2 missing ledger entries). Average confidence 91%. Unmatched: Coffee Shop R4.50 (no ledger entry), Wire Transfer R10,000 (large unrecorded credit)."
-                          )} className="inline-flex items-center justify-center gap-2 h-11 px-6 border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 transition-colors">
-                            <Sparkles className="h-4 w-4" />Ask Grok to explain
-                          </button>
-                        </div>
-                      </>}
-
-                      {/* Navigation */}
-                      {!isLast && (
-                        <div className="flex items-center justify-between mt-12 pt-8 border-t border-gray-100">
-                          <button onClick={()=>setStep(s=>Math.max(s-1,0))} disabled={step===0}
-                            className="inline-flex items-center gap-2 h-10 px-5 text-sm font-medium text-gray-400 border border-gray-200 hover:text-gray-700 hover:border-gray-300 transition-colors disabled:opacity-30 disabled:pointer-events-none">
-                            <ArrowLeft className="h-4 w-4" /> Back
-                          </button>
-                          <button onClick={()=>setStep(s=>Math.min(s+1,STEPS.length-1))}
-                            className="inline-flex items-center gap-2 h-10 px-6 bg-gray-900 text-white text-sm font-bold hover:bg-gray-700 transition-colors">
-                            {step===3?"Generate report":"Continue"} <ArrowRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ══ RESULTS VIEW ══ */}
-                  {view === "results" && (
-                    <>
-                      <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Match results</h1>
-                        <p className="text-sm text-gray-500">All 9 bank entries compared against 11 ledger records.</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-px bg-gray-100 border border-gray-100 mb-6">
-                        {[{val:"7",lbl:"Matched",cls:"text-emerald-600"},{val:`${AVG_CONF}%`,lbl:"Avg confidence",cls:"text-gray-900"},{val:"2",lbl:"Unmatched",cls:"text-amber-600"}].map(({val,lbl,cls})=>(
-                          <div key={lbl} className="bg-white px-4 py-4 text-center">
-                            <div className={`text-xl font-bold font-mono ${cls}`}>{val}</div>
-                            <div className="text-[11px] text-gray-400 mt-0.5">{lbl}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mb-5">
-                        {[{cls:"bg-emerald-50 text-emerald-700 border-emerald-200",lbl:"Perfect match"},{cls:"bg-blue-50 text-blue-700 border-blue-200",lbl:"Off by 1 day"},{cls:"bg-amber-50 text-amber-700 border-amber-200",lbl:"Amount match"},{cls:"bg-red-50 text-red-600 border-red-200",lbl:"No match"}].map(({cls,lbl})=>(
-                          <span key={lbl} className={`text-[10px] font-semibold px-2 py-1 border ${cls}`}>{lbl}</span>
-                        ))}
-                      </div>
-                      <MatchList matches={MATCHES} missing={MISSING} onExplain={openExplain} />
-                    </>
-                  )}
-
-                  {/* ══ RESOLVES VIEW ══ */}
-                  {view === "resolves" && (
-                    <>
-                      <div className="flex items-end justify-between gap-4 mb-6">
-                        <div>
-                          <h1 className="text-2xl font-bold text-gray-900 mb-1">Resolve flagged items</h1>
-                          <p className="text-sm text-gray-500">{ISSUES.length} items need a decision before you can close the books.</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-2xl font-bold font-mono text-gray-900">{resolved.size}<span className="text-gray-300">/{ISSUES.length}</span></div>
-                          <div className="text-[10px] text-gray-400 font-medium">resolved</div>
-                        </div>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 mb-8">
-                        <motion.div className="h-full bg-emerald-500"
-                          animate={{ width: `${(resolved.size/ISSUES.length)*100}%` }}
-                          transition={{ duration: 0.4 }}
-                        />
-                      </div>
-                      {resolved.size === ISSUES.length && (
-                        <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}
-                          className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 px-4 py-3 mb-6"
-                        >
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                          <div>
-                            <p className="text-sm font-bold text-emerald-700">All issues resolved</p>
-                            <p className="text-xs text-emerald-600">Your April 2026 books are ready to close.</p>
-                          </div>
-                        </motion.div>
-                      )}
-                      <IssueList issues={ISSUES} resolved={resolved} onResolve={resolve} onExplain={openExplain} />
-                    </>
-                  )}
-
-                  {/* ══ EXPLAIN VIEW (Grok) ══ */}
-                  {view === "explain" && (
-                    <>
-                      <div className="flex items-start gap-3 mb-8">
-                        <div className="w-8 h-8 bg-gray-900 flex items-center justify-center shrink-0 mt-0.5">
-                          <Sparkles className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <h1 className="text-2xl font-bold text-gray-900 mb-1">Ask Grok</h1>
-                          <p className="text-sm text-gray-500">Grok explains your reconciliation results in plain English.</p>
-                        </div>
-                      </div>
-
-                      {/* Quick-explain cards */}
-                      {!explainTarget && !grokResponse && (
-                        <>
-                          <SectionLabel>Explain a specific item</SectionLabel>
-                          <div className="space-y-2 mb-8">
-                            {ISSUES.map(iss=>(
-                              <button key={iss.id} onClick={()=>openExplain(iss.id, iss.title,
-                                `Issue: ${iss.title}\nBank: ${iss.bank}\nLedger: ${iss.ledger}\nAmount: ${fmtAmt(iss.amt)}\nDescription: ${iss.plain}`
-                              )}
-                                className="w-full flex items-center justify-between gap-3 px-4 py-3 border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors text-left group"
-                              >
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-gray-900 leading-snug">{iss.title}</div>
-                                  <div className="font-mono text-[10px] text-gray-400 mt-0.5">{fmtAmt(iss.amt)}</div>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0 text-gray-300 group-hover:text-gray-600 transition-colors">
-                                  <Sparkles className="h-3.5 w-3.5" />
-                                  <ChevronDown className="h-3.5 w-3.5 -rotate-90" />
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                          <button onClick={()=>openExplain("full","Full reconciliation summary",
-                            "April 2026 reconciliation: 9 bank transactions, 7 matched, 2 unmatched. 6 issues flagged (4 description mismatches/date gaps, 2 missing ledger entries). Average confidence 91%. Unmatched: Coffee Shop R4.50 (no ledger entry), Wire Transfer R10,000 (large unrecorded credit)."
-                          )} className="w-full flex items-center justify-between gap-3 px-4 py-4 bg-gray-900 text-white hover:bg-gray-700 transition-colors">
-                            <div>
-                              <div className="text-sm font-bold">Summarize the full reconciliation</div>
-                              <div className="text-xs text-gray-400 mt-0.5">What went well, what needs attention, what to do next</div>
-                            </div>
-                            <Sparkles className="h-4 w-4 text-gray-400 shrink-0" />
-                          </button>
-                        </>
-                      )}
-
-                      {/* Active explanation */}
-                      {explainTarget && (
-                        <div>
-                          <div className="flex items-start justify-between gap-3 mb-5">
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Explaining</p>
-                              <p className="text-base font-bold text-gray-900">{explainTarget.title}</p>
-                            </div>
-                            <button onClick={()=>{setExplainTarget(null);grokReset();}}
-                              className="shrink-0 text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 mt-1">
-                              <X className="h-3 w-3" /> Clear
-                            </button>
-                          </div>
-
-                          <div className="border border-gray-100 p-5 min-h-[180px] mb-4">
-                            {grokError && (
-                              <div className="flex items-center gap-2 text-red-500">
-                                <AlertCircle className="h-4 w-4 shrink-0" />
-                                <span className="text-sm">{grokError}</span>
-                              </div>
-                            )}
-                            {!grokError && !grokResponse && grokStreaming && (
-                              <div className="flex items-center gap-2 text-gray-400">
-                                <motion.div animate={{opacity:[0.4,1,0.4]}} transition={{duration:1.2,repeat:Infinity}}>
-                                  <Sparkles className="h-4 w-4" />
-                                </motion.div>
-                                <span className="text-sm">Grok is thinking...</span>
-                              </div>
-                            )}
-                            {grokResponse && (
-                              <div className="prose prose-sm max-w-none">
-                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{grokResponse}</p>
-                                {grokStreaming && <motion.span animate={{opacity:[0,1]}} transition={{duration:0.5,repeat:Infinity}} className="inline-block w-1 h-4 bg-gray-400 ml-0.5 align-middle" />}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button onClick={()=>grokExplain(
-                              `Explain this reconciliation item to me in plain English: "${explainTarget.title}"`,
-                              explainTarget.context
-                            )} disabled={grokStreaming}
-                              className="inline-flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40">
-                              <RefreshCw className="h-3.5 w-3.5" /> Regenerate
-                            </button>
-                            <button onClick={()=>grokExplain(
-                              "What should I do next about this?",
-                              explainTarget.context
-                            )} disabled={grokStreaming}
-                              className="inline-flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40">
-                              <ArrowRight className="h-3.5 w-3.5" /> What should I do?
-                            </button>
-                          </div>
-
-                          <div className="mt-6 pt-6 border-t border-gray-100">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Explain another item</p>
-                            <div className="space-y-1.5">
-                              {ISSUES.filter(i=>i.id!==explainTarget.id).map(iss=>(
-                                <button key={iss.id} onClick={()=>openExplain(iss.id, iss.title,
-                                  `Issue: ${iss.title}\nBank: ${iss.bank}\nLedger: ${iss.ledger}\nAmount: ${fmtAmt(iss.amt)}\nDescription: ${iss.plain}`
-                                )} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                  <span className="text-xs text-gray-500 font-medium">{iss.title}</span>
-                                  <Sparkles className="h-3 w-3 text-gray-300 shrink-0" />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </main>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Shared sub-components ─────────────────────────────────────────────────────
-
-function MatchList({ matches, missing, onExplain }: {
-  matches: typeof MATCHES; missing: typeof MISSING;
-  onExplain: (id: string, title: string, ctx: string) => void;
-}) {
-  return (
-    <div className="border border-gray-100 divide-y divide-gray-50">
-      {matches.map((m) => {
-        const qc = qualityChip(m.quality);
-        return (
-          <div key={m.bank.id} className="p-4">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap gap-1.5 mb-1.5">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 border ${qc.cls}`}>{qc.label}</span>
-                  {m.flags.map(f=><span key={f} className="text-[10px] font-medium px-1.5 py-0.5 border bg-gray-50 text-gray-500 border-gray-200">{f}</span>)}
-                </div>
-                <div className="text-sm font-semibold text-gray-900">{m.bank.desc}</div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-sm font-mono font-bold text-gray-900">{fmtAmt(m.bank.amt)}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{m.conf}% confidence</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {[{label:"Bank",date:m.bank.date,desc:m.bank.desc},{label:"Ledger",date:m.ledger.date,desc:m.ledger.desc}].map(({label,date,desc})=>(
-                <div key={label} className="bg-gray-50 px-3 py-2">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</div>
-                  <div className="text-xs font-semibold text-gray-700">{date}</div>
-                  <div className="text-xs text-gray-400 truncate">{desc}</div>
-                </div>
-              ))}
-            </div>
-            {m.flags.length > 0 && (
-              <button onClick={()=>onExplain(m.bank.id,m.bank.desc,
-                `Match: ${m.bank.desc}\nBank ID: ${m.bank.id}, Ledger ID: ${m.ledger.id}\nBank date: ${m.bank.date}, Ledger date: ${m.ledger.date}\nAmount: ${fmtAmt(m.bank.amt)}\nConfidence: ${m.conf}%\nFlags: ${m.flags.join(", ")}`
-              )} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-700 transition-colors mt-1">
-                <Sparkles className="h-3 w-3" /> Ask Grok to explain
-              </button>
-            )}
-          </div>
-        );
-      })}
-      {missing.map(m=>(
-        <div key={m.id} className="p-4 bg-amber-50/30">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold px-1.5 py-0.5 border bg-amber-50 text-amber-700 border-amber-200 inline-block mb-1.5">Not in ledger</span>
-              <div className="text-sm font-semibold text-gray-900">{m.desc}</div>
-            </div>
-            <span className="font-mono text-sm font-bold text-gray-900 shrink-0">{fmtAmt(m.amt)}</span>
-          </div>
-          <p className="text-xs text-gray-400 mb-2">{m.why}</p>
-          <button onClick={()=>onExplain(m.id,m.desc,
-            `Unmatched bank entry: ${m.desc}\nID: ${m.id}\nAmount: ${fmtAmt(m.amt)}\nReason: ${m.why}`
-          )} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-700 transition-colors">
-            <Sparkles className="h-3 w-3" /> Ask Grok to explain
+        {/* Top bar */}
+        <header className="h-12 border-b border-gray-200 bg-white flex items-center px-4 gap-3 shrink-0">
+          <button onClick={()=>setSidebarOpen(true)} className="lg:hidden p-1.5 hover:bg-gray-100 transition-colors">
+            <Menu className="h-4 w-4 text-gray-600" />
           </button>
-        </div>
-      ))}
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <Shield className="h-3.5 w-3.5 text-gray-300" />
+            <span className="font-mono text-gray-500">{JOB_ID}</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-semibold text-gray-700 capitalize">{nav.replace("_"," ")}</span>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-[10px] text-gray-400 hidden sm:block">{company}</span>
+            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+              <BarChart3 className="h-3 w-3" />{OVERALL_CONF}%
+            </span>
+          </div>
+        </header>
+
+        {/* View content */}
+        <main className="flex-1 overflow-auto">
+          {nav === "dashboard" && <DashboardView rows={rows} onNav={setNav} />}
+          {nav === "uploads"   && <UploadsView />}
+          {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} />}
+          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} />}
+          {nav === "audit"     && <AuditLogView log={auditLog} onExport={() => { addAudit({job_id:JOB_ID,action:"export_json",target_id:JOB_ID}); exportJSON(rows, auditLog, company); }} />}
+          {nav === "settings"  && <SettingsView company={company} setCompany={setCompany} bank={bankInst} setBank={setBankInst} ledger={ledgerSoft} setLedger={setLedgerSoft} />}
+        </main>
+      </div>
     </div>
   );
-}
-
-function IssueList({ issues, resolved, onResolve, onExplain }: {
-  issues: typeof ISSUES; resolved: Set<string>;
-  onResolve: (id: string) => void;
-  onExplain: (id: string, title: string, ctx: string) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      {issues.map((iss)=>{
-        const done = resolved.has(iss.id);
-        return (
-          <motion.div key={iss.id} layout
-            className={`border transition-all ${done?"border-gray-100 opacity-40":"border-gray-100"}`}
-          >
-            <div className="p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  {done ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                        : <AlertCircle  className="h-4 w-4 text-amber-400 shrink-0 mt-0.5"   />}
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-gray-900 leading-snug">{iss.title}</div>
-                    <div className="font-mono text-[10px] text-gray-400 mt-0.5">{iss.id}</div>
-                  </div>
-                </div>
-                <span className="font-mono text-sm font-bold text-gray-900 shrink-0">{fmtAmt(iss.amt)}</span>
-              </div>
-              {iss.kind!=="missing" && (
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {[{l:"Bank says",v:iss.bank},{l:"Ledger says",v:iss.ledger}].map(({l,v})=>(
-                    <div key={l} className="bg-gray-50 px-3 py-2">
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{l}</div>
-                      <div className="text-xs font-semibold text-gray-700 leading-snug">{v}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-sm text-gray-500 leading-relaxed mb-4">{iss.plain}</p>
-              {done ? (
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><Check className="h-3.5 w-3.5" /> Done</span>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={()=>onResolve(iss.id)}
-                    className="px-4 h-9 bg-gray-900 text-white text-xs font-bold hover:bg-gray-700 transition-colors flex items-center gap-1.5">
-                    <Check className="h-3 w-3" />{iss.action}
-                  </button>
-                  <button onClick={()=>onResolve(iss.id)}
-                    className="px-4 h-9 border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-                    Mark for follow-up
-                  </button>
-                  <button onClick={()=>onExplain(iss.id,iss.title,
-                    `Issue: ${iss.title}\nBank: ${iss.bank}\nLedger: ${iss.ledger}\nAmount: ${fmtAmt(iss.amt)}\n${iss.plain}`
-                  )} className="px-3 h-9 border border-gray-200 text-xs font-medium text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors flex items-center gap-1.5">
-                    <Sparkles className="h-3 w-3" /> Ask Grok
-                  </button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-}
-
-function StepMeta({ n, title, sub }: { n: number; title: string; sub: string }) {
-  return (
-    <div className="mb-8">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Step {n} of 5</p>
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-2">{title}</h1>
-      <p className="text-gray-500 text-sm leading-relaxed">{sub}</p>
-    </div>
-  );
-}
-
-function StatCard({ val, label }: { val: string; label: string }) {
-  return (
-    <div className="border border-gray-100 p-4">
-      <div className="text-2xl font-bold font-mono text-gray-900">{val}</div>
-      <div className="text-xs text-gray-400 mt-1 leading-snug">{label}</div>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">{children}</p>;
-}
-
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500 leading-relaxed">
-      <span className="font-bold text-gray-600">Note: </span>{children}
-    </div>
-  );
-}
-
-// ── PDF generation ────────────────────────────────────────────────────────────
-
-// ── PDF helpers ───────────────────────────────────────────────────────────────
-
-async function loadImgDataUrl(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const c = document.createElement("canvas");
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext("2d")!.drawImage(img, 0, 0);
-      resolve(c.toDataURL("image/png"));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-// ── PDF generation ────────────────────────────────────────────────────────────
-
-async function generatePDF({
-  resolved, logoUrl, companyName, bankInst, ledgerSoft,
-}: {
-  resolved: Set<string>; logoUrl: string;
-  companyName: string; bankInst: string; ledgerSoft: string;
-}) {
-  const logoData = await loadImgDataUrl(logoUrl).catch(() => null);
-
-  const doc   = new jsPDF({ unit: "mm", format: "a4" });
-  const W     = 210;
-  const M     = 16;            // left/right margin
-  const CW    = W - M * 2;    // content width = 178mm
-  const R     = W - M;        // right edge
-
-  let y = 0;
-  const genDate = new Date();
-  const dateStr = genDate.toLocaleDateString("en-ZA", { day: "2-digit", month: "long", year: "numeric" });
-  const timeStr = genDate.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
-
-  // ── colour helpers ──────────────────────────────────────────────────────────
-  const C = {
-    dark:      [17,  17,  17 ] as [number,number,number],
-    emerald:   [16,  185, 129] as [number,number,number],
-    amber:     [217, 119, 6  ] as [number,number,number],
-    red:       [220, 38,  38 ] as [number,number,number],
-    blue:      [59,  130, 246] as [number,number,number],
-    gray50:    [249, 250, 251] as [number,number,number],
-    gray100:   [243, 244, 246] as [number,number,number],
-    gray200:   [229, 231, 235] as [number,number,number],
-    gray400:   [156, 163, 175] as [number,number,number],
-    gray500:   [107, 114, 128] as [number,number,number],
-    gray700:   [55,  65,  81 ] as [number,number,number],
-    white:     [255, 255, 255] as [number,number,number],
-  };
-
-  const fill  = (c: [number,number,number]) => doc.setFillColor(...c);
-  const stroke= (c: [number,number,number]) => doc.setDrawColor(...c);
-  const color = (c: [number,number,number]) => doc.setTextColor(...c);
-  const font  = (f: "normal"|"bold"|"italic") => doc.setFont("helvetica", f);
-  const sz    = (s: number) => doc.setFontSize(s);
-
-  const txt   = (t: string, x: number, yy: number) => doc.text(t, x, yy);
-  const rtxt  = (t: string, yy: number, s = 8.5) => { sz(s); txt(t, R, yy, { align: "right" }); };
-  const hline = (yy: number, lc: [number,number,number] = C.gray200, lw = 0.2) => {
-    stroke(lc); doc.setLineWidth(lw); doc.line(M, yy, R, yy);
-  };
-  const vline = (x: number, y1: number, y2: number) => {
-    stroke(C.gray200); doc.setLineWidth(0.2); doc.line(x, y1, x, y2);
-  };
-  const newPageIfNeeded = (needed: number) => {
-    if (y + needed > 275) { doc.addPage(); y = 20; }
-  };
-
-  // ── PAGE 1 ─────────────────────────────────────────────────────────────────
-
-  // Header band
-  fill(C.dark); doc.rect(0, 0, W, 30, "F");
-
-  // Logo image in header
-  if (logoData) {
-    doc.addImage(logoData, "PNG", M, 9, 30, 10);
-  } else {
-    color(C.white); font("bold"); sz(15); txt("Addup", M, 20);
-  }
-
-  // Header right: doc type + date
-  color(C.gray400); font("normal"); sz(7.5);
-  rtxt("RECONCILIATION REPORT", 14);
-  color(C.white); sz(8.5);
-  rtxt(dateStr + "  " + timeStr, 22);
-
-  // Emerald accent stripe
-  fill(C.emerald); doc.rect(0, 30, W, 1.5, "F");
-
-  y = 38;
-
-  // Company block — two column layout
-  // Left col: prepared for
-  color(C.gray400); font("bold"); sz(7);
-  txt("PREPARED FOR", M, y); y += 5;
-  color(C.dark); font("bold"); sz(11);
-  txt(companyName || "—", M, y); y += 5;
-
-  // Data sources row
-  color(C.gray400); font("bold"); sz(7);
-  txt("BANK STATEMENT", M, y);
-  txt("GENERAL LEDGER", M + 90, y); y += 4.5;
-  color(C.gray700); font("normal"); sz(8.5);
-  txt(bankInst || "—", M, y);
-  txt(ledgerSoft || "—", M + 90, y); y += 5;
-  color(C.gray400); font("normal"); sz(7.5);
-  txt("bank.csv  ·  19 transactions", M, y);
-  txt("ledger.csv  ·  11 entries", M + 90, y); y += 3;
-  vline(M + 88, y - 12, y + 0.5);
-
-  // Right side: period + ref
-  color(C.gray400); font("bold"); sz(7);
-  doc.text("PERIOD", R, 43, { align: "right" });
-  color(C.dark); font("bold"); sz(10);
-  doc.text("April 2026", R, 48, { align: "right" });
-  color(C.gray400); font("normal"); sz(7.5);
-  doc.text("FY2026  Q1", R, 53, { align: "right" });
-  color(C.gray400); font("bold"); sz(7);
-  doc.text("DOCUMENT REF", R, 59, { align: "right" });
-  color(C.gray500); font("normal"); sz(7.5);
-  doc.text("RECON-2026-04-001", R, 63, { align: "right" });
-
-  y += 4;
-  hline(y); y += 8;
-
-  // ── Verdict ───────────────────────────────────────────────────────────────
-  // Status badge
-  fill(C.emerald); doc.rect(M, y - 4, 27, 7, "F");
-  color(C.white); font("bold"); sz(7.5);
-  txt("RECONCILED", M + 2, y + 0.5); y += 9;
-
-  color(C.dark); font("bold"); sz(20);
-  txt("April 2026 is reconciled", M, y); y += 7;
-  color(C.gray500); font("normal"); sz(9);
-  const summaryLines = doc.splitTextToSize(
-    `7 of 9 bank transactions matched ${companyName ? companyName + "'s" : "your"} ${ledgerSoft || "ledger"} records for April 2026. 2 entries are flagged for follow-up. Average match confidence is ${AVG_CONF}%.`,
-    CW
-  );
-  doc.text(summaryLines, M, y); y += summaryLines.length * 5 + 4;
-
-  hline(y); y += 6;
-
-  // ── Stat boxes (4 in a row) ───────────────────────────────────────────────
-  const boxW = (CW - 9) / 4;
-  const boxes = [
-    { val: "7 of 9",      lbl: "Transactions matched", sub: "78% match rate",       color: C.emerald },
-    { val: `${AVG_CONF}%`, lbl: "Avg. confidence",     sub: "Across all matches",    color: C.dark    },
-    { val: "2",           lbl: "Unmatched entries",    sub: "Need follow-up",         color: C.amber   },
-    { val: `${ISSUES.length}`, lbl: "Issues flagged",  sub: `${resolved.size} resolved`, color: C.blue },
-  ];
-  boxes.forEach((b, i) => {
-    const bx = M + i * (boxW + 3);
-    // Border
-    stroke(C.gray200); fill(C.white); doc.setLineWidth(0.2);
-    doc.rect(bx, y, boxW, 22, "FD");
-    // Colored top stripe
-    fill(b.color); doc.rect(bx, y, boxW, 2.5, "F");
-    // Value
-    color(C.dark); font("bold"); sz(14);
-    doc.text(b.val, bx + boxW / 2, y + 12, { align: "center" });
-    // Label
-    color(C.gray500); font("normal"); sz(7);
-    doc.text(b.lbl, bx + boxW / 2, y + 17, { align: "center" });
-    // Sub
-    color(C.gray400); sz(6.5);
-    doc.text(b.sub, bx + boxW / 2, y + 20.5, { align: "center" });
-  });
-  y += 28;
-
-  // ── Match table ───────────────────────────────────────────────────────────
-  color(C.gray400); font("bold"); sz(7);
-  txt("TRANSACTION MATCHES", M, y); y += 4;
-
-  // Table header
-  const tCols = {
-    dot:   M,
-    desc:  M + 5,
-    date:  M + 82,
-    amt:   M + 100,
-    conf:  M + 128,
-    qual:  M + 146,
-  };
-  fill(C.dark); doc.rect(M, y, CW, 7, "F");
-  color(C.white); font("bold"); sz(7);
-  txt("",               tCols.dot,  y + 4.5);
-  txt("Description",    tCols.desc, y + 4.5);
-  txt("Date",           tCols.date, y + 4.5);
-  txt("Amount",         tCols.amt,  y + 4.5);
-  txt("Confidence",     tCols.conf, y + 4.5);
-  txt("Result",         tCols.qual, y + 4.5);
-  y += 7;
-
-  const qualColor: Record<string, [number,number,number]> = {
-    perfect: C.emerald,
-    close:   C.blue,
-    amount:  C.amber,
-  };
-  const qualLabel: Record<string, string> = {
-    perfect: "Perfect",
-    close:   "Off by 1 day",
-    amount:  "Amount only",
-  };
-
-  MATCHES.forEach((m, i) => {
-    newPageIfNeeded(9);
-    const rowY = y;
-    // Alternating bg
-    if (i % 2 === 0) { fill(C.gray50); doc.rect(M, rowY, CW, 8, "F"); }
-    // Status dot
-    fill(qualColor[m.quality]); doc.circle(tCols.dot + 1.5, rowY + 4, 1.5, "F");
-    // Description
-    color(C.dark); font("normal"); sz(8.5);
-    txt(m.bank.desc.slice(0, 32), tCols.desc, rowY + 5.5);
-    // Bank sub-line
-    color(C.gray400); sz(6.5);
-    txt(`${m.bank.id}  ·  Ledger: ${m.ledger.id}`, tCols.desc, rowY + 7.5 - 0.5);
-    // Date
-    color(m.bank.date !== m.ledger.date ? C.amber : C.gray500); font("normal"); sz(8);
-    txt(m.bank.date, tCols.date, rowY + 5.5);
-    // Amount
-    color(m.bank.amt < 0 ? C.red : C.emerald); font("bold"); sz(8.5);
-    txt(fmtAmt(m.bank.amt).replace("\u2212", "-").replace("\u00a0", " "), tCols.amt, rowY + 5.5);
-    // Confidence
-    color(m.conf >= 90 ? C.emerald : m.conf >= 75 ? C.amber : C.red); font("bold"); sz(8.5);
-    txt(`${m.conf}%`, tCols.conf, rowY + 5.5);
-    // Quality label
-    const qc = qualColor[m.quality];
-    fill(qc);
-    const qlbl = qualLabel[m.quality];
-    const qlblW = doc.getTextWidth(qlbl) + 4;
-    doc.rect(tCols.qual, rowY + 2, qlblW, 4.5, "F");
-    color(C.white); font("bold"); sz(6.5);
-    txt(qlbl, tCols.qual + 2, rowY + 5.5);
-    // Bottom divider
-    hline(rowY + 8, C.gray100, 0.1);
-    y += 8;
-  });
-
-  // Unmatched rows
-  MISSING.forEach((m, i) => {
-    newPageIfNeeded(9);
-    const rowY = y;
-    fill(i % 2 === 0 ? [255,251,235] as [number,number,number] : C.white);
-    doc.rect(M, rowY, CW, 8, "F");
-    fill(C.amber); doc.circle(tCols.dot + 1.5, rowY + 4, 1.5, "F");
-    color(C.dark); font("normal"); sz(8.5);
-    txt(m.desc.slice(0, 32), tCols.desc, rowY + 5.5);
-    color(C.gray400); sz(6.5);
-    txt(`${m.id}  ·  No ledger match`, tCols.desc, rowY + 7.5 - 0.5);
-    color(m.amt < 0 ? C.red : C.emerald); font("bold"); sz(8.5);
-    txt(fmtAmt(m.amt).replace("\u2212", "-").replace("\u00a0", " "), tCols.amt, rowY + 5.5);
-    color(C.gray400); font("normal"); sz(8);
-    txt("—", tCols.conf, rowY + 5.5);
-    fill(C.amber); doc.rect(tCols.qual, rowY + 2, 17, 4.5, "F");
-    color(C.white); font("bold"); sz(6.5); txt("No match", tCols.qual + 2, rowY + 5.5);
-    hline(rowY + 8, C.gray100, 0.1);
-    y += 8;
-  });
-
-  y += 6;
-
-  // ── Issues flagged ────────────────────────────────────────────────────────
-  newPageIfNeeded(20);
-  hline(y); y += 5;
-  color(C.gray400); font("bold"); sz(7);
-  txt("ISSUES FLAGGED", M, y); y += 5;
-
-  const kindColor: Record<string, [number,number,number]> = {
-    desc:    C.blue,
-    date:    C.amber,
-    missing: C.red,
-  };
-  const kindLabel: Record<string, string> = {
-    desc:    "Description mismatch",
-    date:    "Date discrepancy",
-    missing: "Missing entry",
-  };
-
-  ISSUES.forEach((iss, i) => {
-    newPageIfNeeded(28);
-    const issY = y;
-    // Card bg
-    stroke(C.gray200); fill(C.gray50); doc.setLineWidth(0.2);
-    // Left accent stripe
-    fill(kindColor[iss.kind]);
-    doc.rect(M, issY, 2, 24, "F");
-    // Card bg
-    fill(C.gray50);
-    doc.rect(M + 2, issY, CW - 2, 24, "FD");
-
-    // Number badge
-    fill(C.gray200); doc.rect(M + 5, issY + 4, 6, 6, "F");
-    color(C.gray700); font("bold"); sz(8);
-    doc.text(`${i + 1}`, M + 8, issY + 8.5, { align: "center" });
-
-    // Kind tag
-    const kw = doc.getTextWidth(kindLabel[iss.kind]) + 4;
-    fill(kindColor[iss.kind]); doc.rect(M + 14, issY + 4, kw, 5.5, "F");
-    color(C.white); font("bold"); sz(6.5);
-    txt(kindLabel[iss.kind], M + 16, issY + 8.5);
-
-    // Resolved badge
-    if (resolved.has(iss.id)) {
-      fill(C.emerald); doc.rect(R - 18, issY + 4, 18, 5.5, "F");
-      color(C.white); font("bold"); sz(6.5);
-      doc.text("RESOLVED", R - 9, issY + 8.5, { align: "center" });
-    }
-
-    // Title
-    color(C.dark); font("bold"); sz(9);
-    txt(iss.title, M + 5, issY + 14);
-
-    // Amount right
-    color(iss.amt < 0 ? C.red : C.emerald); font("bold"); sz(9);
-    doc.text(fmtAmt(iss.amt).replace("\u2212", "-").replace("\u00a0", " "), R - 2, issY + 14, { align: "right" });
-
-    // Description
-    color(C.gray500); font("normal"); sz(7.5);
-    const plain = doc.splitTextToSize(iss.plain, CW - 10);
-    doc.text(plain, M + 5, issY + 19);
-
-    y += 26;
-  });
-
-  y += 4;
-
-  // ── Match method breakdown ────────────────────────────────────────────────
-  newPageIfNeeded(40);
-  hline(y); y += 5;
-  color(C.gray400); font("bold"); sz(7);
-  txt("HOW MATCHES WERE FOUND", M, y); y += 5;
-
-  const breakdown = [
-    { lbl: "Perfect match — same amount and date",      val: MATCHES.filter(m=>m.quality==="perfect").length, c: C.emerald },
-    { lbl: "Close match — same amount, date off by 1",  val: MATCHES.filter(m=>m.quality==="close").length,   c: C.blue    },
-    { lbl: "Amount match — date differed significantly", val: MATCHES.filter(m=>m.quality==="amount").length, c: C.amber   },
-    { lbl: "No match found",                            val: MISSING.length,                                   c: C.red     },
-  ];
-
-  breakdown.forEach(b => {
-    newPageIfNeeded(8);
-    // Bar
-    const barMax = CW - 60;
-    const barW   = Math.max(2, (b.val / (MATCHES.length + MISSING.length)) * barMax);
-    fill(b.c); doc.rect(M, y, barW, 4, "F");
-    fill(C.gray100); doc.rect(M + barW, y, barMax - barW, 4, "F");
-    // Label
-    color(C.gray700); font("normal"); sz(8.5);
-    txt(b.lbl, M + barMax + 4, y + 3.5);
-    // Count
-    color(C.dark); font("bold"); sz(8.5);
-    doc.text(String(b.val), R, y + 3.5, { align: "right" });
-    y += 7;
-  });
-
-  y += 4;
-
-  // ── Footer ────────────────────────────────────────────────────────────────
-  const footerY = 284;
-  hline(footerY, C.gray200, 0.3);
-
-  // Logo in footer
-  if (logoData) {
-    doc.addImage(logoData, "PNG", M, footerY + 3, 16, 5.5);
-  } else {
-    color(C.dark); font("bold"); sz(9); txt("Addup", M, footerY + 7);
-  }
-
-  color(C.gray400); font("normal"); sz(7);
-  txt("Generated by Addup  ·  addup.co  ·  Automated reconciliation software", M + 19, footerY + 7);
-
-  // Right: date + confidential
-  color(C.gray400); sz(7);
-  doc.text(`${dateStr}  ·  Confidential`, R, footerY + 7, { align: "right" });
-
-  // Page numbers on all pages
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
-    doc.setPage(p);
-    color(C.gray400); font("normal"); sz(7);
-    doc.text(`Page ${p} of ${pageCount}`, R, footerY + 7, { align: "right" });
-    // Repeat footer line on page 2+
-    if (p > 1) {
-      hline(footerY, C.gray200, 0.3);
-      if (logoData) doc.addImage(logoData, "PNG", M, footerY + 3, 16, 5.5);
-      else { color(C.dark); font("bold"); sz(9); txt("Addup", M, footerY + 7); }
-      color(C.gray400); font("normal"); sz(7);
-      txt("Generated by Addup  ·  addup.co  ·  Automated reconciliation software", M + 19, footerY + 7);
-    }
-  }
-
-  const period = "april-2026";
-  const slug   = (companyName || "report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
-  doc.save(`addup-${slug}-${period}.pdf`);
 }
