@@ -1,0 +1,176 @@
+We are building Addup, an AI reconciliation product by Olyxee.
+
+Goal:
+Upgrade the current reconciliation app into a modern AI reconciliation dashboard that competes with tools like BlackLine, FloQast, and Trintech, but focuses on simplicity, explainability, messy file handling, and fast review.
+
+Current state:
+- Jobs are stored in db/jobs.json
+- Latest job id example: rec_20260502151654_001
+- Bank transactions and ledger transactions are extracted
+- Ledger OCR sometimes creates wrong dates, wrong amounts, and invalid rows
+- Suggested actions already include manual_review
+- The app already has a UI
+
+Implement these changes:
+
+1. Dashboard layout
+Create a clean modern layout with:
+- Left sidebar navigation
+- Top summary cards
+- Main reconciliation workspace
+- Right-side review/explanation panel
+
+Sidebar items:
+- Dashboard
+- Uploads
+- Reconciliation Jobs
+- Review Queue
+- Audit Log
+- Settings
+
+2. Job summary cards
+For the selected job, show:
+- Total bank transactions
+- Total ledger transactions
+- Matched transactions
+- Possible matches
+- Manual review items
+- Invalid ledger rows
+- Overall reconciliation confidence percentage
+- Current job status
+
+3. Reconciliation workspace
+Create a table with rows grouped by status:
+- Matched
+- Possible Match
+- Manual Review
+- Invalid Row
+- Unmatched Bank
+- Unmatched Ledger
+
+Each row should show:
+- source type: bank or ledger
+- transaction id
+- date
+- description
+- amount
+- matched target id if available
+- confidence score
+- reason
+- suggested action
+
+4. Side-by-side review
+When a user clicks a row, open a review panel showing:
+- Bank transaction on the left
+- Ledger transaction on the right
+- Matching explanation
+- Differences detected:
+  - date difference
+  - amount difference
+  - description similarity
+  - OCR parsing issues
+- Buttons:
+  - Approve Match
+  - Reject Match
+  - Mark as Manual Review
+  - Edit Normalized Data
+
+5. Explainable matching
+Add a function that creates a match explanation object:
+{
+  match_status,
+  confidence,
+  reasons: [],
+  warnings: [],
+  suggested_action
+}
+
+Reasons should include:
+- exact amount match
+- near amount match
+- date within acceptable range
+- similar description
+- suspicious OCR value
+- invalid/missing fields
+
+6. Data quality layer
+Before matching, add validation for:
+- invalid date
+- year mismatch
+- missing amount
+- impossible amount
+- OCR symbols inside description
+- duplicate transactions
+
+Create normalized fields:
+{
+  raw_value,
+  normalized_value,
+  confidence,
+  status,
+  issue
+}
+
+7. Review queue
+Create a dedicated Review Queue page showing only:
+- low confidence matches
+- invalid ledger rows
+- unmatched transactions
+- OCR warnings
+
+Allow filtering by:
+- confidence
+- amount
+- date
+- status
+- source
+
+8. Audit log
+Every user action must create an audit log entry:
+- approved match
+- rejected match
+- edited normalized field
+- marked manual review
+- exported report
+
+Audit log fields:
+{
+  timestamp,
+  job_id,
+  action,
+  target_id,
+  previous_value,
+  new_value,
+  user: "local_user"
+}
+
+9. Export report
+Add an export button that generates a JSON report with:
+- job summary
+- matched transactions
+- unmatched transactions
+- manual review items
+- invalid rows
+- audit log
+- final confidence score
+
+10. UI style
+Use a clean enterprise SaaS style:
+- white background
+- soft borders
+- rounded cards
+- simple typography
+- no clutter
+- status badges
+- confidence bars
+- clear empty states
+
+Do not overcomplicate the app.
+Focus on making Addup feel like:
+“Upload messy finance files. Addup cleans, matches, explains, and prepares review.”
+
+After implementation, show:
+- files changed
+- new components added
+- how to run locally
+- what still needs backend improvement
