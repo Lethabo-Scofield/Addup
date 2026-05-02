@@ -602,15 +602,15 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
   const uBank    = rows.filter(r => r.status === "unmatched_bank").length;
   const uLedger  = rows.filter(r => r.status === "unmatched_ledger").length;
 
-  const cards = [
-    { label:"Bank transactions",   val: BANK.length,   sub:"Loaded",                  color:"text-gray-900",     bg:"bg-white" },
-    { label:"Ledger entries",      val: LEDGER.length, sub:"Loaded",                  color:"text-gray-900",     bg:"bg-white" },
-    { label:"Matched",             val: matched,       sub:"Auto-approved",            color:"text-emerald-700",  bg:"bg-emerald-50" },
-    { label:"Possible matches",    val: possible,      sub:"Needs review",             color:"text-blue-700",     bg:"bg-blue-50" },
-    { label:"Manual review",       val: manual,        sub:"Flagged items",            color:"text-amber-700",    bg:"bg-amber-50" },
-    { label:"Invalid rows",        val: invalid,       sub:"Data quality issues",      color:"text-red-700",      bg:"bg-red-50" },
-    { label:"Unmatched bank",      val: uBank,         sub:"No ledger entry",          color:"text-orange-700",   bg:"bg-orange-50" },
-    { label:"Unmatched ledger",    val: uLedger,       sub:"No bank transaction",      color:"text-purple-700",   bg:"bg-purple-50" },
+  const cards: { label:string; val:number; sub:string; color:string; bg:string; border:string; nav:NavId }[] = [
+    { label:"Bank transactions",   val: BANK.length,   sub:"Click to view all transactions",   color:"text-gray-900",     bg:"bg-white",       border:"hover:border-gray-400",   nav:"jobs"   },
+    { label:"Ledger entries",      val: LEDGER.length, sub:"Click to view all entries",        color:"text-gray-900",     bg:"bg-white",       border:"hover:border-gray-400",   nav:"jobs"   },
+    { label:"Matched",             val: matched,       sub:"Auto-approved transactions",        color:"text-emerald-700",  bg:"bg-emerald-50",  border:"hover:border-emerald-400", nav:"jobs"   },
+    { label:"Possible matches",    val: possible,      sub:"Click to open review queue",       color:"text-blue-700",     bg:"bg-blue-50",     border:"hover:border-blue-400",   nav:"review" },
+    { label:"Manual review",       val: manual,        sub:"Click to open review queue",       color:"text-amber-700",    bg:"bg-amber-50",    border:"hover:border-amber-400",  nav:"review" },
+    { label:"Invalid rows",        val: invalid,       sub:"Click to open review queue",       color:"text-red-700",      bg:"bg-red-50",      border:"hover:border-red-400",    nav:"review" },
+    { label:"Unmatched bank",      val: uBank,         sub:"Click to open review queue",       color:"text-orange-700",   bg:"bg-orange-50",   border:"hover:border-orange-400", nav:"review" },
+    { label:"Unmatched ledger",    val: uLedger,       sub:"Click to open review queue",       color:"text-purple-700",   bg:"bg-purple-50",   border:"hover:border-purple-400", nav:"review" },
   ];
 
   return (
@@ -655,12 +655,16 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {cards.map(({ label, val, sub, color, bg }) => (
-          <div key={label} className={`border border-gray-200 p-4 ${bg}`}>
-            <p className={`text-2xl font-bold ${color}`}>{val}</p>
+        {cards.map(({ label, val, sub, color, bg, border, nav }) => (
+          <button key={label} onClick={() => onNav(nav)}
+            className={`border border-gray-200 p-4 ${bg} ${border} text-left transition-all group cursor-pointer hover:shadow-sm`}>
+            <div className="flex items-start justify-between">
+              <p className={`text-2xl font-bold ${color}`}>{val}</p>
+              <ChevronRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 mt-1 transition-colors shrink-0" />
+            </div>
             <p className="text-xs font-semibold text-gray-700 mt-0.5">{label}</p>
-            <p className="text-[10px] text-gray-400">{sub}</p>
-          </div>
+            <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+          </button>
         ))}
       </div>
 
