@@ -8,6 +8,7 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { Integrations } from "@/components/landing/integrations";
 import { TargetMarket } from "@/components/landing/target-market";
 import { News } from "@/components/landing/news";
+import { CTA } from "@/components/landing/cta";
 import { Footer } from "@/components/landing/footer";
 import { WaitlistProvider } from "@/components/landing/waitlist-dialog";
 
@@ -24,6 +25,7 @@ export default function Landing() {
           <Integrations />
           <TargetMarket />
           <News />
+          <CTA />
         </main>
         <Footer />
       </div>
