@@ -285,8 +285,8 @@ function TxCard({ tx, side, highlight }: { tx?: Tx; side: "bank" | "ledger"; hig
   ];
   return (
     <div className={`flex-1 border ${isBank ? "border-gray-200" : "border-gray-200"}`}>
-      <div className={`px-4 py-2.5 border-b ${isBank ? "bg-gray-900" : "bg-gray-700"} flex items-center justify-between`}>
-        <span className="text-white text-xs font-bold uppercase tracking-wider">{isBank ? "Bank Statement" : "General Ledger"}</span>
+      <div className={`px-4 py-2.5 border-b ${isBank ? "bg-gray-100 border-gray-200" : "bg-gray-50 border-gray-200"} flex items-center justify-between`}>
+        <span className="text-gray-800 text-xs font-bold uppercase tracking-wider">{isBank ? "Bank Statement" : "General Ledger"}</span>
         <span className="text-gray-400 text-[10px] font-mono">{tx.id}</span>
       </div>
       <div className="divide-y divide-gray-100">
@@ -614,7 +614,7 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
   ];
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{JOB_ID}</span> · {PERIOD} · {COMPANY}</p>
@@ -695,7 +695,7 @@ function UploadsView() {
   const [ledger, setLedger] = useState<string | null>(null);
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 sm:p-8 max-w-2xl mx-auto w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Upload Files</h1>
       <p className="text-sm text-gray-400 mb-6">Upload your bank statement and general ledger export to start reconciliation.</p>
 
@@ -889,7 +889,7 @@ function ReviewQueueView({
   }
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Review Queue</h1>
@@ -983,7 +983,7 @@ function ReviewQueueView({
 
 function AuditLogView({ log, onExport }: { log: AuditEntry[]; onExport: () => void }) {
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
@@ -1043,7 +1043,7 @@ function AuditLogView({ log, onExport }: { log: AuditEntry[]; onExport: () => vo
 function SettingsView({ company, setCompany, bank, setBank, ledger, setLedger }:
   { company:string; setCompany:(v:string)=>void; bank:string; setBank:(v:string)=>void; ledger:string; setLedger:(v:string)=>void }) {
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-6 sm:p-8 max-w-xl mx-auto w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Settings</h1>
       <p className="text-sm text-gray-400 mb-6">Configure company info and matching preferences.</p>
 
@@ -1249,25 +1249,25 @@ export default function Engine() {
     return (
       <div className="flex flex-col h-full">
         {/* Logo */}
-        <div className="px-5 pt-5 pb-4 border-b border-white/10 shrink-0">
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
           <Link href="/" onClick={() => setSidebarOpen(false)}>
             <img src={addupLogo} alt="Addup" className="h-6 w-auto" />
           </Link>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">
             Reconciliation Engine
           </p>
         </div>
 
         {/* Job summary */}
-        <div className="px-4 py-3 border-b border-white/10 shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-2">Active Job</p>
-          <p className="text-[10px] font-mono text-gray-400 truncate">{JOB_ID}</p>
-          <p className="text-[10px] text-gray-500 mt-0.5">{PERIOD} · {company}</p>
+        <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Active Job</p>
+          <p className="text-[10px] font-mono text-gray-500 truncate">{JOB_ID}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">{PERIOD} · {company}</p>
           <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1 bg-white/10">
+            <div className="flex-1 h-1 bg-gray-100">
               <div className="h-full bg-emerald-500" style={{ width:`${OVERALL_CONF}%` }} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-400">{OVERALL_CONF}%</span>
+            <span className="text-[10px] font-bold text-emerald-600">{OVERALL_CONF}%</span>
           </div>
         </div>
 
@@ -1276,13 +1276,13 @@ export default function Engine() {
           {NAV.map(item => (
             <button key={item.id} onClick={() => { setNav(item.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors
-                ${nav === item.id ? "bg-white/10 text-white" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}`}
+                ${nav === item.id ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}
             >
-              <span className={nav === item.id ? "text-emerald-400" : "text-gray-500"}>{item.icon}</span>
+              <span className={nav === item.id ? "text-emerald-600" : "text-gray-400"}>{item.icon}</span>
               <span className="text-xs font-semibold flex-1">{item.label}</span>
               {item.badge !== undefined && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] text-center
-                  ${nav === item.id ? "bg-white/20 text-white" : "bg-red-500 text-white"}`}>
+                  ${nav === item.id ? "bg-gray-200 text-gray-700" : "bg-red-500 text-white"}`}>
                   {item.badge}
                 </span>
               )}
@@ -1291,7 +1291,7 @@ export default function Engine() {
         </nav>
 
         {/* Export buttons */}
-        <div className="px-4 py-4 border-t border-white/10 space-y-2 shrink-0">
+        <div className="px-4 py-4 border-t border-gray-100 space-y-2 shrink-0">
           <button
             onClick={async () => {
               setPdfLoading(true);
@@ -1300,7 +1300,7 @@ export default function Engine() {
               setPdfLoading(false);
             }}
             disabled={pdfLoading}
-            className="w-full flex items-center justify-center gap-2 h-9 bg-white/10 text-gray-200 text-[11px] font-semibold hover:bg-white/20 transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 h-9 bg-gray-100 text-gray-700 text-[11px] font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             {pdfLoading
               ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-3.5 w-3.5"/></motion.div>Generating...</>
@@ -1312,7 +1312,7 @@ export default function Engine() {
               addAudit({ job_id:JOB_ID, action:"export_json", target_id:JOB_ID });
               exportJSON(rows, auditLog, company);
             }}
-            className="w-full flex items-center justify-center gap-2 h-9 border border-white/10 text-gray-400 text-[11px] font-semibold hover:bg-white/5 transition-colors"
+            className="w-full flex items-center justify-center gap-2 h-9 border border-gray-200 text-gray-500 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
           >
             <Download className="h-3.5 w-3.5"/>Export JSON
           </button>
@@ -1327,10 +1327,10 @@ export default function Engine() {
         {loading && <Loader onDone={() => setLoading(false)} />}
       </AnimatePresence>
 
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-white overflow-hidden">
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-[240px] bg-gray-900 flex-col shrink-0 border-r border-white/5">
+      <aside className="hidden lg:flex w-[240px] bg-white flex-col shrink-0 border-r border-gray-200">
         <SidebarContent />
       </aside>
 
@@ -1338,11 +1338,11 @@ export default function Engine() {
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            <motion.div initial={{opacity:0}} animate={{opacity:0.5}} exit={{opacity:0}}
-              className="fixed inset-0 bg-black z-40 lg:hidden" onClick={()=>setSidebarOpen(false)} />
+            <motion.div initial={{opacity:0}} animate={{opacity:0.4}} exit={{opacity:0}}
+              className="fixed inset-0 bg-gray-900 z-40 lg:hidden" onClick={()=>setSidebarOpen(false)} />
             <motion.aside initial={{x:"-100%"}} animate={{x:0}} exit={{x:"-100%"}}
               transition={{type:"spring",stiffness:300,damping:30}}
-              className="fixed left-0 top-0 h-full w-[240px] bg-gray-900 z-50 lg:hidden">
+              className="fixed left-0 top-0 h-full w-[240px] bg-white border-r border-gray-200 z-50 lg:hidden">
               <SidebarContent />
             </motion.aside>
           </>

@@ -1,0 +1,108 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+env:
+  AZURE_RESOURCE_GROUP: addup-rg
+  AZURE_LOCATION: eastus
+  FRONTEND_APP_NAME: addup-frontend
+  API_APP_NAME: addup-api
+  ACR_NAME: addupacr
+  NODE_VERSION: "20"
+
+jobs:
+  # ─── Frontend → Azure Static Web Apps ───────────────────────────────────────
+  deploy-frontend:
+    name: Frontend (Azure Static Web Apps)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @workspace/addup run build
+        env:
+          NODE_ENV: production
+          VITE_API_URL: https://${{ env.API_APP_NAME }}.azurewebsites.net
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: artifacts/addup
+          output_location: dist/public
+          skip_app_build: true
+
+  close-frontend-pr:
+    name: Close Frontend PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
+
+  # ─── API → Azure App Service (Docker) ───────────────────────────────────────
+  deploy-api:
+    name: API (Azure App Service)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE=${{ env.ACR_NAME }}.azurecr.io/addup-api:${{ github.sha }}
+          docker build -f artifacts/api-server/Dockerfile -t $IMAGE .
+          docker push $IMAGE
+          docker tag $IMAGE ${{ env.ACR_NAME }}.azurecr.io/addup-api:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/addup-api:latest
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.API_APP_NAME }}
+          images: ${{ env.ACR_NAME }}.azurecr.io/addup-api:${{ github.sha }}
+
+      - name: Set App Service environment variables
+        run: |
+          az webapp config appsettings set \
+            --name ${{ env.API_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              NODE_ENV=production \
+              PORT=8080 \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
