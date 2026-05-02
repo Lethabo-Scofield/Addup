@@ -243,14 +243,18 @@ function StepNode({ n, status }: { n: number; status: "done" | "active" | "pendi
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function Engine() {
-  const [loading,     setLoading]     = useState(true);
-  const [view,        setView]        = useState<View>("workflow");
-  const [step,        setStep]        = useState(0);
-  const [filter,      setFilter]      = useState<"all" | "clean" | "flagged">("all");
-  const [resolved,    setResolved]    = useState<Set<string>>(new Set());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [bankFile,    setBankFile]    = useState<string | null>(null);
-  const [ledgerFile,  setLedgerFile]  = useState<string | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [view,          setView]          = useState<View>("workflow");
+  const [step,          setStep]          = useState(0);
+  const [filter,        setFilter]        = useState<"all" | "clean" | "flagged">("all");
+  const [resolved,      setResolved]      = useState<Set<string>>(new Set());
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [bankFile,      setBankFile]      = useState<string | null>(null);
+  const [ledgerFile,    setLedgerFile]    = useState<string | null>(null);
+  const [companyName,   setCompanyName]   = useState("Acme Trading (Pty) Ltd");
+  const [bankInst,      setBankInst]      = useState("FNB Business");
+  const [ledgerSoft,    setLedgerSoft]    = useState("Xero");
+  const [pdfLoading,    setPdfLoading]    = useState(false);
   const [explainTarget, setExplainTarget] = useState<{ id: string; title: string; context: string } | null>(null);
 
   const { response: grokResponse, streaming: grokStreaming, error: grokError, explain: grokExplain, reset: grokReset } = useGrokExplain();
@@ -317,16 +321,33 @@ export default function Engine() {
             <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Sources</span>
           </div>
 
+          {/* Company name */}
+          <div className="mb-3">
+            <label className="block text-[10px] font-semibold text-gray-500 mb-1">Company name</label>
+            <input
+              type="text" value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
+              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400"
+              placeholder="e.g. Acme Trading (Pty) Ltd"
+            />
+          </div>
+
           {/* Bank statement */}
-          <div className="mb-2">
+          <div className="mb-2.5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-gray-600">Bank statement</span>
+              <label className="text-[10px] font-semibold text-gray-500">Bank statement</label>
               {bankFile && <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5" /> Loaded</span>}
             </div>
+            <input
+              type="text" value={bankInst}
+              onChange={e => setBankInst(e.target.value)}
+              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400 mb-1.5"
+              placeholder="e.g. FNB Business"
+            />
             <div className="flex gap-1.5">
               <button
                 onClick={() => bankRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1 h-8 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-7 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Upload className="h-3 w-3" />
                 {bankFile ? bankFile : "Upload CSV"}
@@ -339,13 +360,19 @@ export default function Engine() {
           {/* Ledger */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-gray-600">General ledger</span>
+              <label className="text-[10px] font-semibold text-gray-500">General ledger</label>
               {ledgerFile && <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5" /> Loaded</span>}
             </div>
+            <input
+              type="text" value={ledgerSoft}
+              onChange={e => setLedgerSoft(e.target.value)}
+              className="w-full h-7 px-2 border border-gray-200 text-[11px] text-gray-900 bg-white focus:outline-none focus:border-gray-400 mb-1.5"
+              placeholder="e.g. Xero"
+            />
             <div className="flex gap-1.5">
               <button
                 onClick={() => ledgerRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1 h-8 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-7 border border-dashed border-gray-200 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Upload className="h-3 w-3" />
                 {ledgerFile ? ledgerFile : "Upload CSV"}
@@ -365,7 +392,7 @@ export default function Engine() {
             <input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden"
               onChange={e => setLedgerFile(e.target.files?.[0]?.name ?? "Scanned ledger")} />
             {!isMobile && (
-              <p className="text-[10px] text-gray-400 mt-1">On mobile, you can also scan a printed ledger.</p>
+              <p className="text-[10px] text-gray-400 mt-1">On mobile, you can scan a printed ledger.</p>
             )}
           </div>
         </div>
@@ -693,10 +720,19 @@ export default function Engine() {
                         </div>
                         <Note>In production, your bank feed and ledger connect directly. Addup runs this automatically every period.</Note>
                         <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                          <button onClick={()=>generatePDF(resolved)}
-                            className="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-6 h-11 text-sm font-bold hover:bg-gray-700 transition-colors"
+                          <button
+                            onClick={async () => {
+                              setPdfLoading(true);
+                              await generatePDF({ resolved, logoUrl: addupLogo, companyName, bankInst, ledgerSoft });
+                              setPdfLoading(false);
+                            }}
+                            disabled={pdfLoading}
+                            className="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-6 h-11 text-sm font-bold hover:bg-gray-700 transition-colors disabled:opacity-60"
                           >
-                            <Download className="h-4 w-4" />Download PDF report
+                            {pdfLoading
+                              ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-4 w-4" /></motion.div>Generating...</>
+                              : <><Download className="h-4 w-4" />Download PDF report</>
+                            }
                           </button>
                           <button onClick={()=>openExplain("full","Explain this reconciliation",
                             "April 2026 reconciliation: 9 bank transactions, 7 matched, 2 unmatched. 6 issues flagged (4 description mismatches/date gaps, 2 missing ledger entries). Average confidence 91%. Unmatched: Coffee Shop R4.50 (no ledger entry), Wire Transfer R10,000 (large unrecorded credit)."
@@ -1070,50 +1106,402 @@ function Note({ children }: { children: React.ReactNode }) {
 
 // ── PDF generation ────────────────────────────────────────────────────────────
 
-function generatePDF(resolved: Set<string>) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210, margin = 18, col = margin;
+// ── PDF helpers ───────────────────────────────────────────────────────────────
+
+async function loadImgDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ── PDF generation ────────────────────────────────────────────────────────────
+
+async function generatePDF({
+  resolved, logoUrl, companyName, bankInst, ledgerSoft,
+}: {
+  resolved: Set<string>; logoUrl: string;
+  companyName: string; bankInst: string; ledgerSoft: string;
+}) {
+  const logoData = await loadImgDataUrl(logoUrl).catch(() => null);
+
+  const doc   = new jsPDF({ unit: "mm", format: "a4" });
+  const W     = 210;
+  const M     = 16;            // left/right margin
+  const CW    = W - M * 2;    // content width = 178mm
+  const R     = W - M;        // right edge
+
   let y = 0;
-  const right = (t: string, yy: number, sz = 9) => { doc.setFontSize(sz); doc.text(t, W - margin, yy, { align: "right" }); };
-  const hline = (yy: number) => { doc.setDrawColor(220,220,220); doc.line(margin, yy, W-margin, yy); };
-  const secLabel = (t: string, yy: number) => {
-    doc.setFontSize(7.5); doc.setTextColor(150,150,150); doc.setFont("helvetica","bold");
-    doc.text(t.toUpperCase(), col, yy); doc.setFont("helvetica","normal"); doc.setTextColor(30,30,30);
-    return yy + 5;
+  const genDate = new Date();
+  const dateStr = genDate.toLocaleDateString("en-ZA", { day: "2-digit", month: "long", year: "numeric" });
+  const timeStr = genDate.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
+
+  // ── colour helpers ──────────────────────────────────────────────────────────
+  const C = {
+    dark:      [17,  17,  17 ] as [number,number,number],
+    emerald:   [16,  185, 129] as [number,number,number],
+    amber:     [217, 119, 6  ] as [number,number,number],
+    red:       [220, 38,  38 ] as [number,number,number],
+    blue:      [59,  130, 246] as [number,number,number],
+    gray50:    [249, 250, 251] as [number,number,number],
+    gray100:   [243, 244, 246] as [number,number,number],
+    gray200:   [229, 231, 235] as [number,number,number],
+    gray400:   [156, 163, 175] as [number,number,number],
+    gray500:   [107, 114, 128] as [number,number,number],
+    gray700:   [55,  65,  81 ] as [number,number,number],
+    white:     [255, 255, 255] as [number,number,number],
   };
-  doc.setFillColor(17,17,17); doc.rect(0,0,W,22,"F");
-  doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.text("Addup", col, 14);
-  doc.setFontSize(8.5); doc.setFont("helvetica","normal"); doc.text("Reconciliation Report — April 2026", col+22, 14);
-  right(new Date().toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"}), 14, 8);
-  y = 32;
-  doc.setTextColor(30,30,30); doc.setFontSize(18); doc.setFont("helvetica","bold"); doc.text("April 2026 is reconciled", col, y); y+=7;
-  doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,100);
-  doc.text("7 out of 9 bank transactions matched your ledger. 2 entries are flagged for follow-up.", col, y); y+=12;
-  hline(y); y+=8;
-  y = secLabel("Summary", y);
-  ([["Transactions matched","7 / 9"],["Average confidence",`${AVG_CONF}%`],["Issues reviewed","4"],["Unmatched entries","2"]] as [string,string][]).forEach(([l,v])=>{
-    doc.setFontSize(9); doc.setTextColor(90,90,90); doc.text(l,col,y);
-    doc.setTextColor(17,17,17); doc.setFont("helvetica","bold"); right(v,y,9); doc.setFont("helvetica","normal"); y+=6;
+
+  const fill  = (c: [number,number,number]) => doc.setFillColor(...c);
+  const stroke= (c: [number,number,number]) => doc.setDrawColor(...c);
+  const color = (c: [number,number,number]) => doc.setTextColor(...c);
+  const font  = (f: "normal"|"bold"|"italic") => doc.setFont("helvetica", f);
+  const sz    = (s: number) => doc.setFontSize(s);
+
+  const txt   = (t: string, x: number, yy: number) => doc.text(t, x, yy);
+  const rtxt  = (t: string, yy: number, s = 8.5) => { sz(s); txt(t, R, yy, { align: "right" }); };
+  const hline = (yy: number, lc: [number,number,number] = C.gray200, lw = 0.2) => {
+    stroke(lc); doc.setLineWidth(lw); doc.line(M, yy, R, yy);
+  };
+  const vline = (x: number, y1: number, y2: number) => {
+    stroke(C.gray200); doc.setLineWidth(0.2); doc.line(x, y1, x, y2);
+  };
+  const newPageIfNeeded = (needed: number) => {
+    if (y + needed > 275) { doc.addPage(); y = 20; }
+  };
+
+  // ── PAGE 1 ─────────────────────────────────────────────────────────────────
+
+  // Header band
+  fill(C.dark); doc.rect(0, 0, W, 30, "F");
+
+  // Logo image in header
+  if (logoData) {
+    doc.addImage(logoData, "PNG", M, 9, 30, 10);
+  } else {
+    color(C.white); font("bold"); sz(15); txt("Addup", M, 20);
+  }
+
+  // Header right: doc type + date
+  color(C.gray400); font("normal"); sz(7.5);
+  rtxt("RECONCILIATION REPORT", 14);
+  color(C.white); sz(8.5);
+  rtxt(dateStr + "  " + timeStr, 22);
+
+  // Emerald accent stripe
+  fill(C.emerald); doc.rect(0, 30, W, 1.5, "F");
+
+  y = 38;
+
+  // Company block — two column layout
+  // Left col: prepared for
+  color(C.gray400); font("bold"); sz(7);
+  txt("PREPARED FOR", M, y); y += 5;
+  color(C.dark); font("bold"); sz(11);
+  txt(companyName || "—", M, y); y += 5;
+
+  // Data sources row
+  color(C.gray400); font("bold"); sz(7);
+  txt("BANK STATEMENT", M, y);
+  txt("GENERAL LEDGER", M + 90, y); y += 4.5;
+  color(C.gray700); font("normal"); sz(8.5);
+  txt(bankInst || "—", M, y);
+  txt(ledgerSoft || "—", M + 90, y); y += 5;
+  color(C.gray400); font("normal"); sz(7.5);
+  txt("bank.csv  ·  19 transactions", M, y);
+  txt("ledger.csv  ·  11 entries", M + 90, y); y += 3;
+  vline(M + 88, y - 12, y + 0.5);
+
+  // Right side: period + ref
+  color(C.gray400); font("bold"); sz(7);
+  doc.text("PERIOD", R, 43, { align: "right" });
+  color(C.dark); font("bold"); sz(10);
+  doc.text("April 2026", R, 48, { align: "right" });
+  color(C.gray400); font("normal"); sz(7.5);
+  doc.text("FY2026  Q1", R, 53, { align: "right" });
+  color(C.gray400); font("bold"); sz(7);
+  doc.text("DOCUMENT REF", R, 59, { align: "right" });
+  color(C.gray500); font("normal"); sz(7.5);
+  doc.text("RECON-2026-04-001", R, 63, { align: "right" });
+
+  y += 4;
+  hline(y); y += 8;
+
+  // ── Verdict ───────────────────────────────────────────────────────────────
+  // Status badge
+  fill(C.emerald); doc.rect(M, y - 4, 27, 7, "F");
+  color(C.white); font("bold"); sz(7.5);
+  txt("RECONCILED", M + 2, y + 0.5); y += 9;
+
+  color(C.dark); font("bold"); sz(20);
+  txt("April 2026 is reconciled", M, y); y += 7;
+  color(C.gray500); font("normal"); sz(9);
+  const summaryLines = doc.splitTextToSize(
+    `7 of 9 bank transactions matched ${companyName ? companyName + "'s" : "your"} ${ledgerSoft || "ledger"} records for April 2026. 2 entries are flagged for follow-up. Average match confidence is ${AVG_CONF}%.`,
+    CW
+  );
+  doc.text(summaryLines, M, y); y += summaryLines.length * 5 + 4;
+
+  hline(y); y += 6;
+
+  // ── Stat boxes (4 in a row) ───────────────────────────────────────────────
+  const boxW = (CW - 9) / 4;
+  const boxes = [
+    { val: "7 of 9",      lbl: "Transactions matched", sub: "78% match rate",       color: C.emerald },
+    { val: `${AVG_CONF}%`, lbl: "Avg. confidence",     sub: "Across all matches",    color: C.dark    },
+    { val: "2",           lbl: "Unmatched entries",    sub: "Need follow-up",         color: C.amber   },
+    { val: `${ISSUES.length}`, lbl: "Issues flagged",  sub: `${resolved.size} resolved`, color: C.blue },
+  ];
+  boxes.forEach((b, i) => {
+    const bx = M + i * (boxW + 3);
+    // Border
+    stroke(C.gray200); fill(C.white); doc.setLineWidth(0.2);
+    doc.rect(bx, y, boxW, 22, "FD");
+    // Colored top stripe
+    fill(b.color); doc.rect(bx, y, boxW, 2.5, "F");
+    // Value
+    color(C.dark); font("bold"); sz(14);
+    doc.text(b.val, bx + boxW / 2, y + 12, { align: "center" });
+    // Label
+    color(C.gray500); font("normal"); sz(7);
+    doc.text(b.lbl, bx + boxW / 2, y + 17, { align: "center" });
+    // Sub
+    color(C.gray400); sz(6.5);
+    doc.text(b.sub, bx + boxW / 2, y + 20.5, { align: "center" });
   });
-  y+=4; hline(y); y+=8;
-  y = secLabel("Transaction matches", y);
-  MATCHES.forEach(m=>{
-    if(y>270){doc.addPage();y=20;}
-    doc.setFontSize(8.5); doc.setTextColor(17,17,17);
-    doc.text(`${m.bank.id} — ${m.bank.desc.slice(0,40)}`,col,y);
-    right(`${m.conf}% · ${m.quality}`,y,8.5); y+=5;
+  y += 28;
+
+  // ── Match table ───────────────────────────────────────────────────────────
+  color(C.gray400); font("bold"); sz(7);
+  txt("TRANSACTION MATCHES", M, y); y += 4;
+
+  // Table header
+  const tCols = {
+    dot:   M,
+    desc:  M + 5,
+    date:  M + 82,
+    amt:   M + 100,
+    conf:  M + 128,
+    qual:  M + 146,
+  };
+  fill(C.dark); doc.rect(M, y, CW, 7, "F");
+  color(C.white); font("bold"); sz(7);
+  txt("",               tCols.dot,  y + 4.5);
+  txt("Description",    tCols.desc, y + 4.5);
+  txt("Date",           tCols.date, y + 4.5);
+  txt("Amount",         tCols.amt,  y + 4.5);
+  txt("Confidence",     tCols.conf, y + 4.5);
+  txt("Result",         tCols.qual, y + 4.5);
+  y += 7;
+
+  const qualColor: Record<string, [number,number,number]> = {
+    perfect: C.emerald,
+    close:   C.blue,
+    amount:  C.amber,
+  };
+  const qualLabel: Record<string, string> = {
+    perfect: "Perfect",
+    close:   "Off by 1 day",
+    amount:  "Amount only",
+  };
+
+  MATCHES.forEach((m, i) => {
+    newPageIfNeeded(9);
+    const rowY = y;
+    // Alternating bg
+    if (i % 2 === 0) { fill(C.gray50); doc.rect(M, rowY, CW, 8, "F"); }
+    // Status dot
+    fill(qualColor[m.quality]); doc.circle(tCols.dot + 1.5, rowY + 4, 1.5, "F");
+    // Description
+    color(C.dark); font("normal"); sz(8.5);
+    txt(m.bank.desc.slice(0, 32), tCols.desc, rowY + 5.5);
+    // Bank sub-line
+    color(C.gray400); sz(6.5);
+    txt(`${m.bank.id}  ·  Ledger: ${m.ledger.id}`, tCols.desc, rowY + 7.5 - 0.5);
+    // Date
+    color(m.bank.date !== m.ledger.date ? C.amber : C.gray500); font("normal"); sz(8);
+    txt(m.bank.date, tCols.date, rowY + 5.5);
+    // Amount
+    color(m.bank.amt < 0 ? C.red : C.emerald); font("bold"); sz(8.5);
+    txt(fmtAmt(m.bank.amt).replace("\u2212", "-").replace("\u00a0", " "), tCols.amt, rowY + 5.5);
+    // Confidence
+    color(m.conf >= 90 ? C.emerald : m.conf >= 75 ? C.amber : C.red); font("bold"); sz(8.5);
+    txt(`${m.conf}%`, tCols.conf, rowY + 5.5);
+    // Quality label
+    const qc = qualColor[m.quality];
+    fill(qc);
+    const qlbl = qualLabel[m.quality];
+    const qlblW = doc.getTextWidth(qlbl) + 4;
+    doc.rect(tCols.qual, rowY + 2, qlblW, 4.5, "F");
+    color(C.white); font("bold"); sz(6.5);
+    txt(qlbl, tCols.qual + 2, rowY + 5.5);
+    // Bottom divider
+    hline(rowY + 8, C.gray100, 0.1);
+    y += 8;
   });
-  y+=4; hline(y); y+=8;
-  y = secLabel("Issues flagged", y);
-  ISSUES.forEach(iss=>{
-    if(y>260){doc.addPage();y=20;}
-    doc.setFontSize(8.5); doc.setTextColor(17,17,17); doc.setFont("helvetica","bold"); doc.text(iss.title,col,y); y+=5;
-    doc.setFont("helvetica","normal"); doc.setTextColor(90,90,90);
-    const w=doc.splitTextToSize(iss.plain,W-margin*2);
-    doc.text(w,col,y); y+=w.length*4.5+4;
+
+  // Unmatched rows
+  MISSING.forEach((m, i) => {
+    newPageIfNeeded(9);
+    const rowY = y;
+    fill(i % 2 === 0 ? [255,251,235] as [number,number,number] : C.white);
+    doc.rect(M, rowY, CW, 8, "F");
+    fill(C.amber); doc.circle(tCols.dot + 1.5, rowY + 4, 1.5, "F");
+    color(C.dark); font("normal"); sz(8.5);
+    txt(m.desc.slice(0, 32), tCols.desc, rowY + 5.5);
+    color(C.gray400); sz(6.5);
+    txt(`${m.id}  ·  No ledger match`, tCols.desc, rowY + 7.5 - 0.5);
+    color(m.amt < 0 ? C.red : C.emerald); font("bold"); sz(8.5);
+    txt(fmtAmt(m.amt).replace("\u2212", "-").replace("\u00a0", " "), tCols.amt, rowY + 5.5);
+    color(C.gray400); font("normal"); sz(8);
+    txt("—", tCols.conf, rowY + 5.5);
+    fill(C.amber); doc.rect(tCols.qual, rowY + 2, 17, 4.5, "F");
+    color(C.white); font("bold"); sz(6.5); txt("No match", tCols.qual + 2, rowY + 5.5);
+    hline(rowY + 8, C.gray100, 0.1);
+    y += 8;
   });
-  y+=2; hline(y); y+=8;
-  doc.setFontSize(7.5); doc.setTextColor(160,160,160);
-  doc.text(`Generated by Addup · ${new Date().toISOString()}`,col,y); right("addup.co",y,7.5);
-  doc.save("addup-reconciliation-april-2026.pdf");
+
+  y += 6;
+
+  // ── Issues flagged ────────────────────────────────────────────────────────
+  newPageIfNeeded(20);
+  hline(y); y += 5;
+  color(C.gray400); font("bold"); sz(7);
+  txt("ISSUES FLAGGED", M, y); y += 5;
+
+  const kindColor: Record<string, [number,number,number]> = {
+    desc:    C.blue,
+    date:    C.amber,
+    missing: C.red,
+  };
+  const kindLabel: Record<string, string> = {
+    desc:    "Description mismatch",
+    date:    "Date discrepancy",
+    missing: "Missing entry",
+  };
+
+  ISSUES.forEach((iss, i) => {
+    newPageIfNeeded(28);
+    const issY = y;
+    // Card bg
+    stroke(C.gray200); fill(C.gray50); doc.setLineWidth(0.2);
+    // Left accent stripe
+    fill(kindColor[iss.kind]);
+    doc.rect(M, issY, 2, 24, "F");
+    // Card bg
+    fill(C.gray50);
+    doc.rect(M + 2, issY, CW - 2, 24, "FD");
+
+    // Number badge
+    fill(C.gray200); doc.rect(M + 5, issY + 4, 6, 6, "F");
+    color(C.gray700); font("bold"); sz(8);
+    doc.text(`${i + 1}`, M + 8, issY + 8.5, { align: "center" });
+
+    // Kind tag
+    const kw = doc.getTextWidth(kindLabel[iss.kind]) + 4;
+    fill(kindColor[iss.kind]); doc.rect(M + 14, issY + 4, kw, 5.5, "F");
+    color(C.white); font("bold"); sz(6.5);
+    txt(kindLabel[iss.kind], M + 16, issY + 8.5);
+
+    // Resolved badge
+    if (resolved.has(iss.id)) {
+      fill(C.emerald); doc.rect(R - 18, issY + 4, 18, 5.5, "F");
+      color(C.white); font("bold"); sz(6.5);
+      doc.text("RESOLVED", R - 9, issY + 8.5, { align: "center" });
+    }
+
+    // Title
+    color(C.dark); font("bold"); sz(9);
+    txt(iss.title, M + 5, issY + 14);
+
+    // Amount right
+    color(iss.amt < 0 ? C.red : C.emerald); font("bold"); sz(9);
+    doc.text(fmtAmt(iss.amt).replace("\u2212", "-").replace("\u00a0", " "), R - 2, issY + 14, { align: "right" });
+
+    // Description
+    color(C.gray500); font("normal"); sz(7.5);
+    const plain = doc.splitTextToSize(iss.plain, CW - 10);
+    doc.text(plain, M + 5, issY + 19);
+
+    y += 26;
+  });
+
+  y += 4;
+
+  // ── Match method breakdown ────────────────────────────────────────────────
+  newPageIfNeeded(40);
+  hline(y); y += 5;
+  color(C.gray400); font("bold"); sz(7);
+  txt("HOW MATCHES WERE FOUND", M, y); y += 5;
+
+  const breakdown = [
+    { lbl: "Perfect match — same amount and date",      val: MATCHES.filter(m=>m.quality==="perfect").length, c: C.emerald },
+    { lbl: "Close match — same amount, date off by 1",  val: MATCHES.filter(m=>m.quality==="close").length,   c: C.blue    },
+    { lbl: "Amount match — date differed significantly", val: MATCHES.filter(m=>m.quality==="amount").length, c: C.amber   },
+    { lbl: "No match found",                            val: MISSING.length,                                   c: C.red     },
+  ];
+
+  breakdown.forEach(b => {
+    newPageIfNeeded(8);
+    // Bar
+    const barMax = CW - 60;
+    const barW   = Math.max(2, (b.val / (MATCHES.length + MISSING.length)) * barMax);
+    fill(b.c); doc.rect(M, y, barW, 4, "F");
+    fill(C.gray100); doc.rect(M + barW, y, barMax - barW, 4, "F");
+    // Label
+    color(C.gray700); font("normal"); sz(8.5);
+    txt(b.lbl, M + barMax + 4, y + 3.5);
+    // Count
+    color(C.dark); font("bold"); sz(8.5);
+    doc.text(String(b.val), R, y + 3.5, { align: "right" });
+    y += 7;
+  });
+
+  y += 4;
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  const footerY = 284;
+  hline(footerY, C.gray200, 0.3);
+
+  // Logo in footer
+  if (logoData) {
+    doc.addImage(logoData, "PNG", M, footerY + 3, 16, 5.5);
+  } else {
+    color(C.dark); font("bold"); sz(9); txt("Addup", M, footerY + 7);
+  }
+
+  color(C.gray400); font("normal"); sz(7);
+  txt("Generated by Addup  ·  addup.co  ·  Automated reconciliation software", M + 19, footerY + 7);
+
+  // Right: date + confidential
+  color(C.gray400); sz(7);
+  doc.text(`${dateStr}  ·  Confidential`, R, footerY + 7, { align: "right" });
+
+  // Page numbers on all pages
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    color(C.gray400); font("normal"); sz(7);
+    doc.text(`Page ${p} of ${pageCount}`, R, footerY + 7, { align: "right" });
+    // Repeat footer line on page 2+
+    if (p > 1) {
+      hline(footerY, C.gray200, 0.3);
+      if (logoData) doc.addImage(logoData, "PNG", M, footerY + 3, 16, 5.5);
+      else { color(C.dark); font("bold"); sz(9); txt("Addup", M, footerY + 7); }
+      color(C.gray400); font("normal"); sz(7);
+      txt("Generated by Addup  ·  addup.co  ·  Automated reconciliation software", M + 19, footerY + 7);
+    }
+  }
+
+  const period = "april-2026";
+  const slug   = (companyName || "report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
+  doc.save(`addup-${slug}-${period}.pdf`);
 }
