@@ -1,10 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { useWaitlist } from "./waitlist-dialog";
+import { Link } from "wouter";
 
 export function CTA() {
-  const { open } = useWaitlist();
 
   return (
     <section className="relative py-24 sm:py-32 bg-black overflow-hidden">
@@ -39,13 +38,12 @@ export function CTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={open}
-              className="group inline-flex items-center gap-2 bg-white text-black px-7 h-12 text-[15px] font-semibold hover:bg-white/90 transition-colors"
-            >
-              Try it
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
+            <Link href="/engine">
+              <button className="group inline-flex items-center gap-2 bg-white text-black px-7 h-12 text-[15px] font-semibold hover:bg-white/90 transition-colors">
+                Try it
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </Link>
             <a
               href="#how-it-works"
               onClick={(e) => {

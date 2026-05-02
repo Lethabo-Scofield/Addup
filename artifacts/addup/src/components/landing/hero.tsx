@@ -1,12 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 import heroBg from "@assets/a-chosen-soul-Cp4xHgvXt0M-unsplash_1777332357410.jpg";
-import { useWaitlist } from "./waitlist-dialog";
 
 export function Hero() {
-  const { open } = useWaitlist();
-
   const scrollToHowItWorks = () => {
     document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -39,13 +37,12 @@ export function Hero() {
           </h1>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={open}
-              className="group inline-flex items-center gap-2 bg-white text-black px-7 h-12 text-[15px] font-semibold hover:bg-white/90 transition-colors"
-            >
-              Try it
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
+            <Link href="/engine">
+              <button className="group inline-flex items-center gap-2 bg-white text-black px-7 h-12 text-[15px] font-semibold hover:bg-white/90 transition-colors">
+                Try it
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </Link>
             <button
               onClick={scrollToHowItWorks}
               className="inline-flex items-center h-12 px-7 text-[15px] font-medium text-white/70 hover:text-white border border-white/20 hover:border-white/40 transition-colors"
