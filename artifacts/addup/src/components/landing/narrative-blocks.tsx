@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function VisualPreventBadData() {
@@ -175,6 +175,21 @@ const blocks = [
 
 export function NarrativeBlocks() {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const interval = setInterval(() => {
+      setActive((current) => (current + 1) % blocks.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [paused]);
+
+  const handleTabClick = (i: number) => {
+    setActive(i);
+    setPaused(true);
+  };
+
   const block = blocks[active];
   const Visual = block.Visual;
 
@@ -196,7 +211,7 @@ export function NarrativeBlocks() {
             {blocks.map((b, i) => (
               <button
                 key={b.id}
-                onClick={() => setActive(i)}
+                onClick={() => handleTabClick(i)}
                 className={`relative px-5 sm:px-6 h-10 sm:h-11 text-[13px] sm:text-sm font-medium transition-colors whitespace-nowrap border-r border-border/60 last:border-r-0 ${
                   active === i
                     ? "bg-foreground text-background"
@@ -234,7 +249,7 @@ export function NarrativeBlocks() {
                 {blocks.map((b, i) => (
                   <button
                     key={`dot-${b.id}`}
-                    onClick={() => setActive(i)}
+                    onClick={() => handleTabClick(i)}
                     aria-label={`Go to ${b.label}`}
                     className={`h-1.5 transition-all ${
                       active === i ? "w-8 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40"
