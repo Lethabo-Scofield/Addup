@@ -1,0 +1,1536 @@
+{
+  "rec_20260429201829_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "created_at": "2026-04-29T20:18:29.127Z"
+  },
+  "rec_20260429230216_001": {
+    "state": {
+      "bank_file_checksum": "cfafa5ed6b3a42f9d2ab1eb9ce29add7b4fb0859eb1f6c2c4d199f5c11ca59df",
+      "ledger_file_checksum": "3c2a2d48d14c8b42091e31738ecf0372876a7d6b484397af198eb1b85853000d",
+      "step": "parsed",
+      "version": 1
+    },
+    "created_at": "2026-04-29T23:02:16.254Z"
+  },
+  "rec_20260429234338_002": {
+    "state": {
+      "bank_file_checksum": "2a98ae55fd32962c60cc374b8b9faa8accd697484888672e7f1425bc1b69dca4",
+      "ledger_file_checksum": "7250b88398000374a6c140912414d4fe487a3d27847f0985ed83dac265500016",
+      "step": "parsed",
+      "version": 1
+    },
+    "created_at": "2026-04-29T23:43:38.060Z"
+  },
+  "rec_20260429235945_001": {
+    "state": {
+      "bank_file_checksum": "2a98ae55fd32962c60cc374b8b9faa8accd697484888672e7f1425bc1b69dca4",
+      "ledger_file_checksum": "7250b88398000374a6c140912414d4fe487a3d27847f0985ed83dac265500016",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_a06027c751c6",
+            "source": "bank",
+            "date": "2026-04-01",
+            "description": "Salary Payment",
+            "amount": 3500,
+            "reference": "ACME Payroll",
+            "raw_row": {
+              "date": "2026-04-01",
+              "description": "Salary Payment",
+              "amount": "3500.00",
+              "reference": "ACME Payroll",
+              "balance": "3500.00"
+            },
+            "row_hash": "a06027c751c6cb78baa046c31f6a24580a328f78e219d73d596ac0ef6d7d5e53"
+          },
+          {
+            "id": "txn_52aca1137ac9",
+            "source": "bank",
+            "date": "2026-04-02",
+            "description": "Online Transfer to Savings",
+            "amount": -500,
+            "reference": "Transfer",
+            "raw_row": {
+              "date": "2026-04-02",
+              "description": "Online Transfer to Savings",
+              "amount": "-500.00",
+              "reference": "Transfer",
+              "balance": "3000.00"
+            },
+            "row_hash": "52aca1137ac907503fd2bd277c6b9f0bccb7adc2c9142a067602ef67a273b542"
+          },
+          {
+            "id": "txn_b746983d6761",
+            "source": "bank",
+            "date": "2026-04-01",
+            "description": "Refund from Vendor",
+            "amount": 150,
+            "reference": "REF123",
+            "raw_row": {
+              "date": "01/04/2026",
+              "description": "Refund from Vendor",
+              "amount": "150.00",
+              "reference": "REF123",
+              "balance": "3150.00"
+            },
+            "row_hash": "b746983d676127bacf6bc60c8e6e25a0644a05f08afe61af0230690cc699f565"
+          },
+          {
+            "id": "txn_37a8dffc321e",
+            "source": "bank",
+            "date": "2026-04-03",
+            "description": "Supermarket - Grocery",
+            "amount": -123.45,
+            "reference": "POS 4321",
+            "raw_row": {
+              "date": "03/04/2026",
+              "description": "Supermarket - Grocery",
+              "amount": "-123.45",
+              "reference": "POS 4321",
+              "balance": "3026.55"
+            },
+            "row_hash": "37a8dffc321ed5bd75540692ec4c9c9780a22f61846d8f0f506ff7ccb0d7a398"
+          },
+          {
+            "id": "txn_834b85c3d90b",
+            "source": "bank",
+            "date": "2026-04-04",
+            "description": "Coffee Shop, Downtown",
+            "amount": -4.5,
+            "reference": "POS 4322",
+            "raw_row": {
+              "date": "2026-04-04",
+              "description": "Coffee Shop, Downtown",
+              "amount": "-4.50",
+              "reference": "POS 4322",
+              "balance": "3022.05"
+            },
+            "row_hash": "834b85c3d90bd347aa6a9406352df87b541a9033af75b43200d399dc285015ab"
+          },
+          {
+            "id": "txn_3ed9c9c34d31",
+            "source": "bank",
+            "date": "2026-05-04",
+            "description": "ATM Withdrawal",
+            "amount": -200,
+            "reference": "ATM 001",
+            "raw_row": {
+              "date": "4/5/2026",
+              "description": "ATM Withdrawal",
+              "amount": "-200.00",
+              "reference": "ATM 001",
+              "balance": "2822.05"
+            },
+            "row_hash": "3ed9c9c34d31ac3234cf899677c21c6fe8679268f92e697e410902cddb7284d8"
+          },
+          {
+            "id": "txn_a9cb0eafd791",
+            "source": "bank",
+            "date": "2026-04-06",
+            "description": "Direct Debit - Electricity",
+            "amount": -95.67,
+            "reference": "DD 778",
+            "raw_row": {
+              "date": "2026-04-06",
+              "description": "Direct Debit - Electricity",
+              "amount": "-95.67",
+              "reference": "DD 778",
+              "balance": "2726.38"
+            },
+            "row_hash": "a9cb0eafd791be328112f5e20292e8c49d2332e1f86a9b2fa8489ac11187c2a6"
+          },
+          {
+            "id": "txn_1b5af02cc1e8",
+            "source": "bank",
+            "date": "2026-04-07",
+            "description": "Online Payment - Amazon",
+            "amount": -87.99,
+            "reference": "AMZ",
+            "raw_row": {
+              "date": "07-04-2026",
+              "description": "Online Payment - Amazon",
+              "amount": "-87.99",
+              "reference": "AMZ",
+              "balance": "2638.39"
+            },
+            "row_hash": "1b5af02cc1e871ec5d88490d2fa9846f8d9657546450f3f83e16b1eb33cbc83a"
+          },
+          {
+            "id": "txn_1b0e68a95330",
+            "source": "bank",
+            "date": "2026-04-07",
+            "description": "International Payment",
+            "amount": -250,
+            "reference": "INTL",
+            "raw_row": {
+              "date": "2026/04/08",
+              "description": "International Payment",
+              "amount": "-250.00",
+              "reference": "INTL",
+              "balance": "2388.39"
+            },
+            "row_hash": "1b0e68a95330c01e2512ccae32925a14f1b74186f0ea121369efed6dc2901ed3"
+          },
+          {
+            "id": "txn_c9322e118d47",
+            "source": "bank",
+            "date": "2026-04-08",
+            "description": "Subscription Netflix",
+            "amount": -12.99,
+            "reference": "NETFLX",
+            "raw_row": {
+              "date": "09 Apr 2026",
+              "description": "Subscription Netflix",
+              "amount": "-12.99",
+              "reference": "NETFLX",
+              "balance": "2375.40"
+            },
+            "row_hash": "c9322e118d47fdaf4c64597e8dc893a3a5a48792e940ad31ed5061e8567dc053"
+          },
+          {
+            "id": "txn_ba2c4a07d24a",
+            "source": "bank",
+            "date": "2026-04-10",
+            "description": "Check Deposit",
+            "amount": 500,
+            "reference": "CHK1001",
+            "raw_row": {
+              "date": "2026-04-10",
+              "description": "Check Deposit",
+              "amount": "500.00",
+              "reference": "CHK1001",
+              "balance": "2875.40"
+            },
+            "row_hash": "ba2c4a07d24a0812e45ca34882611b29725aad8157b086b269a916cf0c3186f4"
+          },
+          {
+            "id": "txn_41009216f024",
+            "source": "bank",
+            "date": "2026-04-11",
+            "description": "Fee - Overdraft",
+            "amount": -35,
+            "reference": "FEE",
+            "raw_row": {
+              "date": "11/04/2026",
+              "description": "Fee - Overdraft",
+              "amount": "-35.00",
+              "reference": "FEE",
+              "balance": "2840.40"
+            },
+            "row_hash": "41009216f0244e4f2edda3f2e8a9caaebb547c719fcad7fbbc877950b6bb3ac1"
+          },
+          {
+            "id": "txn_e87d67ecda79",
+            "source": "bank",
+            "date": "2026-04-12",
+            "description": "Interest Credit",
+            "amount": 2.35,
+            "reference": "INT",
+            "raw_row": {
+              "date": "2026-04-12",
+              "description": "Interest Credit",
+              "amount": "2.35",
+              "reference": "INT",
+              "balance": "2842.75"
+            },
+            "row_hash": "e87d67ecda79f72f48ce2ded1a56ded8aeecee2ec83f89d86f350203258efb2c"
+          },
+          {
+            "id": "txn_87c928a830bd",
+            "source": "bank",
+            "date": "2026-04-13",
+            "description": "POS - Bookstore",
+            "amount": -24.99,
+            "reference": "POS 998",
+            "raw_row": {
+              "date": "13/04/2026",
+              "description": "POS - Bookstore",
+              "amount": "-24.99",
+              "reference": "POS 998",
+              "balance": "2817.76"
+            },
+            "row_hash": "87c928a830bd78c96cef635423c2846c726534121aa184666ca4ce102a8fcdd1"
+          },
+          {
+            "id": "txn_a83699918b80",
+            "source": "bank",
+            "date": "2026-04-14",
+            "description": "Transfer from John",
+            "amount": 100,
+            "reference": "TRF JOHN",
+            "raw_row": {
+              "date": "14/04/2026",
+              "description": "Transfer from John",
+              "amount": "100.00",
+              "reference": "TRF JOHN",
+              "balance": "2917.76"
+            },
+            "row_hash": "a83699918b80f28ccd17917f4d9fb764cfa91b813f8d347e0228b6f19ecc544a"
+          },
+          {
+            "id": "txn_9b8345e0aef6",
+            "source": "bank",
+            "date": "2026-04-15",
+            "description": "Refund, Online Store",
+            "amount": 45,
+            "reference": "REF-OS",
+            "raw_row": {
+              "date": "15/04/2026",
+              "description": "Refund, Online Store",
+              "amount": "45.00",
+              "reference": "REF-OS",
+              "balance": "2962.76"
+            },
+            "row_hash": "9b8345e0aef638a6cf1183acb6e80b3b2b037a946b6e53b64c99690322191e70"
+          },
+          {
+            "id": "txn_986d0f2c570c",
+            "source": "bank",
+            "date": "2026-04-16",
+            "description": "Wire Transfer Incoming",
+            "amount": 10000,
+            "reference": "WIRE-789",
+            "raw_row": {
+              "date": "2026-04-16",
+              "description": "Wire Transfer Incoming",
+              "amount": "10000.00",
+              "reference": "WIRE-789",
+              "balance": "12962.76"
+            },
+            "row_hash": "986d0f2c570c73ab8bce1bcefe637f907c207cf5477d177cb524b5e2e215222b"
+          },
+          {
+            "id": "txn_53d69f3b7d33",
+            "source": "bank",
+            "date": "2026-04-17",
+            "description": "International Fee",
+            "amount": -15,
+            "reference": "INTFEE",
+            "raw_row": {
+              "date": "17/04/2026",
+              "description": "International Fee",
+              "amount": "-15.00",
+              "reference": "INTFEE",
+              "balance": "12947.76"
+            },
+            "row_hash": "53d69f3b7d33fa8d56c390fa0a8904ad5d2337613ea7e447e8fdfd9b0545bd87"
+          },
+          {
+            "id": "txn_9d5923a7a14b",
+            "source": "bank",
+            "date": "2026-04-18",
+            "description": "Charity Donation",
+            "amount": -200,
+            "reference": "CHARITY",
+            "raw_row": {
+              "date": "18-04-2026",
+              "description": "Charity Donation",
+              "amount": "-200.00",
+              "reference": "CHARITY",
+              "balance": "12747.76"
+            },
+            "row_hash": "9d5923a7a14b05d984995abcbc49e1255c70d1f9bbe669d13c156e527b9bd24f"
+          },
+          {
+            "id": "txn_74444b612abc",
+            "source": "bank",
+            "date": "2026-04-19",
+            "description": "Payroll Tax",
+            "amount": -450,
+            "reference": "TAX",
+            "raw_row": {
+              "date": "2026-04-19",
+              "description": "Payroll Tax",
+              "amount": "-450.00",
+              "reference": "TAX",
+              "balance": "12297.76"
+            },
+            "row_hash": "74444b612abcec0eea2139d4ff4cbe526a492e3d5a389946cb4b350740744a7b"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount",
+          "reference",
+          "balance"
+        ],
+        "issues": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "ocr_0001",
+            "source": "ledger_ocr",
+            "date": "2012-01-01",
+            "description": "[] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ () | $91,000.00 |",
+            "amount": 59000,
+            "reference": "",
+            "raw_row": {
+              "text": "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59,000.00) | $91,000.00 |"
+            }
+          },
+          {
+            "id": "ocr_0002",
+            "source": "ledger_ocr",
+            "date": "2012-07-01",
+            "description": "[ | 1002 _|__Wike Willams [Vike Willams |Net Proceeds| | () | $33,333.00 |",
+            "amount": 557667,
+            "reference": "",
+            "raw_row": {
+              "text": "[07/02/12 | 1002 _|__Wike Willams [Vike Willams |Net Proceeds| | (557,667.00) | $33,333.00 |"
+            }
+          },
+          {
+            "id": "ocr_0003",
+            "source": "ledger_ocr",
+            "date": "2012-07-02",
+            "description": "[ | DEPOSIT | Susan Harl Estate _| Susan Hart | Har Estate [$000] | $757,000.00 |",
+            "amount": 157,
+            "reference": "",
+            "raw_row": {
+              "text": "[07/03/12 | DEPOSIT | Susan Harl Estate _| Susan Hart | Har Estate [$157.00000] | $757,000.00 |"
+            }
+          },
+          {
+            "id": "ocr_0004",
+            "source": "ledger_ocr",
+            "date": "2012-01-04",
+            "description": "1005 Rocky Hill Town Clerk | John Doe Fees ($) $158,703.00",
+            "amount": 65,
+            "reference": "",
+            "raw_row": {
+              "text": "01/05/12 1005 Rocky Hill Town Clerk | John Doe Fees ($65.00) $158,703.00"
+            }
+          },
+          {
+            "id": "ocr_0005",
+            "source": "ledger_ocr",
+            "date": "2012-01-04",
+            "description": "[ | 1007 [ Attorney Joe Smith | JohnDoe | Fee [ | ($) | $157,815.00 |",
+            "amount": 750,
+            "reference": "",
+            "raw_row": {
+              "text": "[01/05/12 | 1007 [ Attorney Joe Smith | JohnDoe | Fee [ | ($750.00) | $157,815.00 |"
+            }
+          },
+          {
+            "id": "ocr_0006",
+            "source": "ledger_ocr",
+            "date": "2012-07-04",
+            "description": "[ | 1008 | Imagieers | JohnDoe | CondoDocs |__| ($5000) | $ |",
+            "amount": 157765,
+            "reference": "",
+            "raw_row": {
+              "text": "[07/05/12 | 1008 | Imagieers | JohnDoe | CondoDocs |__| ($5000) | $157,765.00 |"
+            }
+          },
+          {
+            "id": "ocr_0007",
+            "source": "ledger_ocr",
+            "date": "2012-07-04",
+            "description": "[ | 1009 | Atomey Joe Smith _| JohnDoe | THe | | (5) | $157,306.00 |",
+            "amount": 459,
+            "reference": "",
+            "raw_row": {
+              "text": "[07/05/12 | 1009 | Atomey Joe Smith _| JohnDoe | THe | | (5459.00) | $157,306.00 |"
+            }
+          },
+          {
+            "id": "ocr_0008",
+            "source": "ledger_ocr",
+            "date": "2012-01-04",
+            "description": "[ 1010 | OldRepublicTitle [| JohnDoe [ Tite | ~~ ($) | $157,000.00 |",
+            "amount": 306,
+            "reference": "",
+            "raw_row": {
+              "text": "[01/05/12 1010 | OldRepublicTitle [| JohnDoe [ Tite | ~~ ($306.00) | $157,000.00 |"
+            }
+          },
+          {
+            "id": "ocr_0009",
+            "source": "ledger_ocr",
+            "date": "2012-01-05",
+            "description": "| DEPOSIT Comp Charlie Brown Comp $ $157,430.00",
+            "amount": 430,
+            "reference": "",
+            "raw_row": {
+              "text": "01/06/12 | DEPOSIT Comp Charlie Brown Comp $430.00 $157,430.00"
+            }
+          },
+          {
+            "id": "ocr_0010",
+            "source": "ledger_ocr",
+            "date": "2012-07-05",
+            "description": "[ | 1011 __| Charlie Brown [Charlie Brown] Work Comp |__| (3) | $157,086.00 |",
+            "amount": 344,
+            "reference": "",
+            "raw_row": {
+              "text": "[07/06/12 | 1011 __| Charlie Brown [Charlie Brown] Work Comp |__| (3344.00) | $157,086.00 |"
+            }
+          },
+          {
+            "id": "ocr_0011",
+            "source": "ledger_ocr",
+            "date": "2012-01-05",
+            "description": "[] 1012 [ Attorney Joe Smith [CharlieBrown] Fee [ | ($) | $157,000.00 |",
+            "amount": 86,
+            "reference": "",
+            "raw_row": {
+              "text": "[01/06/12] 1012 [ Attorney Joe Smith [CharlieBrown] Fee [ | ($86.00) | $157,000.00 |"
+            }
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount",
+          "reference"
+        ],
+        "issues": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-04-29T23:59:45.937Z"
+  },
+  "rec_20260430233456_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_66451ea421af",
+            "source": "bank",
+            "date": "2021-01-01",
+            "description": "Deposit",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Deposit",
+              "amount": "100.00"
+            },
+            "row_hash": "66451ea421af1bbfd40087820b3ba00e61c23a7c2fe478df604fe97bb96ce6c3"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_f3d1f4980738",
+            "source": "ledger",
+            "date": "2021-01-01",
+            "description": "Sale",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Sale",
+              "amount": "100.00"
+            },
+            "row_hash": "f3d1f4980738ea293c41e6a0ea064318bdb48943d4635a11322424c8947571b1"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-04-30T23:34:56.990Z"
+  },
+  "rec_20260430233739_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_66451ea421af",
+            "source": "bank",
+            "date": "2021-01-01",
+            "description": "Deposit",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Deposit",
+              "amount": "100.00"
+            },
+            "row_hash": "66451ea421af1bbfd40087820b3ba00e61c23a7c2fe478df604fe97bb96ce6c3"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_f3d1f4980738",
+            "source": "ledger",
+            "date": "2021-01-01",
+            "description": "Sale",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Sale",
+              "amount": "100.00"
+            },
+            "row_hash": "f3d1f4980738ea293c41e6a0ea064318bdb48943d4635a11322424c8947571b1"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-04-30T23:37:39.070Z"
+  },
+  "rec_20260501231940_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_66451ea421af",
+            "source": "bank",
+            "date": "2021-01-01",
+            "description": "Deposit",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Deposit",
+              "amount": "100.00"
+            },
+            "row_hash": "66451ea421af1bbfd40087820b3ba00e61c23a7c2fe478df604fe97bb96ce6c3"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_f3d1f4980738",
+            "source": "ledger",
+            "date": "2021-01-01",
+            "description": "Sale",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Sale",
+              "amount": "100.00"
+            },
+            "row_hash": "f3d1f4980738ea293c41e6a0ea064318bdb48943d4635a11322424c8947571b1"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-05-01T23:19:40.129Z"
+  },
+  "rec_20260502125021_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_66451ea421af",
+            "source": "bank",
+            "date": "2021-01-01",
+            "description": "Deposit",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Deposit",
+              "amount": "100.00"
+            },
+            "row_hash": "66451ea421af1bbfd40087820b3ba00e61c23a7c2fe478df604fe97bb96ce6c3"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": [],
+        "invalid_rows": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_f3d1f4980738",
+            "source": "ledger",
+            "date": "2021-01-01",
+            "description": "Sale",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Sale",
+              "amount": "100.00"
+            },
+            "row_hash": "f3d1f4980738ea293c41e6a0ea064318bdb48943d4635a11322424c8947571b1"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": [],
+        "invalid_rows": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-05-02T12:50:21.225Z"
+  },
+  "rec_20260502151654_001": {
+    "state": {
+      "bank_file_checksum": "2a98ae55fd32962c60cc374b8b9faa8accd697484888672e7f1425bc1b69dca4",
+      "ledger_file_checksum": "f82644f4a07b9e0a25a186dea153a97d1e1ef04fe52ec8a4f708a664fce9cbed",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_a06027c751c6",
+            "source": "bank",
+            "date": "2026-04-01",
+            "description": "Salary Payment",
+            "amount": 3500,
+            "reference": "ACME Payroll",
+            "raw_row": {
+              "date": "2026-04-01",
+              "description": "Salary Payment",
+              "amount": "3500.00",
+              "reference": "ACME Payroll",
+              "balance": "3500.00"
+            },
+            "row_hash": "a06027c751c6cb78baa046c31f6a24580a328f78e219d73d596ac0ef6d7d5e53"
+          },
+          {
+            "id": "txn_52aca1137ac9",
+            "source": "bank",
+            "date": "2026-04-02",
+            "description": "Online Transfer to Savings",
+            "amount": -500,
+            "reference": "Transfer",
+            "raw_row": {
+              "date": "2026-04-02",
+              "description": "Online Transfer to Savings",
+              "amount": "-500.00",
+              "reference": "Transfer",
+              "balance": "3000.00"
+            },
+            "row_hash": "52aca1137ac907503fd2bd277c6b9f0bccb7adc2c9142a067602ef67a273b542"
+          },
+          {
+            "id": "txn_b746983d6761",
+            "source": "bank",
+            "date": "2026-04-01",
+            "description": "Refund from Vendor",
+            "amount": 150,
+            "reference": "REF123",
+            "raw_row": {
+              "date": "01/04/2026",
+              "description": "Refund from Vendor",
+              "amount": "150.00",
+              "reference": "REF123",
+              "balance": "3150.00"
+            },
+            "row_hash": "b746983d676127bacf6bc60c8e6e25a0644a05f08afe61af0230690cc699f565"
+          },
+          {
+            "id": "txn_37a8dffc321e",
+            "source": "bank",
+            "date": "2026-04-03",
+            "description": "Supermarket - Grocery",
+            "amount": -123.45,
+            "reference": "POS 4321",
+            "raw_row": {
+              "date": "03/04/2026",
+              "description": "Supermarket - Grocery",
+              "amount": "-123.45",
+              "reference": "POS 4321",
+              "balance": "3026.55"
+            },
+            "row_hash": "37a8dffc321ed5bd75540692ec4c9c9780a22f61846d8f0f506ff7ccb0d7a398"
+          },
+          {
+            "id": "txn_834b85c3d90b",
+            "source": "bank",
+            "date": "2026-04-04",
+            "description": "Coffee Shop, Downtown",
+            "amount": -4.5,
+            "reference": "POS 4322",
+            "raw_row": {
+              "date": "2026-04-04",
+              "description": "Coffee Shop, Downtown",
+              "amount": "-4.50",
+              "reference": "POS 4322",
+              "balance": "3022.05"
+            },
+            "row_hash": "834b85c3d90bd347aa6a9406352df87b541a9033af75b43200d399dc285015ab"
+          },
+          {
+            "id": "txn_3ed9c9c34d31",
+            "source": "bank",
+            "date": "2026-05-04",
+            "description": "ATM Withdrawal",
+            "amount": -200,
+            "reference": "ATM 001",
+            "raw_row": {
+              "date": "4/5/2026",
+              "description": "ATM Withdrawal",
+              "amount": "-200.00",
+              "reference": "ATM 001",
+              "balance": "2822.05"
+            },
+            "row_hash": "3ed9c9c34d31ac3234cf899677c21c6fe8679268f92e697e410902cddb7284d8"
+          },
+          {
+            "id": "txn_a9cb0eafd791",
+            "source": "bank",
+            "date": "2026-04-06",
+            "description": "Direct Debit - Electricity",
+            "amount": -95.67,
+            "reference": "DD 778",
+            "raw_row": {
+              "date": "2026-04-06",
+              "description": "Direct Debit - Electricity",
+              "amount": "-95.67",
+              "reference": "DD 778",
+              "balance": "2726.38"
+            },
+            "row_hash": "a9cb0eafd791be328112f5e20292e8c49d2332e1f86a9b2fa8489ac11187c2a6"
+          },
+          {
+            "id": "txn_1b5af02cc1e8",
+            "source": "bank",
+            "date": "2026-04-07",
+            "description": "Online Payment - Amazon",
+            "amount": -87.99,
+            "reference": "AMZ",
+            "raw_row": {
+              "date": "07-04-2026",
+              "description": "Online Payment - Amazon",
+              "amount": "-87.99",
+              "reference": "AMZ",
+              "balance": "2638.39"
+            },
+            "row_hash": "1b5af02cc1e871ec5d88490d2fa9846f8d9657546450f3f83e16b1eb33cbc83a"
+          },
+          {
+            "id": "txn_1b0e68a95330",
+            "source": "bank",
+            "date": "2026-04-07",
+            "description": "International Payment",
+            "amount": -250,
+            "reference": "INTL",
+            "raw_row": {
+              "date": "2026/04/08",
+              "description": "International Payment",
+              "amount": "-250.00",
+              "reference": "INTL",
+              "balance": "2388.39"
+            },
+            "row_hash": "1b0e68a95330c01e2512ccae32925a14f1b74186f0ea121369efed6dc2901ed3"
+          },
+          {
+            "id": "txn_c9322e118d47",
+            "source": "bank",
+            "date": "2026-04-08",
+            "description": "Subscription Netflix",
+            "amount": -12.99,
+            "reference": "NETFLX",
+            "raw_row": {
+              "date": "09 Apr 2026",
+              "description": "Subscription Netflix",
+              "amount": "-12.99",
+              "reference": "NETFLX",
+              "balance": "2375.40"
+            },
+            "row_hash": "c9322e118d47fdaf4c64597e8dc893a3a5a48792e940ad31ed5061e8567dc053"
+          },
+          {
+            "id": "txn_ba2c4a07d24a",
+            "source": "bank",
+            "date": "2026-04-10",
+            "description": "Check Deposit",
+            "amount": 500,
+            "reference": "CHK1001",
+            "raw_row": {
+              "date": "2026-04-10",
+              "description": "Check Deposit",
+              "amount": "500.00",
+              "reference": "CHK1001",
+              "balance": "2875.40"
+            },
+            "row_hash": "ba2c4a07d24a0812e45ca34882611b29725aad8157b086b269a916cf0c3186f4"
+          },
+          {
+            "id": "txn_41009216f024",
+            "source": "bank",
+            "date": "2026-04-11",
+            "description": "Fee - Overdraft",
+            "amount": -35,
+            "reference": "FEE",
+            "raw_row": {
+              "date": "11/04/2026",
+              "description": "Fee - Overdraft",
+              "amount": "-35.00",
+              "reference": "FEE",
+              "balance": "2840.40"
+            },
+            "row_hash": "41009216f0244e4f2edda3f2e8a9caaebb547c719fcad7fbbc877950b6bb3ac1"
+          },
+          {
+            "id": "txn_e87d67ecda79",
+            "source": "bank",
+            "date": "2026-04-12",
+            "description": "Interest Credit",
+            "amount": 2.35,
+            "reference": "INT",
+            "raw_row": {
+              "date": "2026-04-12",
+              "description": "Interest Credit",
+              "amount": "2.35",
+              "reference": "INT",
+              "balance": "2842.75"
+            },
+            "row_hash": "e87d67ecda79f72f48ce2ded1a56ded8aeecee2ec83f89d86f350203258efb2c"
+          },
+          {
+            "id": "txn_87c928a830bd",
+            "source": "bank",
+            "date": "2026-04-13",
+            "description": "POS - Bookstore",
+            "amount": -24.99,
+            "reference": "POS 998",
+            "raw_row": {
+              "date": "13/04/2026",
+              "description": "POS - Bookstore",
+              "amount": "-24.99",
+              "reference": "POS 998",
+              "balance": "2817.76"
+            },
+            "row_hash": "87c928a830bd78c96cef635423c2846c726534121aa184666ca4ce102a8fcdd1"
+          },
+          {
+            "id": "txn_a83699918b80",
+            "source": "bank",
+            "date": "2026-04-14",
+            "description": "Transfer from John",
+            "amount": 100,
+            "reference": "TRF JOHN",
+            "raw_row": {
+              "date": "14/04/2026",
+              "description": "Transfer from John",
+              "amount": "100.00",
+              "reference": "TRF JOHN",
+              "balance": "2917.76"
+            },
+            "row_hash": "a83699918b80f28ccd17917f4d9fb764cfa91b813f8d347e0228b6f19ecc544a"
+          },
+          {
+            "id": "txn_9b8345e0aef6",
+            "source": "bank",
+            "date": "2026-04-15",
+            "description": "Refund, Online Store",
+            "amount": 45,
+            "reference": "REF-OS",
+            "raw_row": {
+              "date": "15/04/2026",
+              "description": "Refund, Online Store",
+              "amount": "45.00",
+              "reference": "REF-OS",
+              "balance": "2962.76"
+            },
+            "row_hash": "9b8345e0aef638a6cf1183acb6e80b3b2b037a946b6e53b64c99690322191e70"
+          },
+          {
+            "id": "txn_986d0f2c570c",
+            "source": "bank",
+            "date": "2026-04-16",
+            "description": "Wire Transfer Incoming",
+            "amount": 10000,
+            "reference": "WIRE-789",
+            "raw_row": {
+              "date": "2026-04-16",
+              "description": "Wire Transfer Incoming",
+              "amount": "10000.00",
+              "reference": "WIRE-789",
+              "balance": "12962.76"
+            },
+            "row_hash": "986d0f2c570c73ab8bce1bcefe637f907c207cf5477d177cb524b5e2e215222b"
+          },
+          {
+            "id": "txn_53d69f3b7d33",
+            "source": "bank",
+            "date": "2026-04-17",
+            "description": "International Fee",
+            "amount": -15,
+            "reference": "INTFEE",
+            "raw_row": {
+              "date": "17/04/2026",
+              "description": "International Fee",
+              "amount": "-15.00",
+              "reference": "INTFEE",
+              "balance": "12947.76"
+            },
+            "row_hash": "53d69f3b7d33fa8d56c390fa0a8904ad5d2337613ea7e447e8fdfd9b0545bd87"
+          },
+          {
+            "id": "txn_9d5923a7a14b",
+            "source": "bank",
+            "date": "2026-04-18",
+            "description": "Charity Donation",
+            "amount": -200,
+            "reference": "CHARITY",
+            "raw_row": {
+              "date": "18-04-2026",
+              "description": "Charity Donation",
+              "amount": "-200.00",
+              "reference": "CHARITY",
+              "balance": "12747.76"
+            },
+            "row_hash": "9d5923a7a14b05d984995abcbc49e1255c70d1f9bbe669d13c156e527b9bd24f"
+          },
+          {
+            "id": "txn_74444b612abc",
+            "source": "bank",
+            "date": "2026-04-19",
+            "description": "Payroll Tax",
+            "amount": -450,
+            "reference": "TAX",
+            "raw_row": {
+              "date": "2026-04-19",
+              "description": "Payroll Tax",
+              "amount": "-450.00",
+              "reference": "TAX",
+              "balance": "12297.76"
+            },
+            "row_hash": "74444b612abcec0eea2139d4ff4cbe526a492e3d5a389946cb4b350740744a7b"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount",
+          "reference",
+          "balance"
+        ],
+        "issues": [],
+        "invalid_rows": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_5e9cad655339",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[07/02/12 | 1002 _|__Wike Willams [Vike Willams |Net Proceeds| | (557",
+              "000.00) | $91": "667.00) | $33",
+              "000.00 |": "333.00 |"
+            },
+            "row_hash": "5e9cad655339a0877300d4d52a5ac198d4f9f144ad195b7d9c222e2f2b43dd16"
+          },
+          {
+            "id": "txn_820f1b7fe368",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[07/03/12 | DEPOSIT | Susan Harl Estate _| Susan Hart | Har Estate [$157.00000] | $757",
+              "000.00) | $91": "000.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "820f1b7fe3681a6982e65497e2d91f591ecb2b02c82773a43a7e21d5432fe5d1"
+          },
+          {
+            "id": "txn_a950f19973dc",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "01/05/12 1005 Rocky Hill Town Clerk | John Doe Fees ($65.00) $158",
+              "000.00) | $91": "703.00",
+              "000.00 |": ""
+            },
+            "row_hash": "a950f19973dc720a93dbd760df498893d96620487737a51787e7b34284da5799"
+          },
+          {
+            "id": "txn_cfdbfdc69159",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[01/05/12 | 1007 [ Attorney Joe Smith | JohnDoe | Fee [ | ($750.00) | $157",
+              "000.00) | $91": "815.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "cfdbfdc6915984bbd91d544d80abb4dddcdf0fbf8487eaaa66aac2485b30ea02"
+          },
+          {
+            "id": "txn_c0d5d109ee70",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[07/05/12 | 1008 | Imagieers | JohnDoe | CondoDocs |__| ($5000) | $157",
+              "000.00) | $91": "765.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "c0d5d109ee708af1e2dac8c28c4ac5aeb2b73ad5afe8e7d685f0452408abbb52"
+          },
+          {
+            "id": "txn_9ba6ef505d08",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[07/05/12 | 1009 | Atomey Joe Smith _| JohnDoe | THe | | (5459.00) | $157",
+              "000.00) | $91": "306.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "9ba6ef505d08d921d4eca29b035082f1b8b376fba93fa9ac2e316086d19a71c6"
+          },
+          {
+            "id": "txn_3dc438f6897e",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[01/05/12 1010 | OldRepublicTitle [| JohnDoe [ Tite | ~~ ($306.00) | $157",
+              "000.00) | $91": "000.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "3dc438f6897ee86c5bb4007ee2f0bec902cee7dbedc1015031818e44db4e68d4"
+          },
+          {
+            "id": "txn_01b860564e14",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "01/06/12 | DEPOSIT Comp Charlie Brown Comp $430.00 $157",
+              "000.00) | $91": "430.00",
+              "000.00 |": ""
+            },
+            "row_hash": "01b860564e142890ae0bd2a8fc937f0bc22b05ca3b28de4e41ec1770968b8134"
+          },
+          {
+            "id": "txn_4b3e4bbf05a4",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[07/06/12 | 1011 __| Charlie Brown [Charlie Brown] Work Comp |__| (3344.00) | $157",
+              "000.00) | $91": "086.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "4b3e4bbf05a4b3b2ad7308918870d6b85f39c29e740f39058c0c50e346400ef5"
+          },
+          {
+            "id": "txn_2046e509e0f5",
+            "source": "ledger",
+            "date": "",
+            "description": "",
+            "amount": 0,
+            "raw_row": {
+              "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59": "[01/06/12] 1012 [ Attorney Joe Smith [CharlieBrown] Fee [ | ($86.00) | $157",
+              "000.00) | $91": "000.00 |",
+              "000.00 |": ""
+            },
+            "row_hash": "2046e509e0f51d29dc8e2dbf771ebbb58d13c03d95f9e6784597a3518fde6e5b"
+          }
+        ],
+        "schema": [
+          "[01/02/12] 1001 [Dr Jones [Mike Willlams[MedicalBills | ~~ [ (59",
+          "000.00) | $91",
+          "000.00 |"
+        ],
+        "issues": [
+          {
+            "index": 0,
+            "id": "txn_5e9cad655339",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 1,
+            "id": "txn_820f1b7fe368",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 2,
+            "id": "txn_a950f19973dc",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 3,
+            "id": "txn_cfdbfdc69159",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 4,
+            "id": "txn_c0d5d109ee70",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 5,
+            "id": "txn_9ba6ef505d08",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 6,
+            "id": "txn_3dc438f6897e",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 7,
+            "id": "txn_01b860564e14",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 8,
+            "id": "txn_4b3e4bbf05a4",
+            "issues": [
+              "missing_date"
+            ]
+          },
+          {
+            "index": 9,
+            "id": "txn_2046e509e0f5",
+            "issues": [
+              "missing_date"
+            ]
+          }
+        ],
+        "invalid_rows": [
+          {
+            "line": 3,
+            "raw": "[07/03/12 | DEPOSIT | Susan Harl Estate _| Susan Hart | Har Estate [$157.00000] | $757,000.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 4,
+            "raw": "01/05/12 1005 Rocky Hill Town Clerk | John Doe Fees ($65.00) $158,703.00",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 5,
+            "raw": "[01/05/12 | 1007 [ Attorney Joe Smith | JohnDoe | Fee [ | ($750.00) | $157,815.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 6,
+            "raw": "[07/05/12 | 1008 | Imagieers | JohnDoe | CondoDocs |__| ($5000) | $157,765.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 7,
+            "raw": "[07/05/12 | 1009 | Atomey Joe Smith _| JohnDoe | THe | | (5459.00) | $157,306.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 8,
+            "raw": "[01/05/12 1010 | OldRepublicTitle [| JohnDoe [ Tite | ~~ ($306.00) | $157,000.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 9,
+            "raw": "01/06/12 | DEPOSIT Comp Charlie Brown Comp $430.00 $157,430.00",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 10,
+            "raw": "[07/06/12 | 1011 __| Charlie Brown [Charlie Brown] Work Comp |__| (3344.00) | $157,086.00 |",
+            "reason": "missing_columns"
+          },
+          {
+            "line": 11,
+            "raw": "[01/06/12] 1012 [ Attorney Joe Smith [CharlieBrown] Fee [ | ($86.00) | $157,000.00 |",
+            "reason": "missing_columns"
+          }
+        ]
+      },
+      "issues": [
+        {
+          "index": 0,
+          "id": "txn_5e9cad655339",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 1,
+          "id": "txn_820f1b7fe368",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 2,
+          "id": "txn_a950f19973dc",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 3,
+          "id": "txn_cfdbfdc69159",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 4,
+          "id": "txn_c0d5d109ee70",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 5,
+          "id": "txn_9ba6ef505d08",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 6,
+          "id": "txn_3dc438f6897e",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 7,
+          "id": "txn_01b860564e14",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 8,
+          "id": "txn_4b3e4bbf05a4",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "index": 9,
+          "id": "txn_2046e509e0f5",
+          "issues": [
+            "missing_date"
+          ]
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 3,
+          "raw": "[07/03/12 | DEPOSIT | Susan Harl Estate _| Susan Hart | Har Estate [$157.00000] | $757,000.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 4,
+          "raw": "01/05/12 1005 Rocky Hill Town Clerk | John Doe Fees ($65.00) $158,703.00",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 5,
+          "raw": "[01/05/12 | 1007 [ Attorney Joe Smith | JohnDoe | Fee [ | ($750.00) | $157,815.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 6,
+          "raw": "[07/05/12 | 1008 | Imagieers | JohnDoe | CondoDocs |__| ($5000) | $157,765.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 7,
+          "raw": "[07/05/12 | 1009 | Atomey Joe Smith _| JohnDoe | THe | | (5459.00) | $157,306.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 8,
+          "raw": "[01/05/12 1010 | OldRepublicTitle [| JohnDoe [ Tite | ~~ ($306.00) | $157,000.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 9,
+          "raw": "01/06/12 | DEPOSIT Comp Charlie Brown Comp $430.00 $157,430.00",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 10,
+          "raw": "[07/06/12 | 1011 __| Charlie Brown [Charlie Brown] Work Comp |__| (3344.00) | $157,086.00 |",
+          "reason": "missing_columns"
+        },
+        {
+          "type": "invalid_row",
+          "source": "ledger",
+          "line": 11,
+          "raw": "[01/06/12] 1012 [ Attorney Joe Smith [CharlieBrown] Fee [ | ($86.00) | $157,000.00 |",
+          "reason": "missing_columns"
+        }
+      ]
+    },
+    "created_at": "2026-05-02T15:16:54.143Z"
+  },
+  "rec_20260502212308_001": {
+    "state": {
+      "bank_file_checksum": "45e2e1d3aef4d727424aed2f1e590374df3119f2ac34a75ad4211f3270076879",
+      "ledger_file_checksum": "55a0b256f03b74c6fffacc7e082ccaeed2d9b1eae00db1a538d147d120fd36e7",
+      "step": "parsed",
+      "version": 1
+    },
+    "result": {
+      "bank": {
+        "transactions": [
+          {
+            "id": "txn_66451ea421af",
+            "source": "bank",
+            "date": "2021-01-01",
+            "description": "Deposit",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Deposit",
+              "amount": "100.00"
+            },
+            "row_hash": "66451ea421af1bbfd40087820b3ba00e61c23a7c2fe478df604fe97bb96ce6c3"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": [],
+        "invalid_rows": []
+      },
+      "ledger": {
+        "transactions": [
+          {
+            "id": "txn_f3d1f4980738",
+            "source": "ledger",
+            "date": "2021-01-01",
+            "description": "Sale",
+            "amount": 100,
+            "raw_row": {
+              "date": "2021-01-01",
+              "description": "Sale",
+              "amount": "100.00"
+            },
+            "row_hash": "f3d1f4980738ea293c41e6a0ea064318bdb48943d4635a11322424c8947571b1"
+          }
+        ],
+        "schema": [
+          "date",
+          "description",
+          "amount"
+        ],
+        "issues": [],
+        "invalid_rows": []
+      },
+      "issues": []
+    },
+    "created_at": "2026-05-02T21:23:08.351Z"
+  }
+}

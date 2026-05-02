@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Reconciliation Engine Result",
+    "type": "object",
+    "required": [
+        "status",
+        "summary",
+        "confidence",
+        "results",
+        "audit_log"
+    ],
+    "properties": {
+        "status": {
+            "type": "string"
+        },
+        "summary": {
+            "type": "string"
+        },
+        "confidence": {
+            "type": "number"
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "matches": {
+                    "type": "array"
+                },
+                "mismatches": {
+                    "type": "array"
+                },
+                "missing": {
+                    "type": "array"
+                }
+            }
+        },
+        "insights": {
+            "type": "array"
+        },
+        "actions": {
+            "type": "array"
+        },
+        "audit_log": {
+            "type": "array"
+        }
+    }
+}

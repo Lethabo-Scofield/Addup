@@ -1,0 +1,21 @@
+date,description,amount,reference,balance
+2026-04-01,Salary Payment,3500.00,ACME Payroll,3500.00
+2026-04-02,Online Transfer to Savings,-500.00,Transfer,3000.00
+01/04/2026,Refund from Vendor,150.00,REF123,3150.00
+03/04/2026,Supermarket - Grocery,-123.45,POS 4321,3026.55
+2026-04-04,"Coffee Shop, Downtown",-4.50,POS 4322,3022.05
+4/5/2026,ATM Withdrawal,-200.00,ATM 001,2822.05
+2026-04-06,Direct Debit - Electricity,-95.67,DD 778,2726.38
+07-04-2026,Online Payment - Amazon,-87.99,AMZ,2638.39
+2026/04/08,International Payment,-250.00,INTL,2388.39
+"09 Apr 2026",Subscription Netflix,-12.99,NETFLX,2375.40
+2026-04-10,Check Deposit,500.00,CHK1001,2875.40
+11/04/2026,Fee - Overdraft,-35.00,FEE,2840.40
+2026-04-12,Interest Credit,2.35,INT,2842.75
+13/04/2026,POS - Bookstore,-24.99,POS 998,2817.76
+14/04/2026,Transfer from John,100.00,TRF JOHN,2917.76
+15/04/2026,"Refund, Online Store",45.00,REF-OS,2962.76
+2026-04-16,Wire Transfer Incoming,10000.00,WIRE-789,12962.76
+17/04/2026,International Fee,-15.00,INTFEE,12947.76
+18-04-2026,Charity Donation,-200.00,CHARITY,12747.76
+2026-04-19,Payroll Tax,-450.00,TAX,12297.76
