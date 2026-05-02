@@ -12,16 +12,6 @@ import { News } from "@/components/landing/news";
 import { Footer } from "@/components/landing/footer";
 import { WaitlistProvider } from "@/components/landing/waitlist-dialog";
 
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="bg-background px-3 sm:px-5 lg:px-6 py-2 sm:py-3">
-      <div className="mx-auto bg-[#f5f5f7] rounded-[28px] sm:rounded-[40px] overflow-hidden">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export default function Landing() {
   return (
     <WaitlistProvider>
@@ -30,15 +20,11 @@ export default function Landing() {
         <main className="flex-1">
           <Hero />
           <LogoMarquee />
-          <Panel>
-            <NarrativeBlocks />
-          </Panel>
+          <NarrativeBlocks />
           <HowItWorks />
           <Integrations />
           <TargetMarket />
-          <Panel>
-            <UseCases />
-          </Panel>
+          <UseCases />
           <News />
         </main>
         <Footer />

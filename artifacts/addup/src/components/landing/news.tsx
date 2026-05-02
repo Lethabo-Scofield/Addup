@@ -46,11 +46,10 @@ export function News() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
-        {/* Section header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-10 sm:mb-12">
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-4">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+            <div className="inline-flex items-center gap-2 border border-border/60 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-4">
+              <span className="h-1.5 w-1.5 bg-primary"></span>
               In the news
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] lg:leading-[1.05] font-semibold text-foreground">
@@ -62,7 +61,6 @@ export function News() {
           </p>
         </div>
 
-        {/* Editorial grid: featured + two stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-5 sm:gap-6">
           {items.map((item, i) => (
             <NewsCard
@@ -93,9 +91,8 @@ function NewsCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      className={`group relative overflow-hidden rounded-[2rem] border border-border/40 bg-card hover:shadow-[0_25px_70px_-20px_rgba(0,0,0,0.18)] transition-all duration-500 hover:-translate-y-1 ${className}`}
+      className={`group relative overflow-hidden border border-border/40 bg-card hover:shadow-[0_25px_70px_-20px_rgba(0,0,0,0.18)] transition-all duration-500 hover:-translate-y-1 ${className}`}
     >
-      {/* Image */}
       <div
         className={`relative overflow-hidden bg-muted ${
           item.featured ? "aspect-[16/11] lg:aspect-auto lg:h-[55%]" : "aspect-[16/10]"
@@ -107,21 +104,17 @@ function NewsCard({
           loading="lazy"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
         />
-        {/* Subtle gradient for legibility of any future overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60 pointer-events-none" />
 
-        {/* Source pill */}
-        <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 rounded-full bg-background/90 backdrop-blur px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground shadow-sm">
+        <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 bg-background/90 backdrop-blur px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground shadow-sm">
           {item.source}
         </div>
 
-        {/* Hover arrow */}
-        <div className="absolute top-4 right-4 h-9 w-9 rounded-full bg-background/90 backdrop-blur flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-300">
+        <div className="absolute top-4 right-4 h-9 w-9 bg-background/90 backdrop-blur flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-300">
           <ArrowUpRight className="h-4 w-4 text-foreground" />
         </div>
       </div>
 
-      {/* Body */}
       <div className={`p-6 sm:p-7 ${item.featured ? "lg:p-8" : ""}`}>
         <div className="text-xs font-medium text-muted-foreground mb-3">{item.date}</div>
         <h3

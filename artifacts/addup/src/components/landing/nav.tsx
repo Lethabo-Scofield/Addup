@@ -27,28 +27,20 @@ export function Nav() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 w-full transition-[padding] duration-500 ease-out ${
-        scrolled ? "pt-3 sm:pt-4 px-3 sm:px-6" : "pt-0 px-0"
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
+        scrolled ? "bg-background/90 backdrop-blur-xl border-b border-border/50 shadow-sm" : ""
       }`}
     >
-      <div
-        className={`mx-auto flex items-center justify-between border transition-all duration-500 ease-out ${
-          scrolled
-            ? "max-w-5xl rounded-full px-3 sm:px-4 h-12 sm:h-14 bg-background/75 backdrop-blur-xl border-border/60 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.08)]"
-            : "max-w-7xl rounded-none px-6 sm:px-8 h-16 sm:h-20 bg-transparent backdrop-blur-0 border-transparent shadow-none"
-        }`}
-      >
+      <div className="mx-auto max-w-7xl flex items-center justify-between px-6 sm:px-8 h-16 sm:h-20">
         <Link
           href="/"
-          className="flex items-center pl-1 transition-opacity hover:opacity-80"
+          className="flex items-center transition-opacity hover:opacity-80"
           aria-label="Addup home"
         >
           <img
             src={addupLogo}
             alt="Addup"
-            className={`w-auto transition-all duration-500 ease-out ${
-              scrolled ? "h-7 sm:h-8" : "h-8 sm:h-9 brightness-0 invert"
-            }`}
+            className={`w-auto h-8 sm:h-9 transition-all duration-300 ${scrolled ? "" : "brightness-0 invert"}`}
           />
         </Link>
 
@@ -57,10 +49,8 @@ export function Nav() {
             <button
               key={l.id}
               onClick={() => scrollTo(l.id)}
-              className={`px-3 py-1.5 text-[13px] font-medium rounded-full transition-colors duration-500 ${
-                scrolled
-                  ? "text-foreground/70 hover:text-foreground"
-                  : "text-white/85 hover:text-white"
+              className={`px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 ${
+                scrolled ? "text-foreground/70 hover:text-foreground" : "text-white/85 hover:text-white"
               }`}
             >
               {l.label}
@@ -70,7 +60,7 @@ export function Nav() {
 
         <Button
           onClick={openWaitlist}
-          className="rounded-full px-4 sm:px-5 h-8 sm:h-9 text-[13px] font-medium shadow-none"
+          className="rounded-none px-4 sm:px-5 h-8 sm:h-9 text-[13px] font-medium shadow-none"
         >
           Join waitlist
         </Button>

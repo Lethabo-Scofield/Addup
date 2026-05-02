@@ -113,7 +113,7 @@ function WaitlistDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md w-[calc(100vw-1.5rem)] p-0 rounded-3xl gap-0 max-h-[92dvh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-md w-[calc(100vw-1.5rem)] p-0 rounded-none gap-0 max-h-[92dvh] flex flex-col overflow-hidden">
         <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-2 shrink-0">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-[28px] font-semibold tracking-tight pr-6">
@@ -134,7 +134,7 @@ function WaitlistDialog({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-6"
             >
-              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
+              <div className="mx-auto w-12 h-12 flex items-center justify-center mb-4 bg-emerald-500/10">
                 <CheckCircle2 className="h-6 w-6 text-emerald-500" />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -142,7 +142,7 @@ function WaitlistDialog({
               </p>
               <Button
                 onClick={() => handleClose(false)}
-                className="mt-6 rounded-full h-11 px-6 text-[14px] font-medium"
+                className="mt-6 rounded-none h-11 px-6 text-[14px] font-medium"
               >
                 Close
               </Button>
@@ -161,7 +161,7 @@ function WaitlistDialog({
                   inputMode="email"
                   autoComplete="email"
                   placeholder="jane@company.com"
-                  className="h-11"
+                  className="h-11 rounded-none"
                   {...register("email")}
                 />
               </Field>
@@ -175,7 +175,7 @@ function WaitlistDialog({
                   id="company"
                   autoComplete="organization"
                   placeholder="Acme Pty Ltd"
-                  className="h-11"
+                  className="h-11 rounded-none"
                   {...register("company")}
                 />
               </Field>
@@ -189,7 +189,7 @@ function WaitlistDialog({
                   id="role"
                   autoComplete="organization-title"
                   placeholder="Financial Controller"
-                  className="h-11"
+                  className="h-11 rounded-none"
                   {...register("role")}
                 />
               </Field>
@@ -203,7 +203,7 @@ function WaitlistDialog({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full mt-2 rounded-full h-12 text-[15px] font-medium"
+                className="w-full mt-2 rounded-none h-12 text-[15px] font-medium"
               >
                 {isSubmitting ? "Joining..." : "Request early access"}
               </Button>

@@ -20,7 +20,7 @@ export function HowItWorks() {
   const [activeTab, setActiveTab] = useState<TabId>("capture");
 
   return (
-    <section id="how-it-works" className="py-16 sm:py-24 bg-background">
+    <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground mb-4">
@@ -33,25 +33,17 @@ export function HowItWorks() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12">
           {/* Tabs */}
-          <div className="lg:col-span-4 -mx-6 px-6 lg:mx-0 lg:px-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-4 lg:pb-0 scrollbar-none">
+          <div className="lg:col-span-4 -mx-6 px-6 lg:mx-0 lg:px-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-0 pb-4 lg:pb-0 scrollbar-none border-b lg:border-b-0 lg:border-r border-border/40">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center px-5 min-h-11 py-2.5 text-[14px] font-medium rounded-full transition-colors whitespace-nowrap lg:whitespace-normal text-left ${
+                className={`relative flex items-center px-5 min-h-11 py-3 text-[14px] font-medium transition-colors whitespace-nowrap lg:whitespace-normal text-left border-b border-border/30 last:border-b-0 ${
                   activeTab === tab.id
-                    ? "text-foreground bg-background border border-border/60 shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50 border border-transparent"
+                    ? "text-foreground bg-background border-l-2 border-l-primary lg:border-l-2"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                 }`}
               >
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="activeTabIndicator"
-                    className="absolute inset-0 rounded-full ring-2 ring-primary/15 pointer-events-none"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
                 {tab.label}
               </button>
             ))}
@@ -59,19 +51,19 @@ export function HowItWorks() {
 
           {/* UI Panel */}
           <div className="lg:col-span-8">
-            <div className="rounded-[2rem] border border-border/40 bg-card shadow-[0_15px_50px_-15px_rgba(0,0,0,0.12)] overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
+            <div className="border border-border/40 bg-card shadow-[0_15px_50px_-15px_rgba(0,0,0,0.12)] overflow-hidden min-h-[420px] sm:h-[400px] flex flex-col">
               {/* Header */}
-              <div className="h-12 border-b border-border/50 bg-muted/20 flex items-center px-4 gap-2 shrink-0">
+              <div className="h-10 border-b border-border/50 bg-muted/30 flex items-center px-4 gap-3 shrink-0">
                 <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-border"></div>
-                  <div className="w-3 h-3 rounded-full bg-border"></div>
-                  <div className="w-3 h-3 rounded-full bg-border"></div>
+                  <div className="w-2.5 h-2.5 bg-border"></div>
+                  <div className="w-2.5 h-2.5 bg-border"></div>
+                  <div className="w-2.5 h-2.5 bg-border"></div>
                 </div>
-                <div className="mx-auto text-xs font-medium text-muted-foreground bg-background px-2 py-0.5 rounded border border-border/50">
+                <div className="text-xs font-mono text-muted-foreground">
                   addup.finance/app
                 </div>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 p-4 sm:p-6 bg-background relative overflow-y-auto">
                 <AnimatePresence mode="wait">
@@ -101,17 +93,17 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
         <div className="text-sm font-semibold mb-4 border-b pb-2">Syncing Data Sources</div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/10">
+            <div key={i} className="flex items-center justify-between p-3 border border-border/50 bg-muted/10">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  <div className="w-4 h-4 bg-foreground/20 rounded-sm"></div>
+                <div className="h-8 w-8 bg-muted flex items-center justify-center">
+                  <div className="w-4 h-4 bg-foreground/20"></div>
                 </div>
                 <div>
                   <div className="text-sm font-medium">Bank Feed {i}</div>
                   <div className="text-xs text-muted-foreground">Last synced 2m ago</div>
                 </div>
               </div>
-              <div className="text-xs font-mono bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded">Active</div>
+              <div className="text-xs font-mono bg-emerald-500/10 text-emerald-600 px-2 py-1">Active</div>
             </div>
           ))}
         </div>
@@ -156,15 +148,15 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
       <div className="space-y-4">
         <div className="text-sm font-semibold mb-4 border-b pb-2">Confidence Matching</div>
         <div className="space-y-4">
-          <div className="p-4 rounded-lg border border-border bg-background shadow-sm">
+          <div className="p-4 border border-border bg-background shadow-sm">
             <div className="flex justify-between items-start gap-3 mb-4">
               <div className="font-medium text-sm min-w-0 truncate">Stripe Payout</div>
               <div className="font-mono text-sm font-medium whitespace-nowrap">R 12,450.00</div>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground">Inv-201</div>
-              <div className="bg-background border px-2 py-1 rounded text-xs text-muted-foreground">Inv-202</div>
-              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 px-2 py-1 rounded-full text-[10px] font-bold ml-auto">98% Match</div>
+              <div className="bg-background border px-2 py-1 text-xs text-muted-foreground">Inv-201</div>
+              <div className="bg-background border px-2 py-1 text-xs text-muted-foreground">Inv-202</div>
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 px-2 py-1 text-[10px] font-bold ml-auto">98% Match</div>
             </div>
           </div>
         </div>
@@ -177,17 +169,17 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
       <div className="space-y-4">
         <div className="flex justify-between items-center mb-4 border-b pb-2">
           <div className="text-sm font-semibold">Exception Queue</div>
-          <div className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded font-medium">3 needs review</div>
+          <div className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 font-medium">3 needs review</div>
         </div>
-        <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-4">
+        <div className="border border-amber-500/20 bg-amber-500/5 p-4">
           <div className="flex justify-between gap-3 mb-2">
             <div className="font-medium text-sm min-w-0 truncate">Uncategorized Wire</div>
             <div className="font-mono text-sm whitespace-nowrap">R 4,000.00</div>
           </div>
           <div className="text-xs text-muted-foreground mb-4">No matching invoice found within 30 days.</div>
           <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-2 bg-background border rounded text-xs font-medium hover:bg-muted">Request Info</button>
-            <button className="px-3 py-2 bg-primary text-primary-foreground rounded text-xs font-medium">Manual Link</button>
+            <button className="px-3 py-2 bg-background border text-xs font-medium hover:bg-muted">Request Info</button>
+            <button className="px-3 py-2 bg-primary text-primary-foreground text-xs font-medium">Manual Link</button>
           </div>
         </div>
       </div>
@@ -198,7 +190,7 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4 border-b pb-2">
         <div className="text-sm font-semibold">Ledger Verification</div>
-        <div className="text-xs bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded font-medium flex items-center gap-1">
+        <div className="text-xs bg-emerald-500/10 text-emerald-600 px-2 py-0.5 font-medium flex items-center gap-1">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           In sync
         </div>
@@ -216,7 +208,7 @@ function MockPanelContent({ activeTab }: { activeTab: TabId }) {
         ))}
       </div>
       <div className="mt-6 pt-4 border-t border-border flex justify-end">
-        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium shadow-sm">Export to ERP</button>
+        <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium shadow-sm">Export to ERP</button>
       </div>
     </div>
   );
