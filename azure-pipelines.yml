@@ -1,0 +1,118 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  nodeVersion: "20.x"
+  resourceGroup: "addup-rg"
+  acrName: "addupacr"
+  apiAppName: "addup-api"
+  frontendAppName: "addup-frontend"
+  vmImageName: "ubuntu-latest"
+
+stages:
+  # ─── Build ────────────────────────────────────────────────────────────────────
+  - stage: Build
+    displayName: Build
+    jobs:
+      - job: BuildFrontend
+        displayName: Build Frontend
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: Install Node.js
+
+          - script: npm install -g pnpm@10
+            displayName: Install pnpm
+
+          - script: pnpm install --frozen-lockfile
+            displayName: Install dependencies
+
+          - script: pnpm --filter @workspace/addup run build
+            displayName: Build frontend (Vite)
+            env:
+              NODE_ENV: production
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: artifacts/addup/dist/public
+              ArtifactName: frontend
+            displayName: Publish frontend artifact
+
+      - job: BuildAPI
+        displayName: Build API Docker Image
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: Docker@2
+            displayName: Build API image
+            inputs:
+              command: build
+              dockerfile: artifacts/api-server/Dockerfile
+              buildContext: .
+              tags: |
+                $(acrName).azurecr.io/addup-api:$(Build.BuildId)
+                $(acrName).azurecr.io/addup-api:latest
+
+          - task: Docker@2
+            displayName: Push to ACR
+            inputs:
+              command: push
+              containerRegistry: $(acrName)
+              repository: addup-api
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  # ─── Deploy Frontend ─────────────────────────────────────────────────────────
+  - stage: DeployFrontend
+    displayName: Deploy Frontend
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DeployStaticWebApp
+        displayName: Deploy to Azure Static Web Apps
+        pool:
+          vmImage: $(vmImageName)
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    artifactName: frontend
+                    downloadPath: $(System.ArtifactsDirectory)
+
+                - task: AzureStaticWebApp@0
+                  inputs:
+                    app_location: $(System.ArtifactsDirectory)/frontend
+                    skip_app_build: true
+                  env:
+                    AZURE_STATIC_WEB_APPS_API_TOKEN: $(AZURE_STATIC_WEB_APPS_API_TOKEN)
+
+  # ─── Deploy API ───────────────────────────────────────────────────────────────
+  - stage: DeployAPI
+    displayName: Deploy API
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DeployAppService
+        displayName: Deploy to Azure App Service
+        pool:
+          vmImage: $(vmImageName)
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebAppContainer@1
+                  displayName: Deploy API container
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    appName: $(apiAppName)
+                    containers: $(acrName).azurecr.io/addup-api:$(Build.BuildId)
