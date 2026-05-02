@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, HelpCircle,
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
-  BarChart3, Shield, Activity, Eye, Info, ChevronDown,
+  BarChart3, Shield, Activity, Eye, ChevronDown,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
@@ -701,9 +701,9 @@ function UploadsView() {
 
       <div className="space-y-4">
         {[
-          { label:"Bank Statement", sub:"FNB Business · CSV or XLSX", ref:bankRef, file:bank, set:setBank, accept:".csv,.xlsx,.xls", demo:"bank_statement_april_2026.csv" },
-          { label:"General Ledger", sub:"Xero export · CSV or XLSX",  ref:ledgerRef, file:ledger, set:setLedger, accept:".csv,.xlsx,.xls", demo:"xero_gl_april_2026.csv" },
-        ].map(({ label, sub, ref, file, set, accept, demo }) => (
+          { label:"Bank Statement", sub:"Export from your bank — CSV or XLSX", ref:bankRef, file:bank, set:setBank, accept:".csv,.xlsx,.xls" },
+          { label:"General Ledger", sub:"Accounting software export — CSV or XLSX", ref:ledgerRef, file:ledger, set:setLedger, accept:".csv,.xlsx,.xls" },
+        ].map(({ label, sub, ref, file, set, accept }) => (
           <div key={label} className="border border-gray-200 bg-white">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <div>
@@ -720,18 +720,13 @@ function UploadsView() {
                     <button onClick={() => set(null)} className="text-emerald-500 hover:text-emerald-700"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 : <button onClick={() => ref.current?.click()}
-                    className="w-full flex flex-col items-center justify-center py-8 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
-                    <Upload className="h-6 w-6 text-gray-300 group-hover:text-gray-500 mb-2" />
-                    <p className="text-xs text-gray-400 group-hover:text-gray-600">Click to upload or drag and drop</p>
-                    <p className="text-[10px] text-gray-300 mt-1">CSV, XLSX up to 10MB</p>
+                    className="w-full flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
+                    <Upload className="h-7 w-7 text-gray-300 group-hover:text-gray-500 mb-2.5" />
+                    <p className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">Click to upload</p>
+                    <p className="text-[11px] text-gray-300 mt-1">CSV or XLSX · up to 10 MB</p>
                   </button>
               }
               <input ref={ref} type="file" accept={accept} className="hidden" onChange={e => set(e.target.files?.[0]?.name ?? null)} />
-              {!file && (
-                <button onClick={() => set(demo)} className="mt-2 text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                  <Info className="h-3 w-3" />Use demo file ({demo})
-                </button>
-              )}
             </div>
           </div>
         ))}
@@ -749,9 +744,11 @@ function UploadsView() {
         </div>
       )}
 
-      <div className="mt-6 border border-gray-200 p-4 bg-gray-50">
-        <p className="text-xs font-semibold text-gray-600 mb-2">Demo job already loaded</p>
-        <p className="text-[11px] text-gray-400">Job <span className="font-mono text-gray-600">{JOB_ID}</span> · {BANK.length} bank transactions · {LEDGER.length} ledger entries · {PERIOD}</p>
+      <div className="mt-6 border border-gray-100 p-4 bg-gray-50">
+        <p className="text-[11px] text-gray-400 leading-relaxed">
+          Addup accepts standard bank statement exports and accounting software ledger exports.
+          Supported formats: CSV, XLSX. Column headers are detected automatically.
+        </p>
       </div>
     </div>
   );
