@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,6 +10,54 @@ import {
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
+
+// ── Loader ────────────────────────────────────────────────────────────────────
+
+const LOAD_MS = 2200;
+
+function Loader({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, LOAD_MS);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
+      className="fixed inset-0 z-[999] bg-white flex flex-col items-center justify-center"
+    >
+      {/* Logo */}
+      <motion.img
+        src={addupLogo} alt="Addup"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="h-9 w-auto mb-10"
+      />
+
+      {/* Progress bar track */}
+      <div className="w-48 h-[2px] bg-gray-100 overflow-hidden">
+        <motion.div
+          className="h-full bg-gray-900"
+          initial={{ width: "0%" }}
+          animate={{ width: "100%" }}
+          transition={{ duration: LOAD_MS / 1000 - 0.3, ease: [0.4, 0, 0.2, 1] }}
+        />
+      </div>
+
+      {/* Status line */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+        className="mt-5 text-[11px] font-medium text-gray-400 tracking-wide"
+      >
+        Preparing your workspace
+      </motion.p>
+    </motion.div>
+  );
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1171,6 +1219,7 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string) {
 // ── Main Engine ───────────────────────────────────────────────────────────────
 
 export default function Engine() {
+  const [loading,    setLoading]    = useState(true);
   const [nav,        setNav]        = useState<NavId>("dashboard");
   const [sidebarOpen,setSidebarOpen]= useState(false);
   const [rows,       setRows]       = useState<ReconRow[]>(ROWS);
@@ -1276,6 +1325,11 @@ export default function Engine() {
   }
 
   return (
+    <>
+      <AnimatePresence>
+        {loading && <Loader onDone={() => setLoading(false)} />}
+      </AnimatePresence>
+
     <div className="flex h-screen bg-gray-50 overflow-hidden">
 
       {/* Desktop sidebar */}
@@ -1331,5 +1385,6 @@ export default function Engine() {
         </main>
       </div>
     </div>
+    </>
   );
 }
