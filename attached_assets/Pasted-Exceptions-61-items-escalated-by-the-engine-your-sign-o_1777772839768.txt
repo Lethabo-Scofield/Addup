@@ -1,0 +1,854 @@
+Exceptions
+61 items escalated by the engine — your sign-off required
+
+CONFIDENCE MAX
+
+100%
+
+All statuses
+Invalid Row
+1 warning
+TRF TO SAV
+
+L006 · 2012-04-10
+
++R 3,271.01
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Invalid Row
+2 warnings
+Salary | Payment | APR
+
+L009 · 2012-04-10
+
++R 2,570.44
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Description contains OCR artifacts
+
+Invalid Row
+1 warning
+Refund Vendor
+
+L010 · 2012-04-05
+
++R 3,589.46
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Invalid Row
+2 warnings
+Refund | Vendor
+
+L017 · 2012-04-10
+
++R 3,732.44
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Description contains OCR artifacts
+
+Invalid Row
+1 warning
+Salary Payment APR
+
+L018 · 2012-04-29
+
++R 2,186.28
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Invalid Row
+1 warning
+Internet Sub APR
+
+L024 · 2012-04-26
+
+-R 1,216.81
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Invalid Row
+1 warning
+Transfer SAV
+
+L028 · 2012-04-22
+
+-R 730.59
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Invalid Row
+1 warning
+Refund Vendor
+
+L043 · 2012-04-03
+
+-R 5,701.82
+
+0%
+
+Sign off
+Invalid year detected: 2012
+
+Manual Review
+1 warning
+ISP PAYMENT
+
+B046 · 2026-04-06
+
+-R 4,255.44
+
+75%
+
+Sign off
+Significant amount difference: +R 606.98 (14%)
+
+Manual Review
+2 warnings
+Office Supplies CPT
+
+B010 · 2026-04-09
+
+-R 4,516.71
+
+74%
+
+Sign off
+Amount differs by +R 388.04 (9%)
+
+Date off by 6 days
+
+Manual Review
+2 warnings
+ISP PAYMENT
+
+B018 · 2026-04-13
+
+-R 4,569.73
+
+73%
+
+Sign off
+Amount differs by +R 184.46 (4%)
+
+Date off by 11 days
+
+Manual Review
+2 warnings
+Salary Payment APR
+
+B004 · 2026-04-09
+
++R 3,403.14
+
+73%
+
+Sign off
+Amount differs by +R 71.69 (2%)
+
+Date off by 12 days
+
+Manual Review
+2 warnings
+Equipment Buy
+
+B036 · 2026-04-02
+
+-R 1,505.85
+
+73%
+
+Sign off
+Amount differs by +R 45.12 (3%)
+
+Date off by 13 days
+
+Manual Review
+2 warnings
+Equipment Buy
+
+B013 · 2026-04-12
+
+-R 2,253.86
+
+72%
+
+Sign off
+Date off by 2 days: 2026-04-12 vs 2026-04-10
+
+Weak description similarity (51%)
+
+Possible Match
+2 warnings
+SAL APR PAY
+
+B026 · 2026-04-28
+
++R 4,452.11
+
+72%
+
+Sign off
+Amount differs by +R 173.04 (4%)
+
+Weak description similarity (69%)
+
+Manual Review
+2 warnings
+Vendor Refund
+
+B027 · 2026-04-12
+
+-R 392.68
+
+69%
+
+Sign off
+Significant amount difference: +R 54.14 (14%)
+
+Date off by 6 days
+
+Possible Match
+4 warnings
+Equipment Buy
+
+B048 · 2026-04-05
+
+-R 2,070.70
+
+68%
+
+Sign off
+Amount differs by +R 95.73 (5%)
+
+Date off by 3 days: 2026-04-05 vs 2026-04-08
+
+Possible Match
+2 warnings
+TRF TO SAV
+
+B001 · 2026-04-29
+
++R 4,149.19
+
+67%
+
+Sign off
+Date off by 7 days
+
+Weak description similarity (55%)
+
+Manual Review
+2 warnings
+Internet Sub APR
+
+B016 · 2026-04-07
+
+-R 2,721.43
+
+67%
+
+Sign off
+Significant amount difference: +R 364.29 (13%)
+
+Date off by 4 days
+
+Manual Review
+2 warnings
+Monthly Fee
+
+B043 · 2026-04-10
+
++R 3,498.71
+
+67%
+
+Sign off
+Amount differs by +R 236.38 (7%)
+
+Date off by 9 days
+
+Possible Match
+2 warnings
+Vendor Refund
+
+B039 · 2026-04-12
+
++R 811.63
+
+65%
+
+Sign off
+Amount differs by +R 46.69 (6%)
+
+Weak description similarity (58%)
+
+Unmatched Bank
+1 warning
+Equipment Buy
+
+B032 · 2026-04-25
+
++R 3,389.97
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Possible Match
+2 warnings
+Equipment Buy
+
+B012 · 2026-04-25
+
++R 2,693.36
+
+62%
+
+Sign off
+Date off by 3 days: 2026-04-25 vs 2026-04-28
+
+Descriptions do not match
+
+Possible Match
+2 warnings
+Monthly Fee
+
+B035 · 2026-04-06
+
++R 2,215.60
+
+62%
+
+Sign off
+Date off by 2 days: 2026-04-06 vs 2026-04-08
+
+Descriptions do not match
+
+Manual Review
+3 warnings
+SAL APR PAY
+
+B025 · 2026-04-14
+
+-R 4,513.26
+
+60%
+
+Sign off
+Date off by 12 days
+
+Weak description similarity (51%)
+
+Manual Review
+2 warnings
+Transfer SAV
+
+B044 · 2026-04-15
+
++R 4,508.25
+
+60%
+
+Sign off
+Date off by 13 days
+
+Weak description similarity (56%)
+
+Manual Review
+2 warnings
+Stationary Purchase
+
+B022 · 2026-04-25
+
+-R 4,913.08
+
+58%
+
+Sign off
+Amount differs by +R 274.92 (6%)
+
+Dates too far apart: 24 days
+
+Manual Review
+2 warnings
+Internet Sub APR
+
+B006 · 2026-04-17
+
++R 3,639.31
+
+50%
+
+Sign off
+Amount too far apart: +R 5,901.13 (162% difference)
+
+Date off by 2 days: 2026-04-17 vs 2026-04-19
+
+Manual Review
+3 warnings
+Transfer SAV
+
+B050 · 2026-04-12
+
++R 2,164.49
+
+45%
+
+Sign off
+Amount differs by +R 103.72 (5%)
+
+Date off by 11 days
+
+Manual Review
+1 warning
+TRF TO SAV
+
+B041 · 2026-04-28
+
++R 4,592.81
+
+52%
+
+Sign off
+Amount too far apart: +R 7,345.04 (160% difference)
+
+Manual Review
+3 warnings
+Internet Sub APR
+
+B028 · 2026-04-23
+
+-R 1,515.27
+
+47%
+
+Sign off
+Amount differs by +R 59.83 (4%)
+
+Dates too far apart: 19 days
+
+Manual Review
+2 warnings
+Bank Charges
+
+B002 · 2026-04-01
+
++R 117.69
+
+51%
+
+Sign off
+Amount too far apart: +R 4,443.66 (3776% difference)
+
+Date off by 2 days: 2026-04-01 vs 2026-04-03
+
+Unmatched Bank
+1 warning
+SAL APR PAY
+
+B014 · 2026-04-10
+
+-R 127.25
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+1 warning
+Client INV 1001
+
+B015 · 2026-04-16
+
+-R 1,925.24
+
+53%
+
+Sign off
+Amount too far apart: +R 2,179.09 (113% difference)
+
+Unmatched Bank
+1 warning
+TRF TO SAV
+
+B040 · 2026-04-04
+
++R 2,672.04
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+3 warnings
+EQP PURCH
+
+B005 · 2026-04-08
+
++R 988.74
+
+52%
+
+Sign off
+Amount differs by +R 28.68 (3%)
+
+Date off by 7 days
+
+Unmatched Bank
+1 warning
+Equipment Buy
+
+B003 · 2026-04-03
+
+-R 736.63
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+1 warning
+Client Payment Ref#A12
+
+B007 · 2026-04-15
+
++R 1,649.42
+
+52%
+
+Sign off
+Amount too far apart: +R 3,101.72 (188% difference)
+
+Unmatched Bank
+1 warning
+Equipment Buy
+
+B009 · 2026-04-03
+
+-R 1,114.43
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Client Payment Ref#A12
+
+B011 · 2026-04-15
+
+-R 960.45
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+3 warnings
+Monthly Fee
+
+B021 · 2026-04-18
+
+-R 3,880.93
+
+46%
+
+Sign off
+Amount differs by +R 209.94 (5%)
+
+Date off by 7 days
+
+Unmatched Bank
+1 warning
+Client INV 1001
+
+B023 · 2026-04-29
+
+-R 1,792.80
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+1 warning
+ISP PAYMENT
+
+B030 · 2026-04-29
+
++R 3,189.92
+
+52%
+
+Sign off
+Amount too far apart: +R 5,681.60 (178% difference)
+
+Manual Review
+2 warnings
+TRF TO SAV
+
+B031 · 2026-04-28
+
+-R 4,916.20
+
+50%
+
+Sign off
+Amount too far apart: +R 6,040.74 (123% difference)
+
+Date off by 2 days: 2026-04-28 vs 2026-04-30
+
+Unmatched Bank
+1 warning
+ISP PAYMENT
+
+B042 · 2026-04-21
+
+-R 846.34
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Internet Sub APR
+
+B047 · 2026-04-18
+
++R 3,287.10
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Refund Vendor
+
+B038 · 2026-04-13
+
++R 3,121.62
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Client INV 1001
+
+B008 · 2026-04-18
+
+-R 428.82
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Client Payment Ref#A12
+
+B029 · 2026-04-30
+
+-R 514.22
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Manual Review
+2 warnings
+Office Supplies CPT
+
+B037 · 2026-04-27
+
++R 549.94
+
+50%
+
+Sign off
+Amount too far apart: +R 540.68 (98% difference)
+
+Date off by 2 days: 2026-04-27 vs 2026-04-29
+
+Unmatched Bank
+1 warning
+Office Supplies CPT
+
+B020 · 2026-04-17
+
++R 2,918.97
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+ISP PAYMENT
+
+B049 · 2026-04-01
+
++R 3,404.77
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Equipment Buy
+
+B034 · 2026-04-11
+
++R 2,976.75
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Salary Payment APR
+
+B019 · 2026-04-30
+
+-R 146.01
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Stationary Purchase
+
+B033 · 2026-04-20
+
++R 1,751.88
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Bank
+1 warning
+Internet Sub APR
+
+B045 · 2026-04-15
+
+-R 201.62
+
+0%
+
+Sign off
+No matching ledger entry found
+
+Unmatched Ledger
+1 warning
+Bank | Charges
+
+L001 · 2026-04-09
+
+-R 1,570.49
+
+0%
+
+Sign off
+No matching bank transaction found
+
+Unmatched Ledger
+1 warning
+Transfer SAV
+
+L007 · 2026-04-08
+
+-R 3,338.48
+
+0%
+
+Sign off
+No matching bank transaction found
+
+Unmatched Ledger
+1 warning
+Client Payment Ref#A12
+
+L019 · 2026-04-11
+
+-R 3,118.74
+
+0%
+
+Sign off
+No matching bank transaction found
+
+Unmatched Ledger
+1 warning
+Stationary Purchase
+
+L023 · 2026-04-01
+
+-R 298.70
+
+0%
+
+Sign off
+No matching bank transaction found
+
+Unmatched Ledger
+1 warning
+Refund Vendor
+
+L025 · 2026-04-26
+
+-R 3,358.49
+
+0%
+
+Sign off
+No matching bank transaction found

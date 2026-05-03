@@ -1,0 +1,481 @@
+rec_1777772811201_001
+jobs
+4%
+
+03:47:34
+03 May 2026
+All
+63
+Matched
+2
+Possible
+6
+Manual
+24
+Invalid
+8
+No Ledger
+18
+No Bank
+5
+Search…
+Status	Source	Description	Date	Amount	Confidence	Flags	
+Matched — 2
+Matched	
+Both
+B024 / L003
+salary payment
+SAL APR PAY
+2026-04-18	+R 4,996.58	
+86%
+2
+Matched	
+Both
+B017 / L027
+office supplies
+Office Supplies CPT
+2026-04-08	+R 3,791.39	
+83%
+2
+Possible Match — 6
+Possible Match	
+Both
+B026 / L038
+salary payment
+SAL APR PAY
+2026-04-28	+R 4,452.11	
+72%
+2
+Possible Match	
+Both
+B048 / L002
+equipment purchase
+Equipment Buy
+2026-04-05	-R 2,070.70	
+68%
+4
+Possible Match	
+Both
+B001 / L008
+transfer savings
+TRF TO SAV
+2026-04-29	+R 4,149.19	
+67%
+2
+Possible Match	
+Both
+B039 / L005
+vendor refund	2026-04-12	+R 811.63	
+65%
+2
+Possible Match	
+Both
+B012 / L020
+equipment purchase
+Equipment Buy
+2026-04-25	+R 2,693.36	
+62%
+2
+Possible Match	
+Both
+B035 / L015
+bank charges
+Monthly Fee
+2026-04-06	+R 2,215.60	
+62%
+2
+Manual Review — 24
+Manual Review	
+Both
+B046 / L040
+internet subscription
+ISP PAYMENT
+2026-04-06	-R 4,255.44	
+75%
+1
+Manual Review	
+Both
+B010 / L011
+office supplies
+Office Supplies CPT
+2026-04-09	-R 4,516.71	
+74%
+1
+2
+Manual Review	
+Both
+B018 / L045
+internet subscription
+ISP PAYMENT
+2026-04-13	-R 4,569.73	
+73%
+2
+Manual Review	
+Both
+B004 / L032
+salary payment
+Salary Payment APR
+2026-04-09	+R 3,403.14	
+73%
+2
+Manual Review	
+Both
+B036 / L016
+equipment purchase
+Equipment Buy
+2026-04-02	-R 1,505.85	
+73%
+2
+Manual Review	
+Both
+B013 / L033
+equipment purchase
+Equipment Buy
+2026-04-12	-R 2,253.86	
+72%
+1
+2
+Manual Review	
+Both
+B027 / L012
+vendor refund	2026-04-12	-R 392.68	
+69%
+2
+Manual Review	
+Both
+B016 / L004
+internet subscription
+Internet Sub APR
+2026-04-07	-R 2,721.43	
+67%
+2
+Manual Review	
+Both
+B043 / L035
+bank charges
+Monthly Fee
+2026-04-10	+R 3,498.71	
+67%
+2
+Manual Review	
+Both
+B025 / L014
+salary payment
+SAL APR PAY
+2026-04-14	-R 4,513.26	
+60%
+3
+Manual Review	
+Both
+B044 / L021
+transfer savings
+Transfer SAV
+2026-04-15	+R 4,508.25	
+60%
+2
+Manual Review	
+Both
+B022 / L041
+office supplies
+Stationary Purchase
+2026-04-25	-R 4,913.08	
+58%
+1
+1
+Manual Review	
+Both
+B006 / L031
+internet subscription
+Internet Sub APR
+2026-04-17	+R 3,639.31	
+50%
+1
+1
+Manual Review	
+Both
+B050 / L022
+transfer savings
+Transfer SAV
+2026-04-12	+R 2,164.49	
+45%
+3
+Manual Review	
+Both
+B041 / L013
+transfer savings
+TRF TO SAV
+2026-04-28	+R 4,592.81	
+52%
+2
+Manual Review	
+Both
+B028 / L030
+internet subscription
+Internet Sub APR
+2026-04-23	-R 1,515.27	
+47%
+2
+2
+Manual Review	
+Both
+B002 / L044
+bank charges	2026-04-01	+R 117.69	
+51%
+1
+1
+Manual Review	
+Both
+B015 / L039
+client payment
+Client INV 1001
+2026-04-16	-R 1,925.24	
+53%
+2
+Manual Review	
+Both
+B005 / L036
+equipment purchase
+EQP PURCH
+2026-04-08	+R 988.74	
+52%
+3
+Manual Review	
+Both
+B007 / L026
+client payment
+Client Payment Ref#A12
+2026-04-15	+R 1,649.42	
+52%
+1
+Manual Review	
+Both
+B021 / L029
+bank charges
+Monthly Fee
+2026-04-18	-R 3,880.93	
+46%
+1
+3
+Manual Review	
+Both
+B030 / L034
+internet subscription
+ISP PAYMENT
+2026-04-29	+R 3,189.92	
+52%
+1
+Manual Review	
+Both
+B031 / L037
+transfer savings
+TRF TO SAV
+2026-04-28	-R 4,916.20	
+50%
+1
+1
+Manual Review	
+Both
+B037 / L042
+office supplies
+Office Supplies CPT
+2026-04-27	+R 549.94	
+50%
+1
+1
+Invalid Row — 8
+Invalid Row	
+Ledger
+L006
+transfer savings
+TRF TO SAV
+2012-04-10	+R 3,271.01	—	
+1
+Invalid Row	
+Ledger
+L009
+salary payment
+Salary | Payment | APR
+2012-04-10	+R 2,570.44	—	
+2
+Invalid Row	
+Ledger
+L010
+vendor refund
+Refund Vendor
+2012-04-05	+R 3,589.46	—	
+1
+Invalid Row	
+Ledger
+L017
+vendor refund
+Refund | Vendor
+2012-04-10	+R 3,732.44	—	
+2
+Invalid Row	
+Ledger
+L018
+salary payment
+Salary Payment APR
+2012-04-29	+R 2,186.28	—	
+1
+Invalid Row	
+Ledger
+L024
+internet subscription
+Internet Sub APR
+2012-04-26	-R 1,216.81	—	
+1
+Invalid Row	
+Ledger
+L028
+transfer savings
+Transfer SAV
+2012-04-22	-R 730.59	—	
+1
+Invalid Row	
+Ledger
+L043
+vendor refund
+Refund Vendor
+2012-04-03	-R 5,701.82	—	
+1
+Unmatched Bank — 18
+Unmatched Bank	
+Bank
+B032
+equipment purchase
+Equipment Buy
+2026-04-25	+R 3,389.97	—	—	
+Unmatched Bank	
+Bank
+B014
+salary payment
+SAL APR PAY
+2026-04-10	-R 127.25	—	—	
+Unmatched Bank	
+Bank
+B040
+transfer savings
+TRF TO SAV
+2026-04-04	+R 2,672.04	—	—	
+Unmatched Bank	
+Bank
+B003
+equipment purchase
+Equipment Buy
+2026-04-03	-R 736.63	—	—	
+Unmatched Bank	
+Bank
+B009
+equipment purchase
+Equipment Buy
+2026-04-03	-R 1,114.43	—	—	
+Unmatched Bank	
+Bank
+B011
+client payment
+Client Payment Ref#A12
+2026-04-15	-R 960.45	—	—	
+Unmatched Bank	
+Bank
+B023
+client payment
+Client INV 1001
+2026-04-29	-R 1,792.80	—	—	
+Unmatched Bank	
+Bank
+B042
+internet subscription
+ISP PAYMENT
+2026-04-21	-R 846.34	—	—	
+Unmatched Bank	
+Bank
+B047
+internet subscription
+Internet Sub APR
+2026-04-18	+R 3,287.10	—	—	
+Unmatched Bank	
+Bank
+B038
+vendor refund
+Refund Vendor
+2026-04-13	+R 3,121.62	—	—	
+Unmatched Bank	
+Bank
+B008
+client payment
+Client INV 1001
+2026-04-18	-R 428.82	—	—	
+Unmatched Bank	
+Bank
+B029
+client payment
+Client Payment Ref#A12
+2026-04-30	-R 514.22	—	—	
+Unmatched Bank	
+Bank
+B020
+office supplies
+Office Supplies CPT
+2026-04-17	+R 2,918.97	—	—	
+Unmatched Bank	
+Bank
+B049
+internet subscription
+ISP PAYMENT
+2026-04-01	+R 3,404.77	—	—	
+Unmatched Bank	
+Bank
+B034
+equipment purchase
+Equipment Buy
+2026-04-11	+R 2,976.75	—	—	
+Unmatched Bank	
+Bank
+B019
+salary payment
+Salary Payment APR
+2026-04-30	-R 146.01	—	—	
+Unmatched Bank	
+Bank
+B033
+office supplies
+Stationary Purchase
+2026-04-20	+R 1,751.88	—	—	
+Unmatched Bank	
+Bank
+B045
+internet subscription
+Internet Sub APR
+2026-04-15	-R 201.62	—	—	
+Unmatched Ledger — 5
+Unmatched Ledger	
+Ledger
+L001
+bank charges
+Bank | Charges
+2026-04-09	-R 1,570.49	—	—	
+Unmatched Ledger	
+Ledger
+L007
+transfer savings
+Transfer SAV
+2026-04-08	-R 3,338.48	—	—	
+Unmatched Ledger	
+Ledger
+L019
+client payment
+Client Payment Ref#A12
+2026-04-11	-R 3,118.74	—	—	
+Unmatched Ledger	
+Ledger
+L023
+office supplies
+Stationary Purchase
+2026-04-01	-R 298.70	—	—	
+Unmatched Ledger	
+Ledger
+L025
+vendor refund
+Refund Vendor
+2026-04-26	-R 3,358.49	—
