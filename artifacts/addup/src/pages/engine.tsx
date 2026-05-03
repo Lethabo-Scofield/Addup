@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
@@ -83,28 +84,53 @@ interface AuditEntry {
   prev?: string; next?: string; user: string;
 }
 
-// ── CSV parser ────────────────────────────────────────────────────────────────
+// ── Universal file parser ─────────────────────────────────────────────────────
 
-function splitCSVLine(line: string): string[] {
+function detectDelimiter(firstLine: string): string {
+  const tabs     = (firstLine.match(/\t/g)  || []).length;
+  const semis    = (firstLine.match(/;/g)   || []).length;
+  const pipes    = (firstLine.match(/\|/g)  || []).length;
+  const commas   = (firstLine.match(/,/g)   || []).length;
+  const max = Math.max(tabs, semis, pipes, commas);
+  if (max === 0) return ",";
+  if (tabs   === max) return "\t";
+  if (semis  === max) return ";";
+  if (pipes  === max) return "|";
+  return ",";
+}
+
+function splitDelimLine(line: string, delim: string): string[] {
+  if (delim !== ",") return line.split(delim).map(v => v.trim().replace(/^"|"$/g, ""));
   const result: string[] = [];
   let cur = "", inQ = false;
   for (const ch of line) {
     if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { result.push(cur); cur = ""; }
+    else if (ch === "," && !inQ) { result.push(cur); cur = ""; }
     else { cur += ch; }
   }
   result.push(cur);
   return result.map(v => v.trim().replace(/^"|"$/g, ""));
 }
 
-function parseCSVText(text: string): Record<string, string>[] {
+function parseDelimitedText(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) return [];
-  const headers = splitCSVLine(lines[0]);
+  const delim   = detectDelimiter(lines[0]);
+  const headers = splitDelimLine(lines[0], delim);
   return lines.slice(1).map(line => {
-    const vals = splitCSVLine(line);
-    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
+    const vals = splitDelimLine(line, delim);
+    return Object.fromEntries(headers.map((h, i) => [h.trim(), vals[i] ?? ""]));
   });
+}
+
+function parseCSVText(text: string): Record<string, string>[] {
+  return parseDelimitedText(text);
+}
+
+function xlsxToRows(buffer: ArrayBuffer): Record<string, string>[] {
+  const wb = XLSX.read(buffer, { type: "array", cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "", raw: false });
 }
 
 function normalizeDate(raw: string): string {
@@ -748,6 +774,39 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
 
 // ── Uploads view ──────────────────────────────────────────────────────────────
 
+const ACCEPTED_EXTS = ".csv,.tsv,.txt,.xlsx,.xls,.ods,.numbers";
+const XLSX_EXTS = new Set([".xlsx", ".xls", ".ods", ".numbers"]);
+
+function getExt(name: string) { return name.slice(name.lastIndexOf(".")).toLowerCase(); }
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target?.result as string ?? "");
+    r.onerror = () => rej(new Error("Could not read file."));
+    r.readAsText(file);
+  });
+}
+
+function readFileAsBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target?.result as ArrayBuffer);
+    r.onerror = () => rej(new Error("Could not read file."));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+async function parseAnyFile(file: File): Promise<Record<string, string>[]> {
+  const ext = getExt(file.name);
+  if (XLSX_EXTS.has(ext)) {
+    const buf = await readFileAsBuffer(file);
+    return xlsxToRows(buf);
+  }
+  const text = await readFileAsText(file);
+  return parseDelimitedText(text);
+}
+
 function UploadsView({ onReconcile }: {
   onReconcile: (bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) => void;
 }) {
@@ -758,24 +817,16 @@ function UploadsView({ onReconcile }: {
   const [parsing,    setParsing]    = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
-  function readText(file: File): Promise<string> {
-    return new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload  = e => res(e.target?.result as string ?? "");
-      r.onerror = () => rej(new Error("Could not read file."));
-      r.readAsText(file);
-    });
-  }
-
   async function handleRun() {
     if (!bankFile || !ledgerFile) return;
     setParsing(true); setError(null);
     try {
-      const [bankText, ledgerText] = await Promise.all([readText(bankFile), readText(ledgerFile)]);
-      const bankRows   = parseCSVText(bankText);
-      const ledgerRows = parseCSVText(ledgerText);
-      if (!bankRows.length)   throw new Error("Bank statement is empty or could not be parsed. Check it has a header row.");
-      if (!ledgerRows.length) throw new Error("General ledger is empty or could not be parsed. Check it has a header row.");
+      const [bankRows, ledgerRows] = await Promise.all([
+        parseAnyFile(bankFile),
+        parseAnyFile(ledgerFile),
+      ]);
+      if (!bankRows.length)   throw new Error(`Bank statement is empty or could not be parsed. Make sure the file has a header row. (${bankFile.name})`);
+      if (!ledgerRows.length) throw new Error(`General ledger is empty or could not be parsed. Make sure the file has a header row. (${ledgerFile.name})`);
       const { txns: bankTxns,   invalid: bankInv   } = csvToTx(bankRows,   "B");
       const { txns: ledgerTxns, invalid: ledgerInv } = csvToTx(ledgerRows, "L");
       onReconcile([...bankTxns, ...bankInv], [...ledgerTxns, ...ledgerInv], bankFile.name, ledgerFile.name);
@@ -787,15 +838,15 @@ function UploadsView({ onReconcile }: {
   }
 
   const slots = [
-    { label:"Bank Statement",  sub:"Export from your bank as CSV",        ref:bankRef,   file:bankFile,   set:setBankFile   },
-    { label:"General Ledger",  sub:"Accounting software export as CSV",   ref:ledgerRef, file:ledgerFile, set:setLedgerFile },
+    { label:"Bank Statement",  sub:"Any format — CSV, XLSX, TSV, ODS…",  ref:bankRef,   file:bankFile,   set:setBankFile   },
+    { label:"General Ledger",  sub:"Any format — CSV, XLSX, TSV, ODS…",  ref:ledgerRef, file:ledgerFile, set:setLedgerFile },
   ] as const;
 
   return (
     <div className="p-6 sm:p-8 max-w-2xl mx-auto w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Upload Files</h1>
       <p className="text-sm text-gray-400 mb-6">
-        Upload your bank statement and general ledger as CSV files. The engine will match transactions automatically.
+        Upload your bank statement and general ledger. CSV, XLSX, TSV, ODS, TXT — any tabular format works.
       </p>
 
       <div className="space-y-4">
@@ -822,10 +873,10 @@ function UploadsView({ onReconcile }: {
                     className="w-full flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
                     <Upload className="h-7 w-7 text-gray-300 group-hover:text-gray-500 mb-2.5" />
                     <p className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">Click to upload</p>
-                    <p className="text-[11px] text-gray-300 mt-1">CSV · up to 10 MB</p>
+                    <p className="text-[11px] text-gray-300 mt-1">CSV · XLSX · TSV · ODS · TXT · up to 50 MB</p>
                   </button>
               }
-              <input ref={ref} type="file" accept=".csv" className="hidden"
+              <input ref={ref} type="file" accept={ACCEPTED_EXTS} className="hidden"
                 onChange={e => { set(e.target.files?.[0] ?? null); setError(null); e.target.value = ""; }} />
             </div>
           </div>
@@ -856,17 +907,31 @@ function UploadsView({ onReconcile }: {
       )}
 
       <div className="mt-8 border border-gray-100 p-5 bg-gray-50">
-        <p className="text-xs font-semibold text-gray-500 mb-3">Expected CSV columns</p>
+        <p className="text-xs font-semibold text-gray-500 mb-3">Accepted formats and column layout</p>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Amount column</p>
-            <code className="block text-[10px] text-gray-500 bg-white border border-gray-200 p-2 leading-relaxed whitespace-pre">{"Date,Description,Amount\n2026-04-01,CHECKERS,-2850.00\n2026-04-03,PICK N PAY,-1240.50"}</code>
-            <p className="text-[10px] text-gray-400 mt-1.5">Or separate Debit / Credit columns</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">File formats</p>
+            <div className="bg-white border border-gray-200 p-2 space-y-0.5">
+              {[
+                ["CSV",  "Comma-separated (.csv)"],
+                ["TSV",  "Tab-separated (.tsv, .txt)"],
+                ["XLSX", "Excel workbook (.xlsx, .xls)"],
+                ["ODS",  "LibreOffice Calc (.ods)"],
+                ["Auto", "Delimiter auto-detected (,  ;  |  tab)"],
+              ].map(([fmt, desc]) => (
+                <div key={fmt} className="flex items-baseline gap-2">
+                  <span className="text-[9px] font-bold text-gray-400 w-8 shrink-0">{fmt}</span>
+                  <span className="text-[10px] text-gray-500">{desc}</span>
+                </div>
+              ))}
+            </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Dates accepted</p>
-            <div className="bg-white border border-gray-200 p-2 space-y-0.5">
-              {["YYYY-MM-DD  (2026-04-01)", "DD/MM/YYYY  (01/04/2026)", "DD-MM-YYYY  (01-04-2026)", "MM/DD/YYYY  (04/01/2026)"].map(f => (
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Required columns</p>
+            <code className="block text-[10px] text-gray-500 bg-white border border-gray-200 p-2 leading-relaxed whitespace-pre">{"Date, Description, Amount\n\nor:\nDate, Description, Debit, Credit"}</code>
+            <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase">Dates</p>
+            <div className="bg-white border border-gray-200 p-2 space-y-0.5 mt-1">
+              {["YYYY-MM-DD", "DD/MM/YYYY", "DD-MM-YYYY", "MM/DD/YYYY"].map(f => (
                 <p key={f} className="text-[10px] text-gray-500 font-mono">{f}</p>
               ))}
             </div>
