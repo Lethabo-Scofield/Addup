@@ -1,0 +1,365 @@
+You are building Addup, an AI-powered reconciliation decision system.
+
+Current product:
+Addup already accepts bank statement CSV files and general ledger CSV files. It parses, normalises, matches, classifies, reviews, and exports reports.
+
+New goal:
+Upgrade Addup from a transaction matching engine into a discrepancy resolution system.
+
+The product should not only say:
+“This bank row does not match a ledger row.”
+
+It must say:
+“What likely happened, what evidence supports that, what action should be taken, and whether the case can be safely resolved.”
+
+Research inspiration:
+Use agentic tool-use ideas from Kimi K2 and Kimi Researcher. Kimi K2 is designed for agentic intelligence, tool use, coding, and multi-step task execution. Kimi Researcher focuses on multi-step planning, reasoning, tool use, search, browsing, and code execution. We want Addup to apply the same pattern to finance: plan, inspect data, use tools, reason, verify, then produce a defensible action. Do not make the LLM directly change financial records without validation. The LLM should propose explanations and actions, while deterministic code verifies the numbers.
+
+Core product change:
+Move from row-level matching to case-level reconciliation.
+
+A “case” is a group of related transactions with:
+- discrepancy type
+- related bank rows
+- related ledger rows
+- hypothesis
+- evidence
+- confidence score
+- suggested action
+- risk level
+- audit explanation
+- final status
+
+Implement the following.
+
+1. Discrepancy case engine
+
+Create a new backend module:
+
+/src/reconciliation/caseEngine.ts
+
+It must convert unmatched, possible match, and manual review items into discrepancy cases.
+
+Supported case types:
+- TIMING_DIFFERENCE
+- MISSING_LEDGER_ENTRY
+- MISSING_BANK_ENTRY
+- BANK_FEES
+- DUPLICATE_ENTRY
+- AMOUNT_VARIANCE
+- DESCRIPTION_MISMATCH
+- MANY_TO_ONE_MATCH
+- ONE_TO_MANY_MATCH
+- FX_OR_ROUNDING_DIFFERENCE
+- UNKNOWN
+
+Each case must follow this schema:
+
+{
+  "case_id": "case_001",
+  "type": "TIMING_DIFFERENCE",
+  "title": "Possible timing difference",
+  "bank_transactions": [],
+  "ledger_transactions": [],
+  "hypothesis": "",
+  "evidence": [],
+  "confidence": 0.0,
+  "risk": "low | medium | high",
+  "suggested_action": {
+    "action_type": "approve_match | create_journal_entry | adjust_date | ignore_known_variance | request_human_review",
+    "description": "",
+    "requires_approval": true
+  },
+  "audit_narrative": "",
+  "status": "proposed | approved | rejected | resolved | needs_review"
+}
+
+2. Group matching
+
+Upgrade matching from only one-to-one to:
+- one bank transaction to many ledger entries
+- many bank transactions to one ledger entry
+- many-to-many grouped matching
+
+Use these rules:
+- group by close dates
+- group by similar descriptions
+- group by equal total amount within tolerance
+- group by references where available
+
+Example:
+Three bank card transactions totaling R2,340 may match one ledger settlement entry of R2,340.
+
+Use libraries:
+- date-fns for date windows
+- fuse.js for fuzzy description similarity
+- decimal.js for money calculations
+- zod for schema validation
+
+Do not use floating point math for currency.
+
+3. Explanation layer
+
+Create:
+
+/src/reconciliation/explanationEngine.ts
+
+For every case, generate:
+- hypothesis
+- evidence
+- confidence
+- suggested action
+- audit narrative
+
+Start with deterministic rules before using an LLM.
+
+Example rules:
+
+TIMING_DIFFERENCE:
+If amount matches exactly, description similarity is high, but dates differ within 1–5 days:
+Hypothesis: “The transaction was recorded on a different date.”
+Suggested action: “Approve as timing difference.”
+Risk: low or medium depending on date gap.
+
+BANK_FEES:
+If bank description contains fee, charges, service fee, account fee, bank charge:
+Hypothesis: “This appears to be a bank fee not recorded in the ledger.”
+Suggested action: “Create journal entry to bank charges expense.”
+Risk: medium unless pattern exists historically.
+
+DUPLICATE_ENTRY:
+If same amount, same date, and similar description appears more than once in ledger:
+Hypothesis: “Possible duplicate ledger posting.”
+Suggested action: “Request human review before correction.”
+Risk: high.
+
+MANY_TO_ONE_MATCH:
+If grouped bank total equals one ledger amount:
+Hypothesis: “Multiple bank transactions appear to have been posted as a single ledger entry.”
+Suggested action: “Approve grouped match.”
+Risk: medium.
+
+4. Pattern memory
+
+Create:
+
+/src/reconciliation/patternMemory.ts
+
+Store company-specific learned patterns in JSON or SQLite.
+
+Track:
+- recurring vendors
+- recurring bank fees
+- common settlement delays
+- common description normalisations
+- previously approved case types
+- historical confidence thresholds
+
+Schema:
+
+{
+  "company_id": "demo_company",
+  "patterns": [
+    {
+      "pattern_id": "pat_001",
+      "type": "BANK_FEES",
+      "description_keywords": ["monthly service fee", "bank charges"],
+      "typical_amount_range": { "min": 50, "max": 500 },
+      "typical_account": "Bank Charges",
+      "historical_approval_rate": 0.94
+    }
+  ]
+}
+
+Use pattern memory to improve confidence.
+
+5. Financial action engine
+
+Create:
+
+/src/reconciliation/actionEngine.ts
+
+The system must propose actions, not blindly execute.
+
+Supported actions:
+- approve_match
+- approve_grouped_match
+- create_journal_entry
+- adjust_ledger_date
+- mark_as_timing_difference
+- flag_duplicate
+- request_missing_document
+- request_human_review
+
+Each action must include:
+- impact summary
+- affected accounts
+- amount
+- reason
+- approval requirement
+
+Do not allow automatic execution for:
+- high-risk cases
+- duplicate entries
+- journal entries above threshold
+- unknown case types
+
+6. Human approval workflow
+
+Update UI from transaction review to case review.
+
+Pages/components:
+- Case Dashboard
+- Case Detail View
+- Evidence Panel
+- Suggested Action Panel
+- Audit Trail Panel
+- Confidence/Risk Badge
+- Approve / Reject / Edit / Escalate buttons
+
+Dashboard sections:
+- Auto-resolved
+- Needs approval
+- High risk
+- Unknown
+- Resolved today
+
+Each case card must show:
+- case title
+- type
+- amount
+- confidence
+- risk
+- suggested action
+- short explanation
+
+7. Audit trail
+
+Every system action and human action must be logged.
+
+Create:
+
+/src/reconciliation/auditTrail.ts
+
+Log:
+- timestamp
+- actor: system or user
+- case_id
+- action
+- before state
+- after state
+- reason
+- evidence used
+
+Export audit trail into the PDF report.
+
+8. PDF report upgrade
+
+The PDF must not only list matched and unmatched rows.
+
+It must include:
+- executive summary
+- total bank amount
+- total ledger amount
+- matched amount
+- unresolved amount
+- number of cases
+- cases by type
+- high-risk cases
+- resolved cases
+- audit narratives
+- recommended next steps
+
+Use:
+- pdf-lib or puppeteer for PDF generation
+- recharts for UI charts
+
+9. LLM agent layer
+
+Add optional LLM support.
+
+Create:
+
+/src/agents/reconciliationAgent.ts
+
+The LLM must receive structured case data only.
+
+It must return JSON only:
+
+{
+  "hypothesis": "",
+  "evidence": [],
+  "suggested_action": "",
+  "risk": "low | medium | high",
+  "confidence_adjustment": 0,
+  "audit_narrative": "",
+  "needs_human_review": true
+}
+
+Rules:
+- Never trust LLM math.
+- All amounts must be verified by deterministic code.
+- LLM may explain, classify, and suggest.
+- LLM may not execute financial changes.
+- Invalid JSON must be rejected.
+- Use zod validation.
+
+10. Tech stack
+
+Use:
+- Next.js
+- TypeScript
+- TailwindCSS
+- shadcn/ui
+- Node.js backend routes
+- SQLite or PostgreSQL
+- Prisma ORM
+- zod
+- decimal.js
+- date-fns
+- fuse.js
+- papaparse
+- pdf-lib or puppeteer
+- recharts
+
+Optional:
+- LangChain.js or Vercel AI SDK for LLM calls
+- ChromaDB or pgvector for pattern memory later
+
+11. Seed demo data
+
+Create realistic demo bank and ledger data showing:
+- exact matches
+- timing differences
+- bank fees
+- missing ledger entries
+- missing bank entries
+- duplicate ledger posting
+- one-to-many match
+- many-to-one match
+- amount variance
+
+12. Acceptance criteria
+
+The product is complete when:
+
+- It uploads bank and ledger CSV files.
+- It performs one-to-one matching.
+- It performs grouped matching.
+- It creates discrepancy cases.
+- It explains each case.
+- It suggests an action.
+- It assigns confidence and risk.
+- It requires approval for risky actions.
+- It stores an audit trail.
+- It exports a formal PDF report.
+- The UI reviews cases, not just rows.
+- Currency math uses decimal.js.
+- All LLM outputs are validated.
+- The system works with demo data end to end.
+
+Final product positioning:
+Addup is not a spreadsheet matcher.
+Addup is a financial discrepancy resolution system.
+
+Build this cleanly, modularly, and production-ready.

@@ -7,6 +7,8 @@ import {
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
   Eye, ChevronDown, ArrowLeftRight, ScrollText, BarChart3,
+  Layers, Shield, ShieldAlert, ShieldCheck, GitMerge, Zap,
+  ListChecks, FlaskConical,
 } from "lucide-react";
 import addupLogo from "@assets/logo.png";
 import logoAbsa        from "@assets/banks/absa.png";
@@ -57,10 +59,13 @@ import jsPDF from "jspdf";
 import {
   type NavId, type TxStatus, type ActionType, type QualityStatus,
   type Tx, type ScoreBreakdown, type Candidate, type ReconRow, type AuditEntry,
+  type DiscrepancyCase, type CaseType, type RiskLevel, type CaseStatus,
   fmt, fmtDate, now, STATUS_CFG, ACTION_LABELS,
   parseCSVText, xlsxToRows, parseDelimitedText, csvToTx,
   normalizeDesc, hasOcrArtifacts,
   runReconciliation, derivePeriod,
+  buildCases, caseSummary,
+  loadDemoData, DEMO_BANK_NAME, DEMO_LEDGER_NAME, DEMO_COMPANY,
 } from "../engine";
 
 // ── Loader ────────────────────────────────────────────────────────────────────
@@ -181,6 +186,49 @@ function ConfBar({ pct }: { pct: number }) {
       </div>
       <span className={`text-[11px] font-bold w-8 text-right shrink-0 ${textColor}`}>{pct}%</span>
     </div>
+  );
+}
+
+// ── Case type + risk badges ────────────────────────────────────────────────────
+
+const CASE_TYPE_CFG: Record<CaseType, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
+  AUTO_MATCHED:               { label:"Auto-matched",    bg:"bg-emerald-50",  text:"text-emerald-700", border:"border-emerald-200", icon:<ShieldCheck className="h-3 w-3"/>    },
+  TIMING_DIFFERENCE:          { label:"Timing",          bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<Clock className="h-3 w-3"/>          },
+  BANK_FEES:                  { label:"Bank Fee",        bg:"bg-orange-50",   text:"text-orange-700",  border:"border-orange-200",  icon:<Zap className="h-3 w-3"/>            },
+  MISSING_LEDGER_ENTRY:       { label:"Missing Ledger",  bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<AlertTriangle className="h-3 w-3"/>  },
+  MISSING_BANK_ENTRY:         { label:"Missing Bank",    bg:"bg-purple-50",   text:"text-purple-700",  border:"border-purple-200",  icon:<AlertTriangle className="h-3 w-3"/>  },
+  DUPLICATE_ENTRY:            { label:"Duplicate",       bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  AMOUNT_VARIANCE:            { label:"Variance",        bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
+  DESCRIPTION_MISMATCH:       { label:"Desc Mismatch",   bg:"bg-indigo-50",   text:"text-indigo-700",  border:"border-indigo-200",  icon:<Info className="h-3 w-3"/>           },
+  MANY_TO_ONE_MATCH:          { label:"Group Match",     bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
+  ONE_TO_MANY_MATCH:          { label:"Split Match",     bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
+  FX_OR_ROUNDING_DIFFERENCE:  { label:"Rounding",        bg:"bg-cyan-50",     text:"text-cyan-700",    border:"border-cyan-200",    icon:<ArrowLeftRight className="h-3 w-3"/> },
+  UNKNOWN:                    { label:"Unknown",         bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
+};
+
+function CaseTypeBadge({ type }: { type: CaseType }) {
+  const cfg = CASE_TYPE_CFG[type];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      {cfg.icon}{cfg.label}
+    </span>
+  );
+}
+
+const RISK_CFG: Record<RiskLevel, { label: string; bg: string; text: string; border: string }> = {
+  low:    { label:"Low Risk",  bg:"bg-emerald-50", text:"text-emerald-700", border:"border-emerald-200" },
+  medium: { label:"Med Risk",  bg:"bg-amber-50",   text:"text-amber-700",   border:"border-amber-200"   },
+  high:   { label:"High Risk", bg:"bg-red-50",     text:"text-red-700",     border:"border-red-200"     },
+};
+
+function RiskBadge({ risk }: { risk: RiskLevel }) {
+  const cfg = RISK_CFG[risk];
+  const icon = risk === "high" ? <ShieldAlert className="h-3 w-3"/>
+    : risk === "medium" ? <Shield className="h-3 w-3"/> : <ShieldCheck className="h-3 w-3"/>;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      {icon}{cfg.label}
+    </span>
   );
 }
 
@@ -740,6 +788,422 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
   );
 }
 
+// ── Case card ─────────────────────────────────────────────────────────────────
+
+function CaseCard({ c, onClick }: { c: DiscrepancyCase; onClick: () => void }) {
+  const isDecided  = !!c.userDecision;
+  const isApproved = c.userDecision === "approved";
+  const isRejected = c.userDecision === "rejected";
+  const isHigh     = c.risk === "high" && !isDecided;
+
+  const borderCls = isApproved ? "border-emerald-200 bg-emerald-50/30"
+    : isRejected ? "border-red-200 bg-red-50/20"
+    : isHigh ? "border-red-200"
+    : "border-gray-200";
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left border bg-white p-4 hover:shadow-sm transition-all group ${borderCls}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <CaseTypeBadge type={c.type} />
+            {c.type !== "AUTO_MATCHED" && <RiskBadge risk={c.risk} />}
+            {c.userDecision && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 border
+                ${isApproved ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : isRejected ? "bg-red-50 text-red-700 border-red-200"
+                : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                {c.userDecision === "approved" ? "✓ Approved"
+                  : c.userDecision === "rejected" ? "✗ Rejected"
+                  : "⚑ Escalated"}
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-semibold text-gray-800 truncate">{c.title}</p>
+          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{c.hypothesis.slice(0, 90)}{c.hypothesis.length > 90 ? "…" : ""}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-gray-900">{fmt(c.amount)}</p>
+          <p className="text-[10px] text-gray-400">{c.confidence}% conf.</p>
+          <ChevronRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 ml-auto mt-1 transition-colors" />
+        </div>
+      </div>
+      {c.type !== "AUTO_MATCHED" && !isDecided && (
+        <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-start gap-1.5">
+          <Sparkles className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-gray-500 flex-1">
+            <span className="font-semibold text-gray-700">AI: </span>
+            {c.suggested_action.description.slice(0, 90)}{c.suggested_action.description.length > 90 ? "…" : ""}
+          </p>
+          {c.suggested_action.requires_approval && (
+            <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5">
+              Approval needed
+            </span>
+          )}
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── Case dashboard view ────────────────────────────────────────────────────────
+
+type CaseFilter = "all" | "needs_review" | "proposed" | "resolved" | "auto";
+
+function CaseDashboardView({ cases, onSelectCase, onNav }: {
+  cases: DiscrepancyCase[];
+  onSelectCase: (c: DiscrepancyCase) => void;
+  onNav: (n: NavId) => void;
+}) {
+  const [filter, setFilter] = useState<CaseFilter>("all");
+
+  const auto       = cases.filter(c => c.type === "AUTO_MATCHED");
+  const actionable = cases.filter(c => c.type !== "AUTO_MATCHED");
+  const pending    = actionable.filter(c => !c.userDecision);
+  const highRisk   = actionable.filter(c => c.risk === "high" && !c.userDecision);
+  const decided    = actionable.filter(c => !!c.userDecision);
+
+  const filtered = filter === "auto"
+    ? auto
+    : filter === "needs_review"
+    ? actionable.filter(c => c.status === "needs_review" && !c.userDecision)
+    : filter === "proposed"
+    ? actionable.filter(c => c.status === "proposed" && !c.userDecision)
+    : filter === "resolved"
+    ? decided
+    : actionable;
+
+  const tabs: { key: CaseFilter; label: string; count: number }[] = [
+    { key:"all",          label:"All Cases",     count: actionable.length },
+    { key:"needs_review", label:"Needs Review",  count: actionable.filter(c => c.status === "needs_review" && !c.userDecision).length },
+    { key:"proposed",     label:"Proposed",      count: actionable.filter(c => c.status === "proposed" && !c.userDecision).length },
+    { key:"resolved",     label:"Resolved",      count: decided.length },
+    { key:"auto",         label:"Auto-matched",  count: auto.length },
+  ];
+
+  if (cases.length === 0) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto w-full">
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Case Review</h1>
+        <p className="text-sm text-gray-400 mb-8">Upload your bank statement and general ledger to begin.</p>
+        <div className="border border-dashed border-gray-200 py-24 flex flex-col items-center bg-white">
+          <Layers className="h-12 w-12 text-gray-200 mb-3" />
+          <p className="text-sm font-semibold text-gray-400">No data loaded yet</p>
+          <p className="text-xs text-gray-300 mt-1">Go to Upload Files to get started</p>
+          <button onClick={() => onNav("uploads")}
+            className="mt-4 flex items-center gap-2 h-9 px-5 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors">
+            <Upload className="h-3.5 w-3.5" /> Upload Files
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
+
+      {/* Header */}
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-gray-900">Case Review</h1>
+        <p className="text-sm text-gray-400 mt-0.5">
+          {cases.length} cases · {auto.length} auto-resolved · {pending.length} need attention
+          {highRisk.length > 0 && <span className="text-red-500 font-semibold"> · {highRisk.length} high risk</span>}
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { label:"Auto-resolved",  val:auto.length,     color:"text-emerald-700", bg:"bg-emerald-50",  border:"border-emerald-100" },
+          { label:"Needs attention",val:pending.length,  color:"text-amber-700",   bg:"bg-amber-50",    border:"border-amber-100"   },
+          { label:"High risk",      val:highRisk.length, color:"text-red-700",     bg:"bg-red-50",      border:"border-red-100"     },
+          { label:"Resolved",       val:decided.length,  color:"text-blue-700",    bg:"bg-blue-50",     border:"border-blue-100"    },
+        ].map(({ label, val, color, bg, border }) => (
+          <div key={label} className={`border ${border} ${bg} px-4 py-3`}>
+            <p className={`text-2xl font-bold ${color}`}>{val}</p>
+            <p className="text-[11px] font-semibold text-gray-600 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {tabs.map(tab => (
+          <button key={tab.key} onClick={() => setFilter(tab.key)}
+            className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold border transition-colors
+              ${filter === tab.key
+                ? "bg-gray-900 text-white border-gray-900"
+                : "text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-800"}`}
+          >
+            {tab.label}
+            <span className={`text-[10px] font-bold px-1 py-0.5 min-w-[18px] text-center
+              ${filter === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Case list */}
+      {filtered.length === 0 ? (
+        <div className="border border-gray-200 py-16 flex flex-col items-center bg-white">
+          <CheckCircle2 className="h-10 w-10 text-emerald-300 mb-3" />
+          <p className="text-sm font-semibold text-gray-500">No cases in this filter</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(c => (
+            <CaseCard key={c.case_id} c={c} onClick={() => onSelectCase(c)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Case detail panel (slide-in) ──────────────────────────────────────────────
+
+function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst }: {
+  c:          DiscrepancyCase;
+  onClose:    () => void;
+  onApprove:  (note?: string) => void;
+  onReject:   (note?: string) => void;
+  onEscalate: () => void;
+  bankInst?:  string;
+}) {
+  const { resp, streaming, error, explain } = useGrokExplain();
+  const [grokOpen, setGrokOpen]   = useState(false);
+  const [note, setNote]           = useState("");
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const isAuto     = c.type === "AUTO_MATCHED";
+  const isDecided  = !!c.userDecision;
+  const needsApproval = c.suggested_action.requires_approval;
+
+  const bankLogo = getBankLogo(bankInst ?? "");
+
+  function handleGrok() {
+    setGrokOpen(v => !v);
+    if (!resp && !streaming) {
+      explain(
+        `Analyze reconciliation case ${c.case_id}: ${c.title}`,
+        `Type: ${c.type}. Risk: ${c.risk}. Hypothesis: ${c.hypothesis}. Evidence: ${c.evidence.join("; ")}. Suggested action: ${c.suggested_action.description}.`,
+      );
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ x:"100%" }} animate={{ x:0 }} exit={{ x:"100%" }}
+      transition={{ type:"spring", stiffness:300, damping:30 }}
+      className="fixed right-0 top-0 h-full w-full max-w-[680px] bg-white border-l border-gray-200 z-50 flex flex-col shadow-2xl overflow-hidden"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 shrink-0 bg-gray-50">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <CaseTypeBadge type={c.type} />
+            <RiskBadge risk={c.risk} />
+            <span className="text-[10px] text-gray-400 font-mono">{c.case_id}</span>
+          </div>
+          <h2 className="text-sm font-bold text-gray-900 pr-4 truncate">{c.title}</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <ConfBar pct={c.confidence} />
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-gray-200 transition-colors shrink-0 ml-2">
+          <X className="h-4 w-4 text-gray-500" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+
+        {/* Hypothesis */}
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Hypothesis</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{c.hypothesis}</p>
+        </div>
+
+        {/* Evidence */}
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Evidence ({c.evidence.length})</p>
+          <ul className="space-y-1.5">
+            {c.evidence.map((e, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <span className="text-xs text-gray-700">{e}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Suggested action */}
+        <div className={`px-5 py-4 ${needsApproval ? "bg-amber-50/40" : "bg-blue-50/20"}`}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Suggested Action</p>
+          <div className="flex items-start gap-2.5">
+            <Sparkles className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                {c.suggested_action.action_type.replace(/_/g, " ")}
+              </p>
+              <p className="text-sm text-gray-800">{c.suggested_action.description}</p>
+              {needsApproval && (
+                <p className="text-xs text-amber-700 font-semibold mt-1.5 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Requires manual approval before action
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Related transactions */}
+        {(c.bank_txs.length > 0 || c.ledger_txs.length > 0) && (
+          <div className="px-5 py-4">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Related Transactions</p>
+            <div className="flex gap-3">
+              {c.bank_txs.length > 0 && (
+                <div className="flex-1 border border-gray-200 overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                      Bank {c.bank_txs.length > 1 && `(${c.bank_txs.length})`}
+                    </p>
+                    {bankLogo && <img src={bankLogo} alt="" className="h-4 w-auto" />}
+                  </div>
+                  {c.bank_txs.map(tx => (
+                    <div key={tx.id} className="px-3 py-2.5 border-b border-gray-100 last:border-0">
+                      <p className="text-xs font-medium text-gray-800">{tx.desc}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-[10px] text-gray-400">{tx.date}</p>
+                        <p className={`text-xs font-bold ${tx.amt >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(tx.amt)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {c.ledger_txs.length > 0 && (
+                <div className="flex-1 border border-gray-200 overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                    <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                      Ledger {c.ledger_txs.length > 1 && `(${c.ledger_txs.length})`}
+                    </p>
+                  </div>
+                  {c.ledger_txs.map(tx => (
+                    <div key={tx.id} className="px-3 py-2.5 border-b border-gray-100 last:border-0">
+                      <p className="text-xs font-medium text-gray-800">{tx.desc}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-[10px] text-gray-400">{tx.date}</p>
+                        <p className={`text-xs font-bold ${tx.amt >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(tx.amt)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Audit narrative */}
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Audit Narrative</p>
+          <div className="bg-gray-50 border border-gray-100 p-3">
+            <p className="text-xs text-gray-700 leading-relaxed font-mono">{c.audit_narrative}</p>
+          </div>
+        </div>
+
+        {/* AI analysis */}
+        {!isAuto && (
+          <div className="px-5 py-4">
+            <button onClick={handleGrok}
+              className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              {grokOpen ? "AI Analysis" : "Get AI analysis"}
+              <ChevronDown className={`h-3 w-3 transition-transform ${grokOpen ? "rotate-180" : ""}`} />
+            </button>
+            <AnimatePresence>
+              {grokOpen && (
+                <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:"auto" }} exit={{ opacity:0, height:0 }}>
+                  <div className="mt-3 border border-gray-100 bg-gray-50 p-3 min-h-[72px]">
+                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {!resp && !error && (
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <motion.div animate={{ rotate:360 }} transition={{ duration:1, repeat:Infinity, ease:"linear" }}>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </motion.div>
+                        Analysing case…
+                      </div>
+                    )}
+                    {resp && <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{resp}</p>}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* Action footer */}
+      <div className="px-5 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
+        {isDecided ? (
+          <div className="flex items-center gap-3">
+            <span className={`text-xs font-bold px-3 py-1.5 border
+              ${c.userDecision === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : c.userDecision === "rejected"  ? "bg-red-50 text-red-700 border-red-200"
+              : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+              {c.userDecision === "approved" ? "✓ Approved"
+                : c.userDecision === "rejected" ? "✗ Rejected" : "⚑ Escalated"}
+            </span>
+            {c.userNote && <p className="text-xs text-gray-500 italic truncate">{c.userNote}</p>}
+            <button onClick={onClose} className="ml-auto text-xs text-gray-400 hover:text-gray-700">Close</button>
+          </div>
+        ) : isAuto ? (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">This case was auto-resolved by the engine.</span>
+            <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-700">Close</button>
+          </div>
+        ) : (
+          <>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Your Decision</p>
+            <textarea
+              value={note} onChange={e => setNote(e.target.value)}
+              placeholder="Optional note (reason for decision)…"
+              className="w-full mb-3 h-14 border border-gray-200 px-3 py-2 text-xs resize-none focus:outline-none focus:border-gray-400"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => onApprove(note || undefined)}
+                className={`flex items-center gap-1.5 h-9 px-4 text-white text-xs font-bold transition-colors
+                  ${c.risk === "high" ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-600 hover:bg-blue-700"}`}>
+                <ThumbsUp className="h-3.5 w-3.5" />
+                {c.suggested_action.action_type === "create_journal_entry" ? "Create Journal Entry"
+                  : c.suggested_action.action_type.includes("grouped") ? "Approve Group"
+                  : "Approve"}
+              </button>
+              <button onClick={() => onReject(note || undefined)}
+                className="flex items-center gap-1.5 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                <ThumbsDown className="h-3.5 w-3.5" /> Reject
+              </button>
+              <button onClick={onEscalate}
+                className="flex items-center gap-1.5 h-9 px-4 border border-amber-200 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors">
+                <AlertTriangle className="h-3.5 w-3.5" /> Escalate
+              </button>
+              <button onClick={onClose} className="ml-auto text-xs text-gray-400 hover:text-gray-700 px-2">
+                Close
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Uploads view ──────────────────────────────────────────────────────────────
 
 const ACCEPTED_EXTS = ".csv,.tsv,.txt,.xlsx,.xls,.ods,.numbers";
@@ -775,8 +1239,9 @@ async function parseAnyFile(file: File): Promise<Record<string, string>[]> {
   return parseDelimitedText(text);
 }
 
-function UploadsView({ onReconcile }: {
+function UploadsView({ onReconcile, onLoadDemo }: {
   onReconcile: (bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) => void;
+  onLoadDemo?: () => void;
 }) {
   const bankRef    = useRef<HTMLInputElement>(null);
   const ledgerRef  = useRef<HTMLInputElement>(null);
@@ -871,6 +1336,25 @@ function UploadsView({ onReconcile }: {
               : "Run now"
             }
           </button>
+        </div>
+      )}
+
+      {/* Try demo data */}
+      {onLoadDemo && (
+        <div className="mt-6 border border-dashed border-gray-200 p-5">
+          <div className="flex items-start gap-3">
+            <FlaskConical className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-700">Try with demo data</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Load a sample South African reconciliation — auto-matches, timing differences, bank fees, missing entries, and group matches all pre-populated.
+              </p>
+            </div>
+            <button onClick={onLoadDemo}
+              className="shrink-0 flex items-center gap-2 h-9 px-4 bg-gray-900 text-white text-xs font-bold hover:bg-gray-700 transition-colors">
+              <Zap className="h-3 w-3" /> Load demo
+            </button>
+          </div>
         </div>
       )}
 
@@ -1751,19 +2235,21 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, b
 // ── Main Engine ───────────────────────────────────────────────────────────────
 
 export default function Engine() {
-  const [loading,    setLoading]    = useState(true);
-  const [nav,        setNav]        = useState<NavId>("uploads");
-  const [sidebarOpen,setSidebarOpen]= useState(false);
-  const [bankData,   setBankData]   = useState<Tx[]>([]);
-  const [ledgerData, setLedgerData] = useState<Tx[]>([]);
-  const [rows,       setRows]       = useState<ReconRow[]>([]);
-  const [auditLog,   setAuditLog]   = useState<AuditEntry[]>([]);
-  const [company,    setCompany]    = useState("");
-  const [bankInst,   setBankInst]   = useState("");
-  const [ledgerSoft, setLedgerSoft] = useState("");
-  const [jobId,      setJobId]      = useState("");
-  const [period,     setPeriod]     = useState("");
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [nav,         setNav]         = useState<NavId>("uploads");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bankData,    setBankData]    = useState<Tx[]>([]);
+  const [ledgerData,  setLedgerData]  = useState<Tx[]>([]);
+  const [rows,        setRows]        = useState<ReconRow[]>([]);
+  const [cases,       setCases]       = useState<DiscrepancyCase[]>([]);
+  const [selectedCase,setSelectedCase]= useState<DiscrepancyCase | null>(null);
+  const [auditLog,    setAuditLog]    = useState<AuditEntry[]>([]);
+  const [company,     setCompany]     = useState("");
+  const [bankInst,    setBankInst]    = useState("");
+  const [ledgerSoft,  setLedgerSoft]  = useState("");
+  const [jobId,       setJobId]       = useState("");
+  const [period,      setPeriod]      = useState("");
+  const [pdfLoading,  setPdfLoading]  = useState(false);
 
   const hasData = bankData.length > 0 && ledgerData.length > 0;
   const overallConf = hasData
@@ -1775,18 +2261,21 @@ export default function Engine() {
   }, []);
 
   function handleReconcile(bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) {
-    const newJobId = `rec_${Date.now()}_001`;
+    const newJobId  = `rec_${Date.now()}_001`;
     const newPeriod = derivePeriod(bank) || derivePeriod(ledger);
-    const reconRows = runReconciliation(bank, ledger);
+    const reconRows  = runReconciliation(bank, ledger);
+    const reconCases = buildCases(reconRows);
     setBankData(bank);
     setLedgerData(ledger);
     setRows(reconRows);
+    setCases(reconCases);
+    setSelectedCase(null);
     setJobId(newJobId);
     setPeriod(newPeriod);
     if (!bankInst)   setBankInst(bankName.replace(/\.[^.]+$/, ""));
     if (!ledgerSoft) setLedgerSoft(ledgerName.replace(/\.[^.]+$/, ""));
     setAuditLog([]);
-    setNav("dashboard");
+    setNav("cases");
   }
 
   const reviewCount = rows.filter(r =>
@@ -1795,12 +2284,18 @@ export default function Engine() {
      r.status === "unmatched_ledger") && !r.userStatus
   ).length;
 
+  const pendingCases = hasData
+    ? cases.filter(c => c.type !== "AUTO_MATCHED" && !c.userDecision).length
+    : 0;
+
   const NAV = [
-    { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>        },
-    { id:"dashboard" as NavId, label:"Overview",     icon:<BarChart3 className="h-4 w-4"/>     },
-    { id:"review"    as NavId, label:"Needs Review", icon:<AlertCircle className="h-4 w-4"/>,
+    { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>    },
+    { id:"cases"     as NavId, label:"Cases",         icon:<Layers className="h-4 w-4"/>,
+      badge: hasData && pendingCases > 0 ? pendingCases : undefined },
+    { id:"dashboard" as NavId, label:"Overview",      icon:<BarChart3 className="h-4 w-4"/> },
+    { id:"review"    as NavId, label:"Needs Review",  icon:<AlertCircle className="h-4 w-4"/>,
       badge: reviewCount > 0 ? reviewCount : undefined },
-    { id:"audit"     as NavId, label:"Audit Trail",  icon:<ScrollText className="h-4 w-4"/>    },
+    { id:"audit"     as NavId, label:"Audit Trail",   icon:<ScrollText className="h-4 w-4"/> },
   ];
 
   const matchedCount  = rows.filter(r => r.status === "matched").length;
@@ -1938,7 +2433,12 @@ export default function Engine() {
         </header>
 
         {/* View content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto relative">
+          {nav === "cases"     && <CaseDashboardView
+              cases={cases}
+              onSelectCase={c => setSelectedCase(c)}
+              onNav={setNav}
+            />}
           {nav === "dashboard" && <DashboardView
               rows={rows} onNav={setNav}
               bankLen={bankData.length} ledgerLen={ledgerData.length}
@@ -1950,7 +2450,14 @@ export default function Engine() {
                 pending.forEach(r => addAudit({ job_id: jobId, action: "approve_match", target_id: r.id, next: "approved" }));
               }}
             />}
-          {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
+          {nav === "uploads"   && <UploadsView
+              onReconcile={handleReconcile}
+              onLoadDemo={() => {
+                const { bank, ledger } = loadDemoData();
+                handleReconcile(bank, ledger, DEMO_BANK_NAME, DEMO_LEDGER_NAME);
+                if (!company) setCompany(DEMO_COMPANY);
+              }}
+            />}
           {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
           {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
           {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {
@@ -1958,6 +2465,39 @@ export default function Engine() {
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
             }} />}
           {nav === "settings"  && <SettingsView company={company} setCompany={setCompany} bank={bankInst} setBank={setBankInst} ledger={ledgerSoft} setLedger={setLedgerSoft} />}
+
+          {/* Case detail panel slide-in overlay */}
+          <AnimatePresence>
+            {selectedCase && (
+              <>
+                <motion.div
+                  initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                  className="fixed inset-0 bg-gray-900/40 z-30"
+                  onClick={() => setSelectedCase(null)}
+                />
+                <CaseDetailPanel
+                  c={selectedCase}
+                  onClose={() => setSelectedCase(null)}
+                  onApprove={(note) => {
+                    setCases(prev => prev.map(c => c.case_id === selectedCase.case_id
+                      ? { ...c, userDecision: "approved", userNote: note, status: "approved" as CaseStatus } : c));
+                    setSelectedCase(null);
+                  }}
+                  onReject={(note) => {
+                    setCases(prev => prev.map(c => c.case_id === selectedCase.case_id
+                      ? { ...c, userDecision: "rejected", userNote: note, status: "rejected" as CaseStatus } : c));
+                    setSelectedCase(null);
+                  }}
+                  onEscalate={() => {
+                    setCases(prev => prev.map(c => c.case_id === selectedCase.case_id
+                      ? { ...c, userDecision: "escalated", status: "needs_review" as CaseStatus } : c));
+                    setSelectedCase(null);
+                  }}
+                  bankInst={bankInst}
+                />
+              </>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </div>

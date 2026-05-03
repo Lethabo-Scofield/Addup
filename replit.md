@@ -2,7 +2,7 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. **Addup** — a financial reconciliation landing page with waitlist signup. Built with Vite + React frontend and Express backend.
+pnpm workspace monorepo using TypeScript. **Addup** — an AI-powered financial reconciliation SaaS. Built with Vite + React frontend and Express backend. Features full case-level reconciliation: automatic case generation, hypothesis/evidence engine, AI-suggested actions, and an approval workflow.
 
 ## Stack
 
