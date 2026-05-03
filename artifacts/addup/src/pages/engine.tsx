@@ -587,54 +587,78 @@ function ReconTable({
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 
-function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) => void }) {
-  const matched  = rows.filter(r => r.status === "matched").length;
-  const possible = rows.filter(r => r.status === "possible_match").length;
-  const manual   = rows.filter(r => r.status === "manual_review").length;
-  const invalid  = rows.filter(r => r.status === "invalid_row").length;
-  const uBank    = rows.filter(r => r.status === "unmatched_bank").length;
-  const uLedger  = rows.filter(r => r.status === "unmatched_ledger").length;
+function DashboardView({ rows, onNav, onBulkApprove }: {
+  rows: ReconRow[];
+  onNav: (v: NavId) => void;
+  onBulkApprove: () => void;
+}) {
+  const matched        = rows.filter(r => r.status === "matched").length;
+  const pendingApprove = rows.filter(r => r.status === "matched" && !r.userStatus).length;
+  const possible       = rows.filter(r => r.status === "possible_match").length;
+  const manual         = rows.filter(r => r.status === "manual_review").length;
+  const invalid        = rows.filter(r => r.status === "invalid_row").length;
+  const uBank          = rows.filter(r => r.status === "unmatched_bank").length;
+  const uLedger        = rows.filter(r => r.status === "unmatched_ledger").length;
+  const exceptions     = possible + manual + invalid + uBank + uLedger;
 
   const cards: { label:string; val:number; sub:string; color:string; bg:string; border:string; nav:NavId }[] = [
-    { label:"Bank transactions",   val: BANK.length,   sub:"Click to view all transactions",   color:"text-gray-900",     bg:"bg-white",       border:"hover:border-gray-400",   nav:"jobs"   },
-    { label:"Ledger entries",      val: LEDGER.length, sub:"Click to view all entries",        color:"text-gray-900",     bg:"bg-white",       border:"hover:border-gray-400",   nav:"jobs"   },
-    { label:"Matched",             val: matched,       sub:"Auto-approved transactions",        color:"text-emerald-700",  bg:"bg-emerald-50",  border:"hover:border-emerald-400", nav:"jobs"   },
-    { label:"Possible matches",    val: possible,      sub:"Click to open review queue",       color:"text-blue-700",     bg:"bg-blue-50",     border:"hover:border-blue-400",   nav:"review" },
-    { label:"Manual review",       val: manual,        sub:"Click to open review queue",       color:"text-amber-700",    bg:"bg-amber-50",    border:"hover:border-amber-400",  nav:"review" },
-    { label:"Invalid rows",        val: invalid,       sub:"Click to open review queue",       color:"text-red-700",      bg:"bg-red-50",      border:"hover:border-red-400",    nav:"review" },
-    { label:"Unmatched bank",      val: uBank,         sub:"Click to open review queue",       color:"text-orange-700",   bg:"bg-orange-50",   border:"hover:border-orange-400", nav:"review" },
-    { label:"Unmatched ledger",    val: uLedger,       sub:"Click to open review queue",       color:"text-purple-700",   bg:"bg-purple-50",   border:"hover:border-purple-400", nav:"review" },
+    { label:"Bank transactions",  val: BANK.length,   sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
+    { label:"Ledger entries",     val: LEDGER.length, sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
+    { label:"Auto-matched",       val: matched,       sub:"Engine matched, no admin needed", color:"text-emerald-700", bg:"bg-emerald-50", border:"hover:border-emerald-400", nav:"jobs"   },
+    { label:"Possible matches",   val: possible,      sub:"Engine flagged — needs sign-off", color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"review" },
+    { label:"Engine escalated",   val: manual,        sub:"Requires human judgement",        color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"review" },
+    { label:"Data quality issues",val: invalid,       sub:"Engine detected bad data",        color:"text-red-700",     bg:"bg-red-50",     border:"hover:border-red-400",     nav:"review" },
+    { label:"Unmatched bank",     val: uBank,         sub:"Engine found no ledger pair",     color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"review" },
+    { label:"Unmatched ledger",   val: uLedger,       sub:"Engine found no bank pair",       color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"review" },
   ];
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-xl font-bold text-gray-900">Automation Report</h1>
         <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{JOB_ID}</span> · {PERIOD} · {COMPANY}</p>
       </div>
 
-      {/* Overall confidence */}
+      {/* Automation summary */}
       <div className="border border-gray-200 p-5 mb-6 bg-white">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Overall reconciliation confidence</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Engine automation rate</p>
             <p className="text-3xl font-bold text-gray-900">{OVERALL_CONF}%</p>
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="font-semibold text-emerald-600">{matched} of {BANK.length}</span> transactions handled automatically — no manual admin needed
+            </p>
           </div>
-          <div className="sm:text-right">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-              <span className="w-1.5 h-1.5 bg-emerald-500" />
-              {matched} of {BANK.length} auto-matched
-            </span>
-            <p className="text-[10px] text-gray-400 mt-1.5">{BANK_INST} · {LEDGER_SOFT}</p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            {pendingApprove > 0 ? (
+              <button
+                onClick={onBulkApprove}
+                className="flex items-center gap-2 h-10 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shrink-0">
+                <ThumbsUp className="h-3.5 w-3.5" />
+                Sign off on all {pendingApprove} engine matches
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                <CheckCircle2 className="h-3.5 w-3.5" /> All engine matches signed off
+              </span>
+            )}
+            {exceptions > 0 && (
+              <button onClick={() => onNav("review")}
+                className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                {exceptions} exception{exceptions !== 1 && "s"} need sign-off
+              </button>
+            )}
+            <p className="text-[10px] text-gray-400">{BANK_INST} · {LEDGER_SOFT}</p>
           </div>
         </div>
-        <div className="h-3 bg-gray-100 w-full">
+        <div className="h-2 bg-gray-100 w-full">
           <div className="h-full bg-emerald-500 transition-all" style={{ width:`${OVERALL_CONF}%` }} />
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cards.map(({ label, val, sub, color, bg, border, nav }) => (
           <button key={label} onClick={() => onNav(nav)}
             className={`border border-gray-200 p-4 ${bg} ${border} text-left transition-all group cursor-pointer hover:shadow-sm`}>
@@ -647,7 +671,6 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
           </button>
         ))}
       </div>
-
     </div>
   );
 }
@@ -835,8 +858,8 @@ function ReviewQueueView({
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Review Queue</h1>
-          <p className="text-sm text-gray-400 mt-1">{queue.length} items requiring your attention</p>
+          <h1 className="text-xl font-bold text-gray-900">Exceptions</h1>
+          <p className="text-sm text-gray-400 mt-1">{queue.length} item{queue.length !== 1 && "s"} escalated by the engine — your sign-off required</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] text-gray-400 font-semibold hidden sm:block">CONFIDENCE MAX</span>
@@ -857,8 +880,8 @@ function ReviewQueueView({
       {queue.length === 0 ? (
         <div className="border border-gray-200 py-24 flex flex-col items-center bg-white">
           <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
-          <p className="text-sm font-semibold text-gray-600">All items reviewed</p>
-          <p className="text-xs text-gray-400 mt-1">No items match your current filters</p>
+          <p className="text-sm font-semibold text-gray-600">No exceptions</p>
+          <p className="text-xs text-gray-400 mt-1">The engine handled everything — nothing needs your attention</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -894,7 +917,7 @@ function ReviewQueueView({
                   </div>
                   <button onClick={() => setSelected(row)}
                     className="h-9 px-3 sm:px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0">
-                    <Eye className="h-3.5 w-3.5" /><span className="hidden sm:inline">Review</span>
+                    <Eye className="h-3.5 w-3.5" /><span className="hidden sm:inline">Sign off</span>
                   </button>
                 </div>
                 {row.warnings.slice(0, 2).map(w => (
@@ -1560,7 +1583,7 @@ export default function Engine() {
     { id:"dashboard" as NavId, label:"Dashboard",    icon:<LayoutDashboard className="h-4 w-4"/> },
     { id:"uploads"   as NavId, label:"Uploads",      icon:<Upload className="h-4 w-4"/>          },
     { id:"jobs"      as NavId, label:"Reconciliation Jobs", icon:<Briefcase className="h-4 w-4"/> },
-    { id:"review"    as NavId, label:"Review Queue", icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
+    { id:"review"    as NavId, label:"Exceptions",   icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
     { id:"audit"     as NavId, label:"Audit Log",    icon:<Clock className="h-4 w-4"/>, badge: auditLog.length > 0 ? auditLog.length : undefined },
     { id:"settings"  as NavId, label:"Settings",     icon:<Settings2 className="h-4 w-4"/>       },
   ];
@@ -1693,7 +1716,11 @@ export default function Engine() {
 
         {/* View content */}
         <main className="flex-1 overflow-auto">
-          {nav === "dashboard" && <DashboardView rows={rows} onNav={setNav} />}
+          {nav === "dashboard" && <DashboardView rows={rows} onNav={setNav} onBulkApprove={() => {
+              const pending = rows.filter(r => r.status === "matched" && !r.userStatus);
+              setRows(prev => prev.map(r => r.status === "matched" && !r.userStatus ? { ...r, userStatus: "approved" } : r));
+              pending.forEach(r => addAudit({ job_id: JOB_ID, action: "approve_match", target_id: r.id, next: "approved" }));
+            }} />}
           {nav === "uploads"   && <UploadsView />}
           {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} />}
           {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} />}
