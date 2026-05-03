@@ -9,6 +9,50 @@ import {
   Eye, ChevronDown, ArrowLeftRight, ScrollText, BarChart3,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
+import logoAbsa        from "@assets/banks/absa.png";
+import logoCapitec     from "@assets/banks/capitec.png";
+import logoDiscovery   from "@assets/banks/discovery.png";
+import logoEcobank     from "@assets/banks/ecobank.png";
+import logoEquity      from "@assets/banks/equity.png";
+import logoFlutterwave from "@assets/banks/flutterwave.png";
+import logoFnb         from "@assets/banks/fnb.png";
+import logoGtbank      from "@assets/banks/gtbank.png";
+import logoInvestec    from "@assets/banks/investec.png";
+import logoKcb         from "@assets/banks/kcb.png";
+import logoKuda        from "@assets/banks/kuda.png";
+import logoNedbank     from "@assets/banks/nedbank.png";
+import logoPaystack    from "@assets/banks/paystack.png";
+import logoStandardbank from "@assets/banks/standardbank.png";
+import logoTymebank    from "@assets/banks/tymebank.png";
+import logoZenith      from "@assets/banks/zenith.png";
+
+const BANK_LOGOS: [string[], string][] = [
+  [["absa"],                          logoAbsa],
+  [["capitec"],                       logoCapitec],
+  [["discovery"],                     logoDiscovery],
+  [["ecobank"],                       logoEcobank],
+  [["equity"],                        logoEquity],
+  [["flutterwave"],                   logoFlutterwave],
+  [["fnb", "first national"],         logoFnb],
+  [["gtbank", "guaranty"],            logoGtbank],
+  [["investec"],                      logoInvestec],
+  [["kcb", "kenya commercial"],       logoKcb],
+  [["kuda"],                          logoKuda],
+  [["nedbank"],                       logoNedbank],
+  [["paystack"],                      logoPaystack],
+  [["standard bank", "standardbank"], logoStandardbank],
+  [["tymebank", "tyme"],              logoTymebank],
+  [["zenith"],                        logoZenith],
+];
+
+function getBankLogo(name: string): string | null {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  for (const [keys, src] of BANK_LOGOS) {
+    if (keys.some(k => lower.includes(k))) return src;
+  }
+  return null;
+}
 import jsPDF from "jspdf";
 import {
   type NavId, type TxStatus, type ActionType, type QualityStatus,
@@ -142,7 +186,7 @@ function ConfBar({ pct }: { pct: number }) {
 
 // ── Transaction card (side-by-side review) ────────────────────────────────────
 
-function TxCard({ tx, side, highlight }: { tx?: Tx; side: "bank" | "ledger"; highlight?: string[] }) {
+function TxCard({ tx, side, highlight, bankLogo }: { tx?: Tx; side: "bank" | "ledger"; highlight?: string[]; bankLogo?: string | null }) {
   if (!tx) return (
     <div className="flex-1 border border-dashed border-gray-200 flex items-center justify-center min-h-[200px] text-gray-300">
       <div className="text-center">
@@ -159,10 +203,17 @@ function TxCard({ tx, side, highlight }: { tx?: Tx; side: "bank" | "ledger"; hig
     { label:"Amount",         val: fmt(tx.amt), raw: tx.rawAmt },
   ];
   return (
-    <div className={`flex-1 border ${isBank ? "border-gray-200" : "border-gray-200"}`}>
-      <div className={`px-4 py-2.5 border-b ${isBank ? "bg-gray-100 border-gray-200" : "bg-gray-50 border-gray-200"} flex items-center justify-between`}>
-        <span className="text-gray-800 text-xs font-bold uppercase tracking-wider">{isBank ? "Bank Statement" : "General Ledger"}</span>
-        <span className="text-gray-400 text-[10px] font-mono">{tx.id}</span>
+    <div className={`flex-1 border border-gray-200`}>
+      <div className={`px-4 py-2.5 border-b ${isBank ? "bg-gray-100 border-gray-200" : "bg-gray-50 border-gray-200"} flex items-center justify-between gap-2`}>
+        <div className="flex items-center gap-2 min-w-0">
+          {isBank && bankLogo && (
+            <img src={bankLogo} alt="bank" className="h-5 w-auto max-w-[64px] object-contain shrink-0" />
+          )}
+          <span className="text-gray-800 text-xs font-bold uppercase tracking-wider truncate">
+            {isBank ? "Bank Statement" : "General Ledger"}
+          </span>
+        </div>
+        <span className="text-gray-400 text-[10px] font-mono shrink-0">{tx.id}</span>
       </div>
       <div className="divide-y divide-gray-100">
         {fields.map(({ label, val, raw }) => (
@@ -194,10 +245,11 @@ function TxCard({ tx, side, highlight }: { tx?: Tx; side: "bank" | "ledger"; hig
 // ── Review panel ──────────────────────────────────────────────────────────────
 
 function ReviewPanel({
-  row, onClose, onApprove, onReject, onManual,
+  row, onClose, onApprove, onReject, onManual, bankInst,
 }: {
   row: ReconRow; onClose: () => void;
   onApprove: () => void; onReject: () => void; onManual: () => void;
+  bankInst?: string;
 }) {
   const { resp, streaming, error, explain, reset } = useGrokExplain();
   const [grokOpen, setGrokOpen] = useState(false);
@@ -273,7 +325,7 @@ function ReviewPanel({
         <div className="px-5 py-4 border-b border-gray-100">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Transactions</p>
           <div className="flex gap-3">
-            <TxCard tx={row.bank}   side="bank"   highlight={diffHighlights} />
+            <TxCard tx={row.bank}   side="bank"   highlight={diffHighlights} bankLogo={getBankLogo(bankInst ?? "")} />
             <TxCard tx={row.ledger} side="ledger" highlight={diffHighlights} />
           </div>
         </div>
@@ -861,12 +913,13 @@ function UploadsView({ onReconcile }: {
 // ── Jobs / workspace view ─────────────────────────────────────────────────────
 
 function JobsView({
-  rows, setRows, addAudit, jobId,
+  rows, setRows, addAudit, jobId, bankInst,
 }: {
   rows: ReconRow[];
   setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
   jobId: string;
+  bankInst?: string;
 }) {
   const [selected, setSelected] = useState<ReconRow | null>(null);
   const [filter, setFilter]     = useState<TxStatus | "all">("all");
@@ -938,6 +991,7 @@ function JobsView({
               onApprove={() => handleAction(selected, "approve")}
               onReject={() => handleAction(selected, "reject")}
               onManual={() => handleAction(selected, "manual")}
+              bankInst={bankInst}
             />
           </>
         )}
@@ -949,12 +1003,13 @@ function JobsView({
 // ── Review Queue view ─────────────────────────────────────────────────────────
 
 function ReviewQueueView({
-  rows, setRows, addAudit, jobId,
+  rows, setRows, addAudit, jobId, bankInst,
 }: {
   rows: ReconRow[];
   setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
   jobId: string;
+  bankInst?: string;
 }) {
   const [statusFilter, setStatusFilter] = useState<TxStatus | "all">("all");
   const [selected, setSelected] = useState<ReconRow | null>(null);
@@ -1063,6 +1118,7 @@ function ReviewQueueView({
               onApprove={() => handleAction(selected, "approve")}
               onReject={() => handleAction(selected, "reject")}
               onManual={() => handleAction(selected, "manual")}
+              bankInst={bankInst}
             />
           </>
         )}
@@ -1940,8 +1996,8 @@ export default function Engine() {
               }}
             />}
           {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
-          {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} />}
-          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} />}
+          {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
+          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
           {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {
               addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
