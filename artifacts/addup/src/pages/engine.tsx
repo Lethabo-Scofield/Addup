@@ -128,8 +128,8 @@ function StatusBadge({ status }: { status: TxStatus }) {
 // ── Confidence bar ─────────────────────────────────────────────────────────────
 
 function ConfBar({ pct }: { pct: number }) {
-  const color = pct >= 90 ? "bg-emerald-500" : pct >= 70 ? "bg-blue-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
-  const textColor = pct >= 90 ? "text-emerald-700" : pct >= 70 ? "text-blue-700" : pct >= 40 ? "text-amber-700" : "text-red-700";
+  const color = pct >= 90 ? "bg-blue-500" : pct >= 70 ? "bg-blue-400" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
+  const textColor = pct >= 90 ? "text-blue-700" : pct >= 70 ? "text-blue-600" : pct >= 40 ? "text-amber-700" : "text-red-700";
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-gray-100">
@@ -248,7 +248,7 @@ function ReviewPanel({
               ].map(({ label, val, ok }) => (
                 <div key={label} className="border border-gray-100 px-2 py-2">
                   <p className="text-[9px] font-bold text-gray-400 uppercase">{label}</p>
-                  <p className={`text-xs font-bold mt-0.5 ${ok ? "text-emerald-600" : "text-amber-600"}`}>{val}</p>
+                  <p className={`text-xs font-bold mt-0.5 ${ok ? "text-blue-600" : "text-amber-600"}`}>{val}</p>
                 </div>
               ))}
             </div>
@@ -262,7 +262,7 @@ function ReviewPanel({
               ].map(({ label, val, ok }) => (
                 <div key={label} className="border border-gray-100 px-3 py-2">
                   <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
-                  <p className={`text-xs font-bold ${ok ? "text-emerald-600" : "text-amber-600"}`}>{val}</p>
+                  <p className={`text-xs font-bold ${ok ? "text-blue-600" : "text-amber-600"}`}>{val}</p>
                 </div>
               ))}
             </div>
@@ -438,7 +438,7 @@ function ReviewPanel({
         <div className="flex gap-2 flex-wrap">
           {row.status !== "invalid_row" && (
             <button onClick={onApprove}
-              className="flex items-center gap-1.5 h-9 px-4 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors">
+              className="flex items-center gap-1.5 h-9 px-4 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors">
               <ThumbsUp className="h-3.5 w-3.5" /> Approve match
             </button>
           )}
@@ -639,26 +639,26 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Engine automation rate</p>
             <p className="text-3xl font-bold text-gray-900">{overallConf}%</p>
             <p className="text-xs text-gray-400 mt-1">
-              <span className="font-semibold text-emerald-600">{matched} of {bankLen}</span> transactions handled automatically — no manual admin needed
+              <span className="font-semibold text-blue-600">{matched} of {bankLen}</span> transactions handled automatically — no manual admin needed
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
             {pendingApprove > 0 ? (
               <button
                 onClick={onBulkApprove}
-                className="flex items-center gap-2 h-10 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shrink-0">
+                className="flex items-center gap-2 h-10 px-5 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors shrink-0">
                 <ThumbsUp className="h-3.5 w-3.5" />
                 Sign off on all {pendingApprove} engine matches
               </button>
             ) : (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
                 <CheckCircle2 className="h-3.5 w-3.5" /> All engine matches signed off
               </span>
             )}
             {exceptions > 0 && (
               <button onClick={() => onNav("review")}
                 className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                <AlertCircle className="h-3.5 w-3.5 text-blue-500" />
                 {exceptions} exception{exceptions !== 1 && "s"} need sign-off
               </button>
             )}
@@ -666,7 +666,7 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
           </div>
         </div>
         <div className="h-2 bg-gray-100 w-full">
-          <div className="h-full bg-emerald-500 transition-all" style={{ width:`${overallConf}%` }} />
+          <div className="h-full bg-blue-500 transition-all" style={{ width:`${overallConf}%` }} />
         </div>
       </div>
 
@@ -773,15 +773,15 @@ function UploadsView({ onReconcile }: {
                 <p className="text-sm font-semibold text-gray-800">{label}</p>
                 <p className="text-[10px] text-gray-400">{sub}</p>
               </div>
-              {file && <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold"><Check className="h-3 w-3"/>Loaded</span>}
+              {file && <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold"><Check className="h-3 w-3"/>Loaded</span>}
             </div>
             <div className="p-5">
               {file
-                ? <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200">
-                    <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs font-medium text-emerald-700 flex-1 truncate">{file.name}</span>
-                    <span className="text-[10px] text-emerald-500 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
-                    <button onClick={() => { set(null); setError(null); }} className="text-emerald-500 hover:text-emerald-700 ml-1">
+                ? <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200">
+                    <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span className="text-xs font-medium text-blue-700 flex-1 truncate">{file.name}</span>
+                    <span className="text-[10px] text-blue-500 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                    <button onClick={() => { set(null); setError(null); }} className="text-blue-500 hover:text-blue-700 ml-1">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -807,13 +807,13 @@ function UploadsView({ onReconcile }: {
       )}
 
       {bankFile && ledgerFile && !error && (
-        <div className="mt-5 flex items-center justify-between p-4 border border-emerald-200 bg-emerald-50">
+        <div className="mt-5 flex items-center justify-between p-4 border border-blue-200 bg-blue-50">
           <div>
-            <p className="text-sm font-bold text-emerald-800">Ready to reconcile</p>
-            <p className="text-xs text-emerald-600 mt-0.5">The engine will match transactions automatically.</p>
+            <p className="text-sm font-bold text-blue-800">Ready to reconcile</p>
+            <p className="text-xs text-blue-600 mt-0.5">The engine will match transactions automatically.</p>
           </div>
           <button onClick={handleRun} disabled={parsing}
-            className="h-9 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
+            className="h-9 px-5 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
             {parsing
               ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-3.5 w-3.5"/></motion.div>Running...</>
               : "Run now"
@@ -1775,7 +1775,7 @@ export default function Engine() {
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors
                 ${nav === item.id ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}
             >
-              <span className={nav === item.id ? "text-emerald-600" : "text-gray-400"}>{item.icon}</span>
+              <span className={nav === item.id ? "text-blue-600" : "text-gray-400"}>{item.icon}</span>
               <span className="text-xs font-semibold flex-1">{item.label}</span>
               {item.badge !== undefined && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] text-center
@@ -1860,7 +1860,7 @@ export default function Engine() {
           <div className="ml-auto flex items-center gap-3">
             {company && <span className="text-xs text-gray-400 hidden sm:block">{company}</span>}
             {hasData && (
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5">
                 {overallConf}% matched
               </span>
             )}
