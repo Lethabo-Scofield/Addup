@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, HelpCircle, Info,
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
-  Eye, ChevronDown,
+  Eye, ChevronDown, ArrowLeftRight, ScrollText, BarChart3,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
@@ -1745,38 +1745,90 @@ export default function Engine() {
   ).length;
 
   const NAV = [
-    { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>          },
-    { id:"dashboard" as NavId, label:"Overview",     icon:<LayoutDashboard className="h-4 w-4"/> },
-    { id:"review"    as NavId, label:"Needs Review", icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
-    { id:"audit"     as NavId, label:"History",      icon:<Clock className="h-4 w-4"/>            },
-    { id:"settings"  as NavId, label:"Settings",     icon:<Settings2 className="h-4 w-4"/>       },
+    { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>        },
+    { id:"dashboard" as NavId, label:"Overview",     icon:<BarChart3 className="h-4 w-4"/>     },
+    { id:"review"    as NavId, label:"Needs Review", icon:<AlertCircle className="h-4 w-4"/>,
+      badge: reviewCount > 0 ? reviewCount : undefined },
+    { id:"audit"     as NavId, label:"Audit Trail",  icon:<ScrollText className="h-4 w-4"/>    },
   ];
+
+  const matchedCount  = rows.filter(r => r.status === "matched").length;
+  const unmatchedCount = rows.filter(r =>
+    r.status === "unmatched_bank" || r.status === "unmatched_ledger"
+  ).length;
 
   function SidebarContent() {
     return (
-      <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
+      <div className="flex flex-col h-full bg-gray-950">
+
+        {/* Logo + product */}
+        <div className="px-4 pt-5 pb-4 border-b border-white/10 shrink-0">
           <Link href="/" onClick={() => setSidebarOpen(false)}>
-            <img src={addupLogo} alt="Addup" className="h-6 w-auto" />
+            <img src={addupLogo} alt="Addup" className="h-6 w-auto brightness-0 invert" />
           </Link>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">
-            Reconciliation Engine
-          </p>
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="w-1.5 h-1.5 bg-blue-400 shrink-0" />
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
+              Reconciliation Engine
+            </p>
+          </div>
         </div>
 
+        {/* Active job card */}
+        {hasData && (
+          <div className="mx-3 mt-4 p-3 bg-white/5 border border-white/10 shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Active Job</span>
+              <span className="text-[10px] font-bold text-blue-400">{overallConf}% matched</span>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full h-1 bg-white/10 mb-3">
+              <div className="h-full bg-blue-500 transition-all" style={{ width:`${overallConf}%` }} />
+            </div>
+            {/* Source pair */}
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="truncate max-w-[70px]">{bankInst || "Bank"}</span>
+              <ArrowLeftRight className="h-2.5 w-2.5 text-gray-600 shrink-0" />
+              <span className="truncate max-w-[70px]">{ledgerSoft || "Ledger"}</span>
+            </div>
+            {period && (
+              <p className="text-[10px] text-gray-500 mt-1">{period}</p>
+            )}
+          </div>
+        )}
+
+        {/* Reconciliation stats */}
+        {hasData && (
+          <div className="mx-3 mt-2 grid grid-cols-2 gap-px bg-white/10 border border-white/10 shrink-0 text-center">
+            {[
+              { label:"Matched",   val: matchedCount,         color:"text-emerald-400" },
+              { label:"Review",    val: reviewCount,           color:"text-amber-400"   },
+              { label:"Unmatched", val: unmatchedCount,        color:"text-red-400"     },
+              { label:"Total",     val: bankData.length,       color:"text-gray-300"    },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="bg-gray-950 py-2.5 px-2">
+                <p className={`text-sm font-bold ${color}`}>{val}</p>
+                <p className="text-[9px] text-gray-600 font-medium uppercase tracking-wide mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV.map(item => (
             <button key={item.id} onClick={() => { setNav(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors
-                ${nav === item.id ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors group
+                ${nav === item.id
+                  ? "bg-white/10 text-white"
+                  : "text-gray-500 hover:bg-white/5 hover:text-gray-300"}`}
             >
-              <span className={nav === item.id ? "text-blue-600" : "text-gray-400"}>{item.icon}</span>
+              <span className={nav === item.id ? "text-blue-400" : "text-gray-600 group-hover:text-gray-400"}>
+                {item.icon}
+              </span>
               <span className="text-xs font-semibold flex-1">{item.label}</span>
               {item.badge !== undefined && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] text-center
-                  ${nav === item.id ? "bg-gray-200 text-gray-700" : "bg-red-500 text-white"}`}>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] text-center bg-red-500 text-white">
                   {item.badge}
                 </span>
               )}
@@ -1784,8 +1836,9 @@ export default function Engine() {
           ))}
         </nav>
 
-        {/* Export buttons */}
-        <div className="px-4 py-4 border-t border-gray-100 space-y-2 shrink-0">
+        {/* Export + Settings */}
+        <div className="px-3 pb-4 border-t border-white/10 pt-3 space-y-1.5 shrink-0">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 px-1 mb-2">Export Report</p>
           <button
             onClick={async () => {
               setPdfLoading(true);
@@ -1793,8 +1846,8 @@ export default function Engine() {
               await exportPDF(rows, auditLog, company, bankInst, ledgerSoft, bankData, ledgerData, jobId, period);
               setPdfLoading(false);
             }}
-            disabled={pdfLoading}
-            className="w-full flex items-center justify-center gap-2 h-9 bg-gray-100 text-gray-700 text-[11px] font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+            disabled={pdfLoading || !hasData}
+            className="w-full flex items-center justify-center gap-2 h-9 bg-blue-600 text-white text-[11px] font-semibold hover:bg-blue-500 transition-colors disabled:opacity-40"
           >
             {pdfLoading
               ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-3.5 w-3.5"/></motion.div>Generating...</>
@@ -1806,9 +1859,18 @@ export default function Engine() {
               addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
             }}
-            className="w-full flex items-center justify-center gap-2 h-9 border border-gray-200 text-gray-500 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
+            disabled={!hasData}
+            className="w-full flex items-center justify-center gap-2 h-9 border border-white/10 text-gray-400 text-[11px] font-semibold hover:bg-white/5 transition-colors disabled:opacity-40"
           >
             <Download className="h-3.5 w-3.5"/>Export JSON
+          </button>
+          <button
+            onClick={() => { setNav("settings"); setSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2 mt-1 transition-colors group
+              ${nav === "settings" ? "bg-white/10 text-white" : "text-gray-600 hover:bg-white/5 hover:text-gray-400"}`}
+          >
+            <Settings2 className={`h-4 w-4 ${nav === "settings" ? "text-blue-400" : "text-gray-700 group-hover:text-gray-500"}`} />
+            <span className="text-xs font-semibold">Settings</span>
           </button>
         </div>
       </div>
