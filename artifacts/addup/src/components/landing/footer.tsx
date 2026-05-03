@@ -1,6 +1,6 @@
 import React from "react";
 import { Linkedin, Twitter, Github } from "lucide-react";
-import addupLogo from "@assets/Addup_1777332904059.png";
+import addupLogo from "@assets/logo.png";
 
 type LinkItem = { label: string; href: string };
 

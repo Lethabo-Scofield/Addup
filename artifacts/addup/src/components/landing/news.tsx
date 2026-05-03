@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import newsImage1 from "@assets/image_1777329299792.png";
-import newsImage2 from "@assets/image_1777329317085.png";
-import newsImage3 from "@assets/image_1777329386613.png";
+import newsImage1 from "@assets/news-1.png";
+import newsImage2 from "@assets/news-2.png";
+import newsImage3 from "@assets/news-3.png";
 
 interface NewsItem {
   image: string;

@@ -8,7 +8,7 @@ import {
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
   Eye, ChevronDown, ArrowLeftRight, ScrollText, BarChart3,
 } from "lucide-react";
-import addupLogo from "@assets/Addup_1777332904059.png";
+import addupLogo from "@assets/logo.png";
 import logoAbsa        from "@assets/banks/absa.png";
 import logoCapitec     from "@assets/banks/capitec.png";
 import logoDiscovery   from "@assets/banks/discovery.png";

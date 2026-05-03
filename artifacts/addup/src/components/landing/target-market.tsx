@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import targetImage from "@assets/image_1777329171721.png";
+import targetImage from "@assets/target-market.png";
 
 const AFRICA_PATH =
   "M252 38 C 286 28, 326 30, 358 44 C 392 58, 412 84, 426 116 C 442 152, 444 188, 432 222 C 422 252, 410 282, 408 312 C 408 342, 422 372, 432 402 C 442 432, 442 462, 426 488 C 408 516, 376 532, 344 530 C 312 528, 286 510, 264 488 C 240 464, 220 438, 198 418 C 176 398, 150 386, 128 366 C 108 348, 96 322, 96 294 C 96 266, 108 238, 122 212 C 138 184, 158 158, 174 130 C 190 102, 202 74, 222 56 C 232 46, 242 42, 252 38 Z";

@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import heroBg from "@assets/a-chosen-soul-Cp4xHgvXt0M-unsplash_1777332357410.jpg";
+import heroBg from "@assets/hero-background.jpg";
 
 export function Hero() {
   const scrollToHowItWorks = () => {

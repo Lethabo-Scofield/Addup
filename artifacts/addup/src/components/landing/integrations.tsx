@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
-import hubImage from "@assets/image_1777329893638.png";
+import hubImage from "@assets/hub.png";
 
 const points = [
   {
