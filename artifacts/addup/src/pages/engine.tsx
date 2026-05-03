@@ -8,7 +8,7 @@ import {
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
   Eye, ChevronDown, ArrowLeftRight, ScrollText, BarChart3,
   Layers, Shield, ShieldAlert, ShieldCheck, GitMerge, Zap,
-  ListChecks, FlaskConical,
+  ListChecks,
 } from "lucide-react";
 import addupLogo from "@assets/logo.png";
 import logoAbsa        from "@assets/banks/absa.png";
@@ -64,8 +64,7 @@ import {
   parseCSVText, xlsxToRows, parseDelimitedText, csvToTx,
   normalizeDesc, hasOcrArtifacts,
   runReconciliation, derivePeriod,
-  buildCases, caseSummary,
-  loadDemoData, DEMO_BANK_NAME, DEMO_LEDGER_NAME, DEMO_COMPANY,
+  buildCases,
 } from "../engine";
 
 // ── Loader ────────────────────────────────────────────────────────────────────
@@ -1239,9 +1238,8 @@ async function parseAnyFile(file: File): Promise<Record<string, string>[]> {
   return parseDelimitedText(text);
 }
 
-function UploadsView({ onReconcile, onLoadDemo }: {
+function UploadsView({ onReconcile }: {
   onReconcile: (bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) => void;
-  onLoadDemo?: () => void;
 }) {
   const bankRef    = useRef<HTMLInputElement>(null);
   const ledgerRef  = useRef<HTMLInputElement>(null);
@@ -1336,25 +1334,6 @@ function UploadsView({ onReconcile, onLoadDemo }: {
               : "Run now"
             }
           </button>
-        </div>
-      )}
-
-      {/* Try demo data */}
-      {onLoadDemo && (
-        <div className="mt-6 border border-dashed border-gray-200 p-5">
-          <div className="flex items-start gap-3">
-            <FlaskConical className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-700">Try with demo data</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Load a sample South African reconciliation — auto-matches, timing differences, bank fees, missing entries, and group matches all pre-populated.
-              </p>
-            </div>
-            <button onClick={onLoadDemo}
-              className="shrink-0 flex items-center gap-2 h-9 px-4 bg-gray-900 text-white text-xs font-bold hover:bg-gray-700 transition-colors">
-              <Zap className="h-3 w-3" /> Load demo
-            </button>
-          </div>
         </div>
       )}
 
@@ -2450,14 +2429,7 @@ export default function Engine() {
                 pending.forEach(r => addAudit({ job_id: jobId, action: "approve_match", target_id: r.id, next: "approved" }));
               }}
             />}
-          {nav === "uploads"   && <UploadsView
-              onReconcile={handleReconcile}
-              onLoadDemo={() => {
-                const { bank, ledger } = loadDemoData();
-                handleReconcile(bank, ledger, DEMO_BANK_NAME, DEMO_LEDGER_NAME);
-                if (!company) setCompany(DEMO_COMPANY);
-              }}
-            />}
+          {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
           {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
           {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
           {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {

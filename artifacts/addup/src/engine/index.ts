@@ -58,6 +58,3 @@ export { buildExplanation }             from "./explanationEngine";
 export { proposeAction }                from "./actionEngine";
 export { caseAuditTrail }               from "./auditTrail";
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-
-export { loadDemoData, DEMO_BANK_NAME, DEMO_LEDGER_NAME, DEMO_COMPANY } from "./demoData";
