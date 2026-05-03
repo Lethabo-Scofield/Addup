@@ -5,8 +5,8 @@ import {
   LayoutDashboard, Upload, Briefcase, AlertCircle, Clock, Settings2,
   CheckCircle2, XCircle, AlertTriangle, HelpCircle,
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
-  ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
-  BarChart3, Shield, Activity, Eye, ChevronDown,
+  ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight, ChevronLeft,
+  BarChart3, Shield, Activity, Eye, ChevronDown, CalendarDays,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
@@ -1698,6 +1698,154 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, b
   URL.revokeObjectURL(url);
 }
 
+// ── Header clock + calendar popup ─────────────────────────────────────────────
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAY_ABBRS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function HeaderClock() {
+  const [now,      setNow]      = useState(() => new Date());
+  const [open,     setOpen]     = useState(false);
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Tick every second
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Sync viewDate month to now when closed
+  useEffect(() => {
+    if (!open) setViewDate(new Date());
+  }, [open]);
+
+  // Click-outside to close
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Calendar grid helpers
+  const today = new Date();
+  const vy = viewDate.getFullYear();
+  const vm = viewDate.getMonth();
+  const firstDay  = new Date(vy, vm, 1).getDay();       // 0=Sun
+  const daysInMon = new Date(vy, vm + 1, 0).getDate();
+
+  function prevMonth() { setViewDate(new Date(vy, vm - 1, 1)); }
+  function nextMonth() { setViewDate(new Date(vy, vm + 1, 1)); }
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const dateStr = `${pad(now.getDate())} ${MONTH_NAMES[now.getMonth()].slice(0,3)} ${now.getFullYear()}`;
+
+  // Grid: leading empty cells + day numbers
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMon }, (_, i) => i + 1),
+  ];
+  // Pad to full rows
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-2 h-8 px-3 border transition-colors text-[11px] font-mono
+          ${open
+            ? "border-gray-400 bg-gray-50 text-gray-800"
+            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-500"
+          }`}
+      >
+        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <span className="font-bold text-gray-700 tracking-tight hidden sm:inline">{timeStr}</span>
+        <span className="text-gray-400 hidden md:inline">{dateStr}</span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-10 z-50 w-[272px] bg-white border border-gray-200 shadow-lg"
+          >
+            {/* Time display */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-mono font-bold text-gray-900 tracking-tight">{timeStr}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  {MONTH_NAMES[today.getMonth()]} {today.getDate()}, {today.getFullYear()}
+                  {" · "}
+                  {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][today.getDay()]}
+                </p>
+              </div>
+              <Clock className="h-5 w-5 text-gray-200" />
+            </div>
+
+            {/* Calendar */}
+            <div className="p-4">
+              {/* Month nav */}
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 transition-colors">
+                  <ChevronLeft className="h-3.5 w-3.5 text-gray-500" />
+                </button>
+                <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                  {MONTH_NAMES[vm]} {vy}
+                </p>
+                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 transition-colors">
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Day-of-week headers */}
+              <div className="grid grid-cols-7 mb-1">
+                {DAY_ABBRS.map(d => (
+                  <div key={d} className="text-center text-[9px] font-bold text-gray-300 uppercase py-1">{d}</div>
+                ))}
+              </div>
+
+              {/* Day cells */}
+              <div className="grid grid-cols-7 gap-y-0.5">
+                {cells.map((day, i) => {
+                  const isToday = day !== null && vy === today.getFullYear() && vm === today.getMonth() && day === today.getDate();
+                  return (
+                    <div key={i} className="flex items-center justify-center">
+                      {day !== null ? (
+                        <span className={`w-7 h-7 flex items-center justify-center text-[11px] font-medium transition-colors
+                          ${isToday
+                            ? "bg-gray-900 text-white font-bold"
+                            : "text-gray-600 hover:bg-gray-100 cursor-default"
+                          }`}>
+                          {day}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Today shortcut */}
+              {(vy !== today.getFullYear() || vm !== today.getMonth()) && (
+                <button onClick={() => setViewDate(new Date())}
+                  className="mt-3 w-full text-[10px] font-semibold text-gray-400 hover:text-gray-700 transition-colors py-1 border-t border-gray-100">
+                  Back to today
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main Engine ───────────────────────────────────────────────────────────────
 
 export default function Engine() {
@@ -1888,6 +2036,7 @@ export default function Engine() {
                 <BarChart3 className="h-3 w-3" />{overallConf}%
               </span>
             )}
+            <HeaderClock />
           </div>
         </header>
 
