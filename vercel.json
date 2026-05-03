@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "framework": null,
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @workspace/addup run build",
+  "outputDirectory": "artifacts/addup/dist/public",
+  "functions": {
+    "api/explain.ts": {
+      "runtime": "edge"
+    },
+    "api/[...path].ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  }
+}
