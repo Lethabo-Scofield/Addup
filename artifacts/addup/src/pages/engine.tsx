@@ -41,7 +41,7 @@ function Loader({ onDone }: { onDone: () => void }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="h-9 w-auto mb-10"
+        className="h-20 w-auto mb-10"
       />
 
       {/* Progress bar track */}
