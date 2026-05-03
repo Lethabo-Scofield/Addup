@@ -1815,16 +1815,16 @@ export default function Engine() {
 
   function SidebarContent() {
     return (
-      <div className="flex flex-col h-full bg-gray-950">
+      <div className="flex flex-col h-full bg-gray-100">
 
         {/* Logo + product */}
-        <div className="px-4 pt-5 pb-4 border-b border-white/10 shrink-0">
+        <div className="px-4 pt-5 pb-4 border-b border-gray-200 shrink-0">
           <Link href="/" onClick={() => setSidebarOpen(false)}>
-            <img src={addupLogo} alt="Addup" className="h-6 w-auto brightness-0 invert" />
+            <img src={addupLogo} alt="Addup" className="h-6 w-auto" />
           </Link>
           <div className="flex items-center gap-1.5 mt-2">
-            <span className="w-1.5 h-1.5 bg-blue-400 shrink-0" />
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
+            <span className="w-1.5 h-1.5 bg-blue-500 shrink-0" />
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
               Reconciliation Engine
             </p>
           </div>
@@ -1832,39 +1832,39 @@ export default function Engine() {
 
         {/* Active job card */}
         {hasData && (
-          <div className="mx-3 mt-4 p-3 bg-white/5 border border-white/10 shrink-0">
+          <div className="mx-3 mt-4 p-3 bg-white border border-gray-200 shrink-0">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Active Job</span>
-              <span className="text-[10px] font-bold text-blue-400">{overallConf}% matched</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Active Job</span>
+              <span className="text-[10px] font-bold text-blue-600">{overallConf}% matched</span>
             </div>
             {/* Progress bar */}
-            <div className="w-full h-1 bg-white/10 mb-3">
+            <div className="w-full h-1 bg-gray-200 mb-3">
               <div className="h-full bg-blue-500 transition-all" style={{ width:`${overallConf}%` }} />
             </div>
             {/* Source pair */}
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
               <span className="truncate max-w-[70px]">{bankInst || "Bank"}</span>
-              <ArrowLeftRight className="h-2.5 w-2.5 text-gray-600 shrink-0" />
+              <ArrowLeftRight className="h-2.5 w-2.5 text-gray-400 shrink-0" />
               <span className="truncate max-w-[70px]">{ledgerSoft || "Ledger"}</span>
             </div>
             {period && (
-              <p className="text-[10px] text-gray-500 mt-1">{period}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{period}</p>
             )}
           </div>
         )}
 
         {/* Reconciliation stats */}
         {hasData && (
-          <div className="mx-3 mt-2 grid grid-cols-2 gap-px bg-white/10 border border-white/10 shrink-0 text-center">
+          <div className="mx-3 mt-2 grid grid-cols-2 gap-px bg-gray-200 border border-gray-200 shrink-0 text-center">
             {[
-              { label:"Matched",   val: matchedCount,         color:"text-emerald-400" },
-              { label:"Review",    val: reviewCount,           color:"text-amber-400"   },
-              { label:"Unmatched", val: unmatchedCount,        color:"text-red-400"     },
-              { label:"Total",     val: bankData.length,       color:"text-gray-300"    },
+              { label:"Matched",   val: matchedCount,   color:"text-emerald-600" },
+              { label:"Review",    val: reviewCount,     color:"text-amber-600"   },
+              { label:"Unmatched", val: unmatchedCount,  color:"text-red-500"     },
+              { label:"Total",     val: bankData.length, color:"text-gray-700"    },
             ].map(({ label, val, color }) => (
-              <div key={label} className="bg-gray-950 py-2.5 px-2">
+              <div key={label} className="bg-gray-100 py-2.5 px-2">
                 <p className={`text-sm font-bold ${color}`}>{val}</p>
-                <p className="text-[9px] text-gray-600 font-medium uppercase tracking-wide mt-0.5">{label}</p>
+                <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mt-0.5">{label}</p>
               </div>
             ))}
           </div>
@@ -1876,10 +1876,10 @@ export default function Engine() {
             <button key={item.id} onClick={() => { setNav(item.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors group
                 ${nav === item.id
-                  ? "bg-white/10 text-white"
-                  : "text-gray-500 hover:bg-white/5 hover:text-gray-300"}`}
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:bg-gray-200 hover:text-gray-800"}`}
             >
-              <span className={nav === item.id ? "text-blue-400" : "text-gray-600 group-hover:text-gray-400"}>
+              <span className={nav === item.id ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}>
                 {item.icon}
               </span>
               <span className="text-xs font-semibold flex-1">{item.label}</span>
@@ -1893,8 +1893,8 @@ export default function Engine() {
         </nav>
 
         {/* Export + Settings */}
-        <div className="px-3 pb-4 border-t border-white/10 pt-3 space-y-1.5 shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 px-1 mb-2">Export Report</p>
+        <div className="px-3 pb-4 border-t border-gray-200 pt-3 space-y-1.5 shrink-0">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 px-1 mb-2">Export Report</p>
           <button
             onClick={async () => {
               setPdfLoading(true);
@@ -1916,16 +1916,16 @@ export default function Engine() {
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
             }}
             disabled={!hasData}
-            className="w-full flex items-center justify-center gap-2 h-9 border border-white/10 text-gray-400 text-[11px] font-semibold hover:bg-white/5 transition-colors disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-2 h-9 border border-gray-300 text-gray-500 text-[11px] font-semibold hover:bg-gray-200 transition-colors disabled:opacity-40"
           >
             <Download className="h-3.5 w-3.5"/>Export JSON
           </button>
           <button
             onClick={() => { setNav("settings"); setSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-3 py-2 mt-1 transition-colors group
-              ${nav === "settings" ? "bg-white/10 text-white" : "text-gray-600 hover:bg-white/5 hover:text-gray-400"}`}
+              ${nav === "settings" ? "bg-white text-gray-900" : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"}`}
           >
-            <Settings2 className={`h-4 w-4 ${nav === "settings" ? "text-blue-400" : "text-gray-700 group-hover:text-gray-500"}`} />
+            <Settings2 className={`h-4 w-4 ${nav === "settings" ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}`} />
             <span className="text-xs font-semibold">Settings</span>
           </button>
         </div>
