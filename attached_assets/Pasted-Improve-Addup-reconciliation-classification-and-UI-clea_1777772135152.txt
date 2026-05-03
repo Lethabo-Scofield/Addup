@@ -1,0 +1,97 @@
+Improve Addup reconciliation classification and UI cleanup.
+
+Current output:
+Matched: 2
+Possible: 18
+Manual: 12
+Invalid: 8
+Unmatched Bank: 18
+Unmatched Ledger: 5
+
+The engine improved, but auto-matching is still too low. Many possible matches have 72–75% confidence and should be auto-matched if the warnings are not critical.
+
+Implement these changes:
+
+1. Split warnings into:
+- critical_warnings
+- soft_warnings
+
+Critical warnings:
+- invalid year
+- missing amount
+- missing date
+- direction mismatch
+- duplicate candidate conflict
+- amount difference above 15%
+- date difference above 14 days
+
+Soft warnings:
+- OCR artifacts
+- description weak but normalized category matches
+- date difference <= 7 days
+- amount difference <= 10%
+- multiple candidates, but best candidate is clearly stronger
+
+2. Add safe auto-match rule:
+Auto-match when:
+- final_score >= 0.72
+- amount difference <= 10%
+- date difference <= 7 days
+- normalized category matches
+- no critical warnings
+- best candidate score is at least 0.08 higher than second-best candidate
+
+3. Keep possible match when:
+- final_score >= 0.55
+- no critical validation issue
+- but match is not safe enough to auto-approve
+
+4. Keep manual review when:
+- final_score between 0.40 and 0.55
+- or critical warning exists
+- or duplicate conflict exists
+- or date difference > 7 days
+- or amount difference > 10%
+
+5. UI cleanup:
+Fix display bugs:
+- remove trailing numbers from descriptions, e.g. "vendor refund2" should be "vendor refund"
+- remove "bank charges1"
+- do not show candidate count inside description text
+- show candidate count in its own column or badge
+- ensure each row displays:
+  status
+  source
+  bank_id / ledger_id
+  normalized_description
+  raw_description
+  date
+  amount
+  confidence
+  warning count
+
+6. Detail panel:
+For each match, show:
+- raw bank transaction
+- raw ledger transaction
+- normalized bank transaction
+- normalized ledger transaction
+- final score
+- amount score
+- date score
+- description score
+- critical warnings
+- soft warnings
+- explanation
+
+7. Expected behavior:
+After running the same dataset again, we expect:
+- matched to increase meaningfully
+- invalid rows remain 8
+- UI text bugs gone
+- manual review contains only genuinely risky cases
+- possible match contains uncertain but non-critical cases
+
+Do not force counts.
+Do not fake matches.
+Use the scoring and warning logic naturally.

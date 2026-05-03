@@ -90,12 +90,16 @@ interface Candidate {
   description_score: number;
   reasons: string[];
   warnings: string[];
+  criticalWarnings: string[];
+  softWarnings: string[];
 }
 interface ReconRow {
   id: string; status: TxStatus;
   bank?: Tx; ledger?: Tx;
   confidence: number; dateDiff: number; amtDiff: number; descSim: number;
-  reasons: string[]; warnings: string[]; action: string;
+  reasons: string[]; warnings: string[];
+  criticalWarnings: string[]; softWarnings: string[];
+  action: string;
   userStatus?: "approved" | "rejected" | "manual";
   scoreBreakdown?: ScoreBreakdown;
   candidates?: Candidate[];
@@ -221,6 +225,9 @@ function normalizeDesc(raw: string): string {
     const overlap = kWords.filter(w => sWords.includes(w)).length;
     if (overlap >= Math.ceil(kWords.length * 0.8)) return SYNONYMS[key];
   }
+  // Strip trailing 1-2 digit counter suffixes: "bank charges1" → "bank charges", "vendor refund 2" → "vendor refund"
+  s = s.replace(/([a-z])\d{1,2}$/, "$1").trim();
+  s = s.replace(/\s+\d{1,2}$/, "").trim();
   return s;
 }
 
@@ -372,6 +379,8 @@ interface CandidateInternal {
   description_score: number;
   reasons: string[];
   warnings: string[];
+  criticalWarnings: string[];
+  softWarnings: string[];
 }
 
 function scorePair(b: Tx, l: Tx): CandidateInternal | null {
@@ -379,6 +388,12 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
   const normL = l.normalizedDesc ?? normalizeDesc(l.desc);
   const reasons: string[] = [];
   const warnings: string[] = [];
+  const critW: string[] = [];
+  const softW: string[] = [];
+  const addW = (msg: string, critical: boolean) => {
+    warnings.push(msg);
+    (critical ? critW : softW).push(msg);
+  };
 
   // ── Amount score ──────────────────────────────────────────
   let amount_score: number;
@@ -390,21 +405,22 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
     reasons.push("Exact amount match");
   } else if (Math.abs(b.amt + l.amt) < 0.01 && Math.abs(b.amt) > 0.01) {
     amount_score = 0.75;
-    warnings.push("Direction differs — same absolute amount, opposite sign");
+    addW("Direction differs — same absolute amount, opposite sign", true);
   } else if (pct <= 0.02) {
     amount_score = 0.9;
     reasons.push(`Amount within 2% tolerance (diff: ${fmt(absDiff)})`);
   } else if (pct <= 0.05) {
     amount_score = 0.8;
-    warnings.push(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+    addW(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
   } else if (pct <= 0.10) {
     amount_score = 0.65;
-    warnings.push(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+    addW(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
   } else if (pct <= 0.15) {
     amount_score = 0.5;
-    warnings.push(`Significant amount difference: ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+    addW(`Significant amount difference: ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
   } else {
     amount_score = 0.0;
+    addW(`Amount too far apart: ${fmt(absDiff)} (${Math.round(pct * 100)}% difference)`, true);
   }
 
   // ── Date score ────────────────────────────────────────────
@@ -421,23 +437,28 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
     reasons.push(`Date within 1 day (${b.date} vs ${l.date})`);
   } else if (daysDiff <= 3) {
     date_score = 0.85;
-    warnings.push(`Date off by ${Math.round(daysDiff)} days: ${b.date} vs ${l.date}`);
+    addW(`Date off by ${Math.round(daysDiff)} days: ${b.date} vs ${l.date}`, false);
   } else if (daysDiff <= 7) {
     date_score = 0.65;
-    warnings.push(`Date off by ${Math.round(daysDiff)} days`);
+    addW(`Date off by ${Math.round(daysDiff)} days`, false);
   } else if (daysDiff <= 14) {
     date_score = 0.35;
-    warnings.push(`Date off by ${Math.round(daysDiff)} days`);
+    addW(`Date off by ${Math.round(daysDiff)} days`, false);
   } else {
     date_score = 0.0;
-    warnings.push(`Dates too far apart: ${Math.round(daysDiff)} days`);
+    addW(`Dates too far apart: ${Math.round(daysDiff)} days`, true);
   }
 
   // ── Description score ─────────────────────────────────────
   const { score: description_score, reason: descReason } = computeDescScore(normB, normL, b.desc, l.desc);
   if (description_score >= 0.6) reasons.push(descReason);
-  else if (description_score > 0) warnings.push(descReason);
-  else warnings.push("Descriptions do not match");
+  else addW(descReason, false);
+
+  // OCR artifact soft warning
+  if (b.qualityIssues?.some(q => q.toLowerCase().includes("ocr")) ||
+      l.qualityIssues?.some(q => q.toLowerCase().includes("ocr"))) {
+    addW("OCR artifacts detected — normalized description used for matching", false);
+  }
 
   // Skip if amount is zero and other signals aren't strong enough
   if (amount_score === 0.0 && !(description_score >= 0.95 && date_score >= 0.85)) return null;
@@ -445,7 +466,7 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
   const final_score = 0.45 * amount_score + 0.30 * description_score + 0.25 * date_score;
   if (final_score <= 0) return null;
 
-  return { ledger: l, final_score, amount_score, date_score, description_score, reasons, warnings };
+  return { ledger: l, final_score, amount_score, date_score, description_score, reasons, warnings, criticalWarnings: critW, softWarnings: softW };
 }
 
 function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
@@ -464,12 +485,16 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
   for (const b of invalidBank) {
     rows.push({ id: rid(), status: "invalid_row", bank: b,
       confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-      reasons: [], warnings: b.qualityIssues ?? ["Invalid data"], action: "fix_data" });
+      reasons: [], warnings: b.qualityIssues ?? ["Invalid data"],
+      criticalWarnings: b.qualityIssues ?? ["Invalid data"], softWarnings: [],
+      action: "fix_data" });
   }
   for (const l of invalidLedger) {
     rows.push({ id: rid(), status: "invalid_row", ledger: l,
       confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-      reasons: [], warnings: l.qualityIssues ?? ["Invalid data"], action: "fix_data" });
+      reasons: [], warnings: l.qualityIssues ?? ["Invalid data"],
+      criticalWarnings: l.qualityIssues ?? ["Invalid data"], softWarnings: [],
+      action: "fix_data" });
   }
 
   // ── Score all valid bank vs valid ledger pairs ────────────
@@ -501,48 +526,51 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
       amount_score: c.amount_score, date_score: c.date_score,
       description_score: c.description_score,
       reasons: c.reasons, warnings: c.warnings,
+      criticalWarnings: c.criticalWarnings, softWarnings: c.softWarnings,
     }));
 
-    if (!best || best.final_score < 0.40) {
+    if (!best || best.final_score < 0.38) {
       rows.push({ id: rid(), status: "unmatched_bank", bank: b,
         confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-        reasons: [], warnings: ["No matching ledger entry found"], action: "create_entry",
-        candidates: topCandidates });
+        reasons: [], warnings: ["No matching ledger entry found"],
+        criticalWarnings: [], softWarnings: [],
+        action: "create_entry", candidates: topCandidates });
       continue;
     }
 
-    // Competing: a second candidate within 0.05 of the best score is a genuine conflict
-    const hasCompeting = available.length > 1 && (best.final_score - available[1].final_score < 0.05);
-    const extraWarnings = [...best.warnings];
-    if (hasCompeting) extraWarnings.push(`Multiple similar candidates found`);
+    // ── Competing candidate analysis ──────────────────────────
+    const clearlyBetter = available.length <= 1 || (best.final_score - available[1].final_score >= 0.08);
+    const hasCompeting  = available.length > 1   && (best.final_score - available[1].final_score < 0.05);
+    const criticalWarnings = [...best.criticalWarnings];
+    const softWarnings     = [...best.softWarnings];
+    if (hasCompeting) criticalWarnings.push("Duplicate candidate conflict: multiple similar matches found");
 
     const scoreBreakdown: ScoreBreakdown = {
       amount_score: best.amount_score, date_score: best.date_score,
       description_score: best.description_score, final_score: best.final_score,
     };
     const dateDiffDays = Math.abs(new Date(b.date).getTime() - new Date(best.ledger.date).getTime()) / 86400000;
+    const amtPct       = Math.abs(b.amt) > 0.01 ? Math.abs(b.amt - best.ledger.amt) / Math.abs(b.amt) : 0;
+    const hasCritical  = criticalWarnings.length > 0;
 
     // ── Classification ────────────────────────────────────────
-    const directionIssue = extraWarnings.some(w => w.includes("Direction differs"));
+    // Safe auto-match: score >= 0.72, amount <= 10%, date <= 7d, no critical warnings, clearly best
+    const safeAutoMatch =
+      best.final_score >= 0.72 &&
+      amtPct           <= 0.10 &&
+      dateDiffDays     <= 7    &&
+      !hasCritical             &&
+      clearlyBetter;
 
     let status: TxStatus;
-    if (best.final_score >= 0.82 && !directionIssue) {
+    if ((best.final_score >= 0.82 || safeAutoMatch) && !hasCritical) {
       status = "matched";
-    } else if (best.final_score >= 0.55) {
+    } else if (best.final_score >= 0.55 && !hasCritical && dateDiffDays <= 7 && amtPct <= 0.10) {
       status = "possible_match";
     } else if (best.final_score >= 0.38) {
       status = "manual_review";
     } else {
       status = "unmatched_bank";
-    }
-
-    // Downgrade matched → possible_match if individual scores are soft or there is a genuine competitor
-    if (status === "matched" && (best.amount_score < 0.65 || best.date_score < 0.45 || hasCompeting)) {
-      status = "possible_match";
-    }
-    // Downgrade possible → manual only when both direction AND date are severe problems
-    if (status === "possible_match" && directionIssue && dateDiffDays > 14) {
-      status = "manual_review";
     }
 
     if (status !== "unmatched_bank") usedLedger.add(best.ledger.id);
@@ -553,7 +581,8 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
       dateDiff: Math.round(dateDiffDays),
       amtDiff: Math.abs(b.amt - best.ledger.amt),
       descSim: best.description_score,
-      reasons: best.reasons, warnings: extraWarnings,
+      reasons: best.reasons, warnings: best.warnings,
+      criticalWarnings, softWarnings,
       action: status === "matched" ? "auto_approve" : "review",
       scoreBreakdown, candidates: topCandidates,
     });
@@ -564,7 +593,9 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
     if (!usedLedger.has(l.id)) {
       rows.push({ id: rid(), status: "unmatched_ledger", ledger: l,
         confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-        reasons: [], warnings: ["No matching bank transaction found"], action: "create_entry" });
+        reasons: [], warnings: ["No matching bank transaction found"],
+        criticalWarnings: [], softWarnings: [],
+        action: "create_entry" });
     }
   }
 
@@ -815,7 +846,7 @@ function ReviewPanel({
         {/* Explanation */}
         <div className="px-5 py-4 border-b border-gray-100">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Match explanation</p>
-          {row.reasons.length === 0 && row.warnings.length === 0 && (
+          {row.reasons.length === 0 && (row.criticalWarnings ?? []).length === 0 && (row.softWarnings ?? []).length === 0 && (
             <div className="flex items-start gap-2 mb-2">
               <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
               <p className="text-xs text-gray-500">
@@ -839,12 +870,28 @@ function ReviewPanel({
               <p className="text-xs text-gray-700">{r}</p>
             </div>
           ))}
-          {row.warnings.map(w => (
-            <div key={w} className="flex items-start gap-2 mb-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">{w}</p>
-            </div>
-          ))}
+          {(row.criticalWarnings ?? []).length > 0 && (
+            <>
+              <p className="text-[9px] font-bold text-red-400 uppercase tracking-wider mt-3 mb-1.5">Critical</p>
+              {(row.criticalWarnings ?? []).map(w => (
+                <div key={w} className="flex items-start gap-2 mb-2">
+                  <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700">{w}</p>
+                </div>
+              ))}
+            </>
+          )}
+          {(row.softWarnings ?? []).length > 0 && (
+            <>
+              <p className="text-[9px] font-bold text-amber-500 uppercase tracking-wider mt-3 mb-1.5">Notes</p>
+              {(row.softWarnings ?? []).map(w => (
+                <div key={w} className="flex items-start gap-2 mb-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">{w}</p>
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
         {/* Normalized descriptions */}
@@ -1014,6 +1061,7 @@ function ReconTable({
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Date</th>
             <th className="text-right px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">Confidence</th>
+            <th className="text-center px-3 py-3 font-semibold text-gray-500 uppercase tracking-wider w-14">Flags</th>
             <th className="px-4 py-3 w-8" />
           </tr>
         </thead>
@@ -1021,7 +1069,7 @@ function ReconTable({
           {grouped.map(({ status, items }) => (
             <React.Fragment key={status}>
               <tr>
-                <td colSpan={7} className="px-4 py-2 bg-gray-50 border-y border-gray-100">
+                <td colSpan={8} className="px-4 py-2 bg-gray-50 border-y border-gray-100">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     {STATUS_CFG[status].label} — {items.length}
                   </span>
@@ -1063,14 +1111,6 @@ function ReconTable({
                           {tx.desc.slice(0, 32)}{tx.desc.length > 32 && "…"}
                         </span>
                       )}
-                      {(tx?.qualityIssues?.length ?? 0) > 0 && (
-                        <AlertTriangle className={`inline ml-1 h-3 w-3 ${isSelected ? "text-amber-300" : "text-amber-500"}`} />
-                      )}
-                      {row.warnings.length > 0 && row.status !== "invalid_row" && (
-                        <span className={`inline-flex items-center gap-0.5 ml-1 text-[9px] font-bold ${isSelected ? "text-amber-300" : "text-amber-500"}`}>
-                          <AlertTriangle className="h-2.5 w-2.5" />{row.warnings.length}
-                        </span>
-                      )}
                     </td>
                     <td className={`px-4 py-3 font-mono text-[11px] ${isSelected ? "text-gray-300" : "text-gray-500"}`}>
                       {tx?.date}
@@ -1085,6 +1125,29 @@ function ReconTable({
                         ? <ConfBar pct={row.confidence} />
                         : <span className={`text-[11px] ${isSelected ? "text-gray-400" : "text-gray-300"}`}>—</span>
                       }
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {(() => {
+                        const crit = (row.criticalWarnings ?? []).length;
+                        const soft = (row.softWarnings ?? []).length;
+                        if (crit === 0 && soft === 0) return (
+                          <span className={`text-[10px] ${isSelected ? "text-gray-500" : "text-gray-300"}`}>—</span>
+                        );
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            {crit > 0 && (
+                              <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 ${isSelected ? "bg-red-900/40 text-red-300" : "bg-red-50 text-red-600"}`}>
+                                <XCircle className="h-2.5 w-2.5" />{crit}
+                              </span>
+                            )}
+                            {soft > 0 && (
+                              <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 ${isSelected ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-600"}`}>
+                                <AlertTriangle className="h-2.5 w-2.5" />{soft}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <ChevronRight className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-gray-300"}`} />
