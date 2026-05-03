@@ -1836,34 +1836,40 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   const logoData = await loadImgDataUrl(addupLogo).catch(() => null);
   const doc = new jsPDF({ unit:"mm", format:"a4" });
 
-  const W=210, H=297, ML=16, MR=16, CW=W-ML-MR, RX=W-MR;
+  const W=210, H=297, ML=18, MR=18, CW=W-ML-MR, RX=W-MR;
   const genDate = new Date().toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"});
   const genTs   = new Date().toLocaleString("en-ZA");
   const reportRef = `RPT-${(jobId||"XXXXXXXX").slice(4,12).toUpperCase()}`;
 
-  // ── helpers ──
-  const clr  = (r:number,g:number,b:number) => doc.setTextColor(r,g,b);
-  const fill = (r:number,g:number,b:number) => doc.setFillColor(r,g,b);
-  const strk = (r:number,g:number,b:number) => doc.setDrawColor(r,g,b);
+  // ── Palette — white paper, black ink ──────────────────────
+  type RGB = [number,number,number];
+  const INK    : RGB = [10,  10,  10 ];   // near-black body text
+  const DARK   : RGB = [50,  50,  50 ];   // secondary text
+  const MID    : RGB = [100, 100, 100];   // captions, sub-labels
+  const LIGHT  : RGB = [155, 155, 155];   // row numbers, footnotes
+  const RULE   : RGB = [200, 200, 200];   // hairlines
+  const ROW_ALT: RGB = [246, 246, 246];   // alternate row tint
+  const HDR_BG : RGB = [22,  22,  22 ];   // table header background
+  const WHITE  : RGB = [255, 255, 255];
+
+  // ── Helpers ───────────────────────────────────────────────
+  const clr  = (c:RGB)  => doc.setTextColor(...c);
+  const fill = (c:RGB)  => doc.setFillColor(...c);
+  const strk = (c:RGB)  => doc.setDrawColor(...c);
   const lw   = (w:number) => doc.setLineWidth(w);
-  const fnt  = (s:"normal"|"bold") => doc.setFont("helvetica",s);
+  const fnt  = (s:"normal"|"bold") => doc.setFont("helvetica", s);
   const sz   = (s:number) => doc.setFontSize(s);
-  const txt  = (t:string,x:number,y:number,o?:any) => doc.text(t,x,y,o);
-  const hln  = (y:number,x1=ML,x2=RX,w=0.25,c:[number,number,number]=[226,232,240]) => {
-    strk(...c); lw(w); doc.line(x1,y,x2,y);
+  const txt  = (t:string, x:number, y:number, o?:any) => doc.text(t, x, y, o);
+  const hln  = (y:number, x1=ML, x2=RX, w=0.2, c:RGB=RULE) => {
+    strk(c); lw(w); doc.line(x1, y, x2, y);
   };
-  const fmtR = (n:number) => `R ${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`;
-
-  const STATUS_COLOR: Record<TxStatus,[number,number,number]> = {
-    matched:          [16,185,129],
-    possible_match:   [37,99,235],
-    manual_review:    [217,119,6],
-    invalid_row:      [220,38,38],
-    unmatched_bank:   [234,88,12],
-    unmatched_ledger: [147,51,234],
+  const fmtAmt = (n:number) => {
+    const s = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+    return n < 0 ? `(${s})` : s;
   };
+  const fmtR = (n:number) => `R\u00A0${Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`;
 
-  // ── aggregates ──
+  // ── Aggregates ────────────────────────────────────────────
   const matched  = rows.filter(r=>r.status==="matched").length;
   const possible = rows.filter(r=>r.status==="possible_match").length;
   const manual   = rows.filter(r=>r.status==="manual_review").length;
@@ -1872,387 +1878,410 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   const uLedger  = rows.filter(r=>r.status==="unmatched_ledger").length;
   const conf     = bank.length > 0 ? Math.round(matched/bank.length*100) : 0;
   const exceptions = rows.filter(r=>r.status!=="matched");
-  const tBank    = bank.reduce((a,b)=>a+Math.abs(b.amt),0);
-  const tLedger  = ledger.reduce((a,l)=>a+Math.abs(l.amt),0);
-  const discAmt  = Math.abs(tBank-tLedger);
+  const tBank   = bank.reduce((a,b)=>a+Math.abs(b.amt),0);
+  const tLedger = ledger.reduce((a,l)=>a+Math.abs(l.amt),0);
+  const discAmt = Math.abs(tBank-tLedger);
+  const balanced = discAmt < 0.01;
 
   let page = 1;
 
-  const addFooter = (p:number) => {
-    const fy = H-9;
-    hln(fy-3,ML,RX,0.2,[209,213,219]);
-    fnt("normal"); sz(6); clr(180,185,195);
-    txt(`${company}  ·  ${reportRef}  ·  Confidential`, ML, fy);
-    txt(`Page ${p}`, RX, fy, {align:"right"});
+  // ── Continuation-page header ──────────────────────────────
+  const addContHeader = (section:string) => {
+    strk(INK); lw(0.8); doc.line(ML, 13, RX, 13);
+    hln(15, ML, RX, 0.15, RULE);
+    fnt("bold"); sz(6.5); clr(INK);
+    txt((company||"Entity").toUpperCase(), ML, 10.5);
+    fnt("normal"); sz(6.5); clr(MID);
+    txt(section, ML, 18.5);
+    txt(period,  RX, 18.5, {align:"right"});
   };
 
-  const addPageHeader = (section:string) => {
-    fill(248,250,252); doc.rect(0,0,W,12,"F");
-    strk(226,232,240); lw(0.3); doc.line(0,12,W,12);
-    fnt("bold"); sz(7); clr(37,99,235);
-    txt("ADDUP", ML, 8);
-    fnt("normal"); clr(100,116,139);
-    txt(`Bank Reconciliation Report  ·  ${section}`, ML+14, 8);
-    txt(period, RX, 8, {align:"right"});
+  // ── Footer ────────────────────────────────────────────────
+  const addFooter = (p:number) => {
+    hln(H-13, ML, RX, 0.15, RULE);
+    fnt("normal"); sz(5.5); clr(LIGHT);
+    txt(`${company||"Entity"}  ·  Bank Reconciliation Statement  ·  ${reportRef}  ·  CONFIDENTIAL`, ML, H-9);
+    txt(`Page ${p}`, RX, H-9, {align:"right"});
   };
 
   const newPage = (section:string) => {
     doc.addPage(); page++;
-    addPageHeader(section);
+    addContHeader(section);
     addFooter(page);
-    return 22;
+    return 28;
   };
 
   // ════════════════════════════════════════════════════════════
-  // COVER PAGE
+  // COVER PAGE — white, clean, typographic
   // ════════════════════════════════════════════════════════════
 
-  // Top colour band
-  fill(37,99,235); doc.rect(0,0,W,42,"F");
-  fill(29,78,216); doc.rect(0,38,W,4,"F");
+  // Top rule (double)
+  strk(INK); lw(1.0); doc.line(ML, 13, RX, 13);
+  hln(15.5, ML, RX, 0.2, RULE);
 
-  // Logo in band
-  if (logoData) doc.addImage(logoData,"PNG",ML,10,30,10);
-  else { fnt("bold"); sz(18); clr(255,255,255); txt("Addup",ML,22); }
+  // Logo (top-left) + meta (top-right)
+  if (logoData) doc.addImage(logoData,"PNG", ML, 4, 22, 7.5);
+  else { fnt("bold"); sz(10); clr(INK); txt("Addup", ML, 11); }
+  fnt("normal"); sz(6.5); clr(MID);
+  txt(genDate,    RX, 8,    {align:"right"});
+  txt(reportRef,  RX, 13.5, {align:"right"});
 
-  fnt("normal"); sz(8); clr(147,197,253);
-  txt("Bank Reconciliation Report", ML, 26);
+  // Title block
+  let cy = 30;
+  sz(7.5); fnt("normal"); clr(MID);
+  txt("BANK RECONCILIATION STATEMENT", ML, cy); cy += 8;
 
-  // White content area
-  let cy = 56;
+  sz(24); fnt("bold"); clr(INK);
+  const coLines = doc.splitTextToSize(company||"Entity", CW);
+  doc.text(coLines, ML, cy); cy += coLines.length * 11 + 3;
 
-  sz(9); fnt("bold"); clr(100,116,139); txt("ENTITY", ML, cy); cy+=6;
-  sz(20); fnt("bold"); clr(15,23,42);
-  const companyLines = doc.splitTextToSize(company, CW);
-  doc.text(companyLines, ML, cy); cy += companyLines.length * 9 + 4;
-  hln(cy, ML, RX, 0.4, [226,232,240]); cy+=8;
+  hln(cy, ML, RX, 0.3, INK); cy += 8;
 
-  // 2-column detail grid
-  const det = (label:string, val:string, x:number, yy:number) => {
-    sz(6.5); fnt("bold"); clr(148,163,184); txt(label, x, yy);
-    sz(8.5); fnt("normal"); clr(15,23,42);
-    const vLines = doc.splitTextToSize(val||"—", 82);
-    doc.text(vLines, x, yy+5);
-    return yy + 5 + vLines.length * 4;
+  // Detail grid — 2 columns
+  const det2 = (label:string, val:string, x:number, yy:number) => {
+    sz(6); fnt("normal"); clr(MID); txt(label.toUpperCase(), x, yy);
+    sz(8.5); fnt("normal"); clr(INK);
+    const vl = doc.splitTextToSize(val||"—", 84);
+    doc.text(vl, x, yy+5);
   };
-  const col1 = ML, col2 = ML + CW/2 + 2;
-  det("RECONCILIATION PERIOD", period,    col1, cy);
-  det("BANK INSTITUTION",      bankInst,  col2, cy); cy+=12;
-  det("ACCOUNTING SOFTWARE",   ledgerSoft,col1, cy);
-  det("REPORT REFERENCE",      reportRef, col2, cy); cy+=12;
-  det("DATE GENERATED",        genDate,   col1, cy);
-  det("JOB ID",                jobId,     col2, cy); cy+=16;
+  const c1=ML, c2=ML+CW/2+4;
+  det2("Reconciliation Period", period,     c1, cy);
+  det2("Bank Institution",      bankInst,   c2, cy); cy += 13;
+  det2("Accounting System",     ledgerSoft, c1, cy);
+  det2("Report Reference",      reportRef,  c2, cy); cy += 13;
+  det2("Date Prepared",         genDate,    c1, cy);
+  det2("Prepared by",           "Addup Financial Reconciliation", c2, cy); cy += 16;
 
-  hln(cy, ML, RX, 0.3); cy+=8;
+  hln(cy, ML, RX, 0.2, RULE); cy += 7;
 
-  // KPI bar — 4 equal tiles
-  const kpis = [
-    {val:`${matched}/${bank.length}`, lbl:"Matched",    color:[16,185,129] as [number,number,number]},
-    {val:`${conf}%`,                  lbl:"Confidence", color:[37,99,235]  as [number,number,number]},
-    {val:`${possible}`,               lbl:"Needs Review",color:[217,119,6] as [number,number,number]},
-    {val:`${manual+invalid+uBank+uLedger}`,lbl:"Exceptions",color:[220,38,38] as [number,number,number]},
+  // Status line
+  sz(8.5); fnt("bold"); clr(INK);
+  txt("RECONCILIATION STATUS", ML, cy);
+  fnt("normal"); clr(DARK);
+  txt(balanced
+    ? "Fully Reconciled — No discrepancy detected"
+    : `Unreconciled — Net difference: ${fmtR(discAmt)}`,
+    ML+62, cy); cy += 10;
+
+  // Summary table (clean — no color fills)
+  const sumItems = [
+    ["Bank transactions",      String(bank.length),           fmtR(tBank)  ],
+    ["Ledger entries",         String(ledger.length),         fmtR(tLedger)],
+    ["Net discrepancy",        "",                            balanced ? "R\u00A00.00" : fmtR(discAmt)],
+    ["Matched automatically",  `${matched} of ${bank.length} (${conf}%)`,   ""],
+    ["Requiring review",       String(possible + manual),     ""],
+    ["Exceptions / Unmatched", String(invalid + uBank + uLedger), ""],
   ];
-  const kw = CW/4;
-  kpis.forEach((k,i)=>{
-    const kx = ML + i*kw;
-    fill(248,250,252); strk(226,232,240); lw(0.2);
-    doc.rect(kx, cy, kw, 22, "FD");
-    const [cr,cg,cb] = k.color;
-    fill(cr,cg,cb); doc.rect(kx, cy, kw, 2, "F");
-    sz(16); fnt("bold"); clr(15,23,42);
-    txt(k.val, kx+kw/2, cy+13, {align:"center"});
-    sz(6.5); fnt("normal"); clr(100,116,139);
-    txt(k.lbl, kx+kw/2, cy+19, {align:"center"});
+
+  // Table header
+  fill(HDR_BG); strk(HDR_BG); lw(0);
+  doc.rect(ML, cy, CW, 7.5, "F");
+  sz(6.5); fnt("bold"); clr(WHITE);
+  txt("ITEM",   ML+2,   cy+5);
+  txt("DETAIL", ML+95,  cy+5, {align:"right"});
+  txt("AMOUNT", RX-2,   cy+5, {align:"right"});
+  cy += 7.5;
+
+  sumItems.forEach((r, i) => {
+    fill(i%2===0 ? WHITE : ROW_ALT);
+    strk(RULE); lw(0.1);
+    doc.rect(ML, cy, CW, 7.5, "F");
+    doc.line(ML, cy+7.5, RX, cy+7.5);
+    sz(8); fnt("normal"); clr(DARK); txt(r[0], ML+2, cy+5);
+    clr(INK); fnt("bold"); if(r[1]) txt(r[1], ML+95, cy+5, {align:"right"});
+    fnt("normal"); clr(DARK); if(r[2]) txt(r[2], RX-2, cy+5, {align:"right"});
+    cy += 7.5;
   });
-  cy+=30;
+  strk(RULE); lw(0.2);
+  doc.line(ML, cy, RX, cy);
+  cy += 9;
 
-  // Confidentiality strip
-  fill(254,243,199); strk(253,230,138); lw(0.2);
-  doc.rect(ML, cy, CW, 14, "FD");
-  sz(7); fnt("bold"); clr(146,64,14);
-  txt("CONFIDENTIAL", ML+4, cy+5.5);
-  sz(7); fnt("normal"); clr(120,53,15);
+  // Confidentiality notice
+  hln(cy, ML, RX, 0.15, RULE); cy += 5;
+  sz(6); fnt("normal"); clr(LIGHT);
   const cnLines = doc.splitTextToSize(
-    `This document is prepared exclusively for ${company} and their designated auditors. Unauthorised disclosure is prohibited.`,
-    CW-12
+    `CONFIDENTIAL — This statement is prepared exclusively for ${company} and their designated auditors or directors. Unauthorised disclosure, distribution or reproduction is strictly prohibited. Prepared by Addup Financial Reconciliation Platform.`,
+    CW
   );
-  doc.text(cnLines, ML+4, cy+10);
+  doc.text(cnLines, ML, cy);
 
-  addFooter(page);
+  addFooter(1);
 
   // ════════════════════════════════════════════════════════════
-  // PAGE 2 — SUMMARY
+  // PAGE 2 — RECONCILIATION SUMMARY & TRANSACTION BREAKDOWN
   // ════════════════════════════════════════════════════════════
-  let y = newPage("Summary");
+  let y = newPage("Reconciliation Summary");
 
-  sz(12); fnt("bold"); clr(15,23,42); txt("1.  Reconciliation Summary", ML, y); y+=6;
-  hln(y); y+=6;
+  sz(11); fnt("bold"); clr(INK); txt("1.  Reconciliation Summary", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 7;
 
-  // Opinion paragraph
-  sz(8.5); fnt("normal"); clr(51,65,85);
-  const opinionText = conf>=80
-    ? `An automated reconciliation of ${bank.length} bank transactions against ${ledger.length} ledger entries for ${period} yielded ${matched} auto-matched transactions (${conf}% confidence). ${exceptions.length} item${exceptions.length!==1?"s":""} require${exceptions.length===1?"s":""} manual review before this reconciliation can be finalised.`
-    : `The automated reconciliation for ${period} identified material discrepancies. Of ${bank.length} bank transactions, ${matched} were matched automatically (${conf}%). The ${exceptions.length} exceptions listed in Section 3 require resolution before submission.`;
+  // Auditor-style opinion paragraph
+  sz(8.5); fnt("normal"); clr(DARK);
+  const opinionText = balanced
+    ? `An automated reconciliation of ${bank.length} bank transactions against ${ledger.length} ledger entries for the period ${period} yielded ${matched} matched transactions representing a ${conf}% match rate. ${exceptions.length} item${exceptions.length!==1?"s":""} remain${exceptions.length===1?"s":""} open and require${exceptions.length===1?"s":""} resolution before this statement is considered finalised.`
+    : `The automated reconciliation for the period ${period} identified a discrepancy of ${fmtR(discAmt)} between the bank statement and the general ledger. Of ${bank.length} bank transactions, ${matched} were matched automatically (${conf}%). The ${exceptions.length} unresolved item${exceptions.length!==1?"s":""} detailed in Section 3 must be cleared before this statement can be authorised.`;
   const opLines = doc.splitTextToSize(opinionText, CW);
-  doc.text(opLines, ML, y); y += opLines.length*4.8+8;
+  doc.text(opLines, ML, y); y += opLines.length*4.8 + 10;
 
-  // Summary table
-  sz(12); fnt("bold"); clr(15,23,42); txt("2.  Transaction Breakdown", ML, y); y+=6;
-  hln(y); y+=5;
+  // Transaction Breakdown
+  sz(11); fnt("bold"); clr(INK); txt("2.  Transaction Breakdown", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 6;
 
-  // col widths: Category 92 | Count 18 | Amount 38 | Status 26
-  const sHdr=[{h:"Category",x:ML+2,r:false},{h:"Count",x:ML+94,r:true},{h:"Total Amount",x:ML+150,r:true},{h:"Status",x:ML+154,r:false}];
-  fill(30,41,59); doc.rect(ML,y,CW,7.5,"F");
-  sz(7); fnt("bold"); clr(255,255,255);
-  txt("Category",  ML+2,   y+5);
-  txt("Count",     ML+110, y+5, {align:"right"});
-  txt("Amount (R)",ML+150, y+5, {align:"right"});
-  txt("Status",    ML+154, y+5);
-  y+=7.5;
-
-  const zarSum=(status:TxStatus)=>{
-    const s=rows.filter(r=>r.status===status).reduce((a,r)=>a+Math.abs(r.bank?.amt??0)+Math.abs(r.ledger?.amt??0),0);
+  const zarSum = (status:TxStatus) => {
+    const s = rows.filter(r=>r.status===status).reduce((a,r)=>a+Math.abs(r.bank?.amt??0)+Math.abs(r.ledger?.amt??0),0);
     return fmtR(s);
   };
-  const sumRows=[
-    {cat:"Auto-matched",              cnt:matched,  zar:zarSum("matched"),          ok:true,  color:[16,185,129] as [number,number,number]},
-    {cat:"Possible Match — Review",   cnt:possible, zar:zarSum("possible_match"),   ok:false, color:[37,99,235]  as [number,number,number]},
-    {cat:"Manual Review",             cnt:manual,   zar:zarSum("manual_review"),    ok:false, color:[217,119,6]  as [number,number,number]},
-    {cat:"Invalid / Unprocessable",   cnt:invalid,  zar:zarSum("invalid_row"),      ok:false, color:[220,38,38]  as [number,number,number]},
-    {cat:"Unmatched Bank",            cnt:uBank,    zar:zarSum("unmatched_bank"),   ok:false, color:[234,88,12]  as [number,number,number]},
-    {cat:"Unmatched Ledger",          cnt:uLedger,  zar:zarSum("unmatched_ledger"), ok:false, color:[147,51,234] as [number,number,number]},
+  const bdRows = [
+    {cat:"Matched — Cleared",        cnt:matched,  amt:zarSum("matched"),          note:"Cleared"         },
+    {cat:"Possible Match",           cnt:possible, amt:zarSum("possible_match"),   note:"For Review"      },
+    {cat:"Manual Review Required",   cnt:manual,   amt:zarSum("manual_review"),    note:"For Review"      },
+    {cat:"Invalid / Unprocessable",  cnt:invalid,  amt:zarSum("invalid_row"),      note:"Action Required" },
+    {cat:"Unmatched — Bank Only",    cnt:uBank,    amt:zarSum("unmatched_bank"),   note:"Action Required" },
+    {cat:"Unmatched — Ledger Only",  cnt:uLedger,  amt:zarSum("unmatched_ledger"), note:"Action Required" },
   ];
-  sumRows.forEach((r,i)=>{
-    if(i%2===0){fill(248,250,252);}else{fill(255,255,255);}
-    doc.rect(ML,y,CW,8,"F");
-    strk(226,232,240); lw(0.15); doc.rect(ML,y,CW,8,"S");
-    const [rc,gc,bc]=r.color;
-    fill(rc,gc,bc); doc.rect(ML,y,3,8,"F");
-    sz(8); fnt("normal"); clr(30,41,59);
-    txt(r.cat, ML+6, y+5.5);
-    fnt("bold"); clr(15,23,42);
-    txt(String(r.cnt), ML+110, y+5.5, {align:"right"});
-    fnt("normal"); clr(30,41,59);
-    txt(r.zar, ML+150, y+5.5, {align:"right"});
-    sz(7); clr(rc,gc,bc); fnt("bold");
-    txt(r.ok?"Matched":"Review", ML+154, y+5.5);
-    y+=8;
+
+  // Header row
+  fill(HDR_BG); strk(HDR_BG); lw(0);
+  doc.rect(ML, y, CW, 7.5, "F");
+  sz(6.5); fnt("bold"); clr(WHITE);
+  txt("CATEGORY",   ML+2,    y+5);
+  txt("COUNT",       ML+108,  y+5, {align:"right"});
+  txt("AMOUNT (R)", ML+148,  y+5, {align:"right"});
+  txt("STATUS",     RX-2,    y+5, {align:"right"});
+  y += 7.5;
+
+  bdRows.forEach((r,i) => {
+    fill(i%2===0 ? WHITE : ROW_ALT);
+    strk(RULE); lw(0.1);
+    doc.rect(ML, y, CW, 7.5, "F");
+    doc.line(ML, y+7.5, RX, y+7.5);
+    sz(8); fnt("normal"); clr(DARK); txt(r.cat,        ML+2,   y+5);
+    fnt("bold");          clr(INK);  txt(String(r.cnt), ML+108, y+5, {align:"right"});
+    fnt("normal");        clr(DARK); txt(r.amt,         ML+148, y+5, {align:"right"});
+    sz(7);                clr(MID);  txt(r.note,        RX-2,   y+5, {align:"right"});
+    y += 7.5;
   });
-  y+=4;
 
-  // Totals box
-  fill(241,245,249); strk(209,213,219); lw(0.3);
-  doc.rect(ML,y,CW,16,"FD");
-  sz(7.5); fnt("bold"); clr(100,116,139);
-  txt("BANK STATEMENT TOTAL", ML+4, y+5.5);
-  txt("LEDGER TOTAL",         ML+4, y+12);
-  sz(9); fnt("bold"); clr(15,23,42);
-  txt(fmtR(tBank),   RX, y+5.5,  {align:"right"});
-  txt(fmtR(tLedger), RX, y+12,   {align:"right"});
-  y+=20;
+  // Outer border around breakdown table
+  strk(RULE); lw(0.25);
+  doc.line(ML, y, RX, y);
+  y += 5;
 
-  const discOk=discAmt<0.01;
-  const [dfr,dfg,dfb]=discOk?[240,253,244]:[254,242,242];
-  const [dsr,dsg,dsb]=discOk?[134,239,172]:[252,165,165];
-  const [dtr,dtg,dtb]=discOk?[4,120,64]:[153,27,27];
-  fill(dfr,dfg,dfb); strk(dsr,dsg,dsb); lw(0.3);
-  doc.rect(ML,y,CW,11,"FD");
-  sz(8.5); fnt("bold"); clr(dtr,dtg,dtb);
+  // Totals
+  fill(ROW_ALT); strk(RULE); lw(0.2);
+  doc.rect(ML, y, CW, 8, "FD");
+  sz(7.5); fnt("normal"); clr(MID);
+  txt("Bank Statement Total", ML+4, y+5.5);
+  sz(8.5); fnt("bold"); clr(INK);
+  txt(fmtR(tBank), RX-2, y+5.5, {align:"right"});
+  y += 8;
+
+  fill(ROW_ALT); strk(RULE); lw(0.2);
+  doc.rect(ML, y, CW, 8, "FD");
+  sz(7.5); fnt("normal"); clr(MID);
+  txt("General Ledger Total", ML+4, y+5.5);
+  sz(8.5); fnt("bold"); clr(INK);
+  txt(fmtR(tLedger), RX-2, y+5.5, {align:"right"});
+  y += 12;
+
+  // Discrepancy line — outlined box
+  strk(INK); lw(0.4);
+  doc.rect(ML, y, CW, 10, "S");
+  sz(8.5); fnt("bold"); clr(INK);
+  txt("NET DISCREPANCY", ML+4, y+6.5);
   txt(
-    discOk ? "NET DISCREPANCY: R 0.00 — Fully Reconciled"
-           : `NET DISCREPANCY: ${fmtR(discAmt)} — Action Required`,
-    ML+5, y+7.5
+    balanced ? "R\u00A00.00  —  Balanced" : `${fmtR(discAmt)}  —  Action Required`,
+    RX-2, y+6.5, {align:"right"}
   );
+  y += 14;
 
   // ════════════════════════════════════════════════════════════
-  // PAGE 3+ — TRANSACTION REGISTER
+  // PAGE 3+ — UNRECONCILED ITEMS & EXCEPTIONS
+  // ════════════════════════════════════════════════════════════
+  y = newPage("Unreconciled Items & Exceptions");
+
+  sz(11); fnt("bold"); clr(INK); txt("3.  Unreconciled Items & Exceptions", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 6;
+  sz(8); fnt("normal"); clr(MID);
+  txt(`${exceptions.length} item${exceptions.length!==1?"s":""} require${exceptions.length===1?"s":""} resolution before sign-off.`, ML, y); y += 8;
+
+  if (exceptions.length === 0) {
+    strk(RULE); lw(0.25); doc.rect(ML, y, CW, 12, "S");
+    sz(9); fnt("bold"); clr(DARK);
+    txt("No exceptions — all transactions reconciled.", ML+5, y+8);
+    y += 16;
+  }
+
+  exceptions.forEach(row => {
+    const warnLines = row.warnings.flatMap(w => doc.splitTextToSize(w, CW-14) as string[]);
+    const blockH = 13 + (row.reasons.length>0?5:0) + warnLines.length*4.5 + 6;
+    if (y+blockH > 272) { y = newPage("Unreconciled Items (cont.)"); }
+
+    const tx = row.bank || row.ledger;
+    strk(RULE); lw(0.2);
+    doc.rect(ML, y, CW, blockH, "S");
+    // Thin left rule marks exception
+    strk(INK); lw(0.6);
+    doc.line(ML, y, ML, y+blockH);
+
+    sz(7.5); fnt("bold"); clr(INK);
+    txt(STATUS_CFG[row.status].label, ML+5, y+5.5);
+
+    sz(7); fnt("normal"); clr(MID);
+    const meta = [tx?.date?fmtDate(tx.date):"—", tx?.desc||"—", tx?fmtAmt(tx.amt):"—"].join("   ·   ");
+    const metaShort = meta.length>70 ? meta.slice(0,68)+"\u2026" : meta;
+    txt(metaShort, RX-2, y+5.5, {align:"right"});
+
+    let ry = y+11;
+    if (row.reasons.length>0) {
+      sz(6.5); fnt("normal"); clr(LIGHT);
+      txt("Signals: "+row.reasons.join(" · "), ML+5, ry); ry += 5;
+    }
+    warnLines.forEach(wl => {
+      sz(7); fnt("normal"); clr(DARK); txt(wl, ML+5, ry); ry += 4.5;
+    });
+    sz(6.5); fnt("bold"); clr(MID);
+    txt("RECOMMENDED ACTION: "+row.action.replace(/_/g," ").toUpperCase(), ML+5, y+blockH-2.5);
+    y += blockH+3;
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // PAGE 4+ — TRANSACTION REGISTER
   // ════════════════════════════════════════════════════════════
   y = newPage("Transaction Register");
 
-  sz(12); fnt("bold"); clr(15,23,42); txt("3.  Transaction Register", ML, y); y+=5;
-  sz(7.5); fnt("normal"); clr(100,116,139);
-  txt(`${rows.length} transactions  ·  ${bank.length} bank  ·  ${ledger.length} ledger  ·  ${period}  ·  All amounts in ZAR`, ML, y); y+=8;
+  sz(11); fnt("bold"); clr(INK); txt("4.  Transaction Register", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 5;
+  sz(7.5); fnt("normal"); clr(MID);
+  txt(`${rows.length} transactions  ·  ${bank.length} bank entries  ·  ${ledger.length} ledger entries  ·  ${period}`, ML, y); y += 7;
 
-  // Columns: # 10 | Date 25 | Description 68 | Amount 28 | Conf 13 | Status 30
-  const C = { num:ML, date:ML+10, desc:ML+35, amt:ML+103, conf:ML+131, status:ML+144, end:RX };
+  // Columns: # | Date | Description | Amount | Conf | Status
+  const C = { num:ML, date:ML+9, desc:ML+33, amt:ML+111, conf:ML+131, status:ML+148, end:RX };
+
   const drawTxHdr = () => {
-    fill(30,41,59); doc.rect(ML,y,CW,7.5,"F");
-    sz(6.5); fnt("bold"); clr(255,255,255);
-    txt("#",           C.num+1,  y+5);
-    txt("Date",        C.date+1, y+5);
-    txt("Description", C.desc+1, y+5);
-    txt("Amount (R)",  C.amt+28, y+5, {align:"right"});
-    txt("Conf.",       C.conf+13, y+5, {align:"right"});
-    txt("Status",      C.status+2, y+5);
-    y+=7.5;
+    fill(HDR_BG); strk(HDR_BG); lw(0);
+    doc.rect(ML, y, CW, 7.5, "F");
+    sz(6.5); fnt("bold"); clr(WHITE);
+    txt("#",           C.num+1,   y+5);
+    txt("Date",        C.date+1,  y+5);
+    txt("Description", C.desc+1,  y+5);
+    txt("Amount",      C.amt+20,  y+5, {align:"right"});
+    txt("Conf",        C.conf+20, y+5, {align:"right"});
+    txt("Status",      C.status+2,y+5);
+    y += 7.5;
   };
   drawTxHdr();
 
-  const sorted=[...rows].sort((a,b)=>(a.bank?.date||a.ledger?.date||"").localeCompare(b.bank?.date||b.ledger?.date||""));
+  const sorted = [...rows].sort((a,b)=>(a.bank?.date||a.ledger?.date||"").localeCompare(b.bank?.date||b.ledger?.date||""));
 
-  sorted.forEach((row,i)=>{
-    if(y>272){ y=newPage("Transaction Register (cont.)"); drawTxHdr(); }
-    const tx=row.bank||row.ledger;
-    if(i%2===0){fill(248,250,252);}else{fill(255,255,255);}
-    doc.rect(ML,y,CW,7,"F");
-    strk(226,232,240); lw(0.1); doc.rect(ML,y,CW,7,"S");
-    const [sc1,sc2,sc3]=STATUS_COLOR[row.status];
-    fill(sc1,sc2,sc3); doc.rect(ML,y,2.5,7,"F");
+  sorted.forEach((row,i) => {
+    if (y > 272) { y = newPage("Transaction Register (cont.)"); drawTxHdr(); }
+    const tx = row.bank || row.ledger;
+    fill(i%2===0 ? WHITE : ROW_ALT);
+    strk(RULE); lw(0.1);
+    doc.rect(ML, y, CW, 7, "F");
+    doc.line(ML, y+7, RX, y+7);
 
     sz(7); fnt("normal");
-    clr(148,163,184); txt(String(i+1),         C.num+2, y+5);
-    clr(30,41,59);    txt(tx?.date?fmtDate(tx.date):"—", C.date+1, y+5);
-    const rawDesc=tx?.desc||"—";
-    const shortDesc=rawDesc.length>36?rawDesc.slice(0,34)+"\u2026":rawDesc;
-    clr(15,23,42);    txt(shortDesc, C.desc+1, y+5);
+    clr(LIGHT); txt(String(i+1),                       C.num+1,   y+4.8);
+    clr(DARK);  txt(tx?.date?fmtDate(tx.date):"—",     C.date+1,  y+4.8);
+    const desc = (tx?.desc||"—");
+    const shortDesc = desc.length>38 ? desc.slice(0,36)+"\u2026" : desc;
+    clr(INK);   txt(shortDesc,                          C.desc+1,  y+4.8);
 
-    const amt=tx?.amt;
-    if(amt!==undefined){
-      fnt("bold");
-      clr(amt>=0?4:185, amt>=0?120:28, amt>=0?64:28);
-      txt(fmt(amt), C.amt+28, y+5, {align:"right"});
+    const amt = tx?.amt;
+    if (amt !== undefined) {
+      fnt("bold"); clr(INK);
+      txt(fmtAmt(amt), C.amt+20, y+4.8, {align:"right"});
     } else {
-      fnt("normal"); clr(209,213,219); txt("—", C.amt+28, y+5, {align:"right"});
+      fnt("normal"); clr(LIGHT); txt("—", C.amt+20, y+4.8, {align:"right"});
     }
 
-    if(row.confidence>0){
-      fnt("bold");
-      clr(
-        row.confidence>=90?4:row.confidence>=70?37:146,
-        row.confidence>=90?120:row.confidence>=70?99:64,
-        row.confidence>=90?64:row.confidence>=70?235:14
-      );
-      txt(`${row.confidence}%`, C.conf+13, y+5, {align:"right"});
+    fnt("normal");
+    if (row.confidence > 0) {
+      clr(DARK); txt(`${row.confidence}%`, C.conf+20, y+4.8, {align:"right"});
     } else {
-      fnt("normal"); clr(209,213,219); txt("—", C.conf+13, y+5, {align:"right"});
+      clr(LIGHT); txt("—", C.conf+20, y+4.8, {align:"right"});
     }
 
-    sz(6.5); fnt("normal"); clr(sc1,sc2,sc3);
-    txt(STATUS_CFG[row.status].label, C.status+2, y+5);
-    y+=7;
+    sz(6.5); clr(MID);
+    txt(STATUS_CFG[row.status].short, C.status+2, y+4.8);
+    y += 7;
   });
 
   // ════════════════════════════════════════════════════════════
-  // EXCEPTIONS REGISTER
-  // ════════════════════════════════════════════════════════════
-  y = newPage("Exceptions Register");
-
-  sz(12); fnt("bold"); clr(15,23,42); txt("4.  Exceptions Register", ML, y); y+=5;
-  sz(7.5); fnt("normal"); clr(100,116,139);
-  txt(`${exceptions.length} item${exceptions.length!==1?"s":""} require${exceptions.length===1?"s":""} resolution.`, ML, y); y+=8;
-
-  if(exceptions.length===0){
-    fill(240,253,244); strk(134,239,172); lw(0.2);
-    doc.rect(ML,y,CW,12,"FD");
-    sz(9); fnt("bold"); clr(4,120,64);
-    txt("All transactions reconciled — no exceptions.", ML+5, y+8);
-    y+=16;
-  }
-
-  exceptions.forEach((row)=>{
-    const warnLines = row.warnings.flatMap(w=>doc.splitTextToSize(w, CW-14) as string[]);
-    const blockH = 12 + (row.reasons.length>0?5:0) + warnLines.length*4.5 + 5;
-    if(y+blockH>272){ y=newPage("Exceptions Register (cont.)"); }
-
-    const tx=row.bank||row.ledger;
-    const [sc1,sc2,sc3]=STATUS_COLOR[row.status];
-    fill(250,250,252); strk(226,232,240); lw(0.2);
-    doc.rect(ML,y,CW,blockH,"FD");
-    fill(sc1,sc2,sc3); doc.rect(ML,y,3,blockH,"F");
-
-    // Header row
-    sz(7.5); fnt("bold"); clr(15,23,42);
-    txt(STATUS_CFG[row.status].label, ML+7, y+5.5);
-    sz(7); fnt("normal"); clr(100,116,139);
-    const meta=[tx?.date?fmtDate(tx.date):"—", tx?.desc||"—", tx?fmt(tx.amt):"—"].join("   ·   ");
-    const metaShort = meta.length>70?meta.slice(0,68)+"\u2026":meta;
-    txt(metaShort, RX, y+5.5, {align:"right"});
-
-    let ry=y+10;
-    if(row.reasons.length>0){
-      sz(6.5); fnt("normal"); clr(100,116,139);
-      txt("Signals: "+row.reasons.join(" · "), ML+7, ry); ry+=5;
-    }
-    warnLines.forEach((wl)=>{
-      sz(7); fnt("normal"); clr(55,65,81);
-      txt(wl, ML+10, ry); ry+=4.5;
-    });
-    sz(6.5); fnt("bold"); clr(sc1,sc2,sc3);
-    txt("ACTION: "+row.action.replace(/_/g," ").toUpperCase(), ML+7, y+blockH-2.5);
-    y+=blockH+3;
-  });
-
-  // ════════════════════════════════════════════════════════════
-  // AUDIT TRAIL
+  // PAGE 5 — AUDIT TRAIL
   // ════════════════════════════════════════════════════════════
   y = newPage("Audit Trail");
 
-  sz(12); fnt("bold"); clr(15,23,42); txt("5.  Audit Trail", ML, y); y+=5;
-  sz(7.5); fnt("normal"); clr(100,116,139);
-  txt(`All actions recorded for reconciliation job ${jobId}.`, ML, y); y+=8;
+  sz(11); fnt("bold"); clr(INK); txt("5.  Audit Trail", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 6;
+  sz(7.5); fnt("normal"); clr(MID);
+  txt(`All actions recorded for reconciliation job ${jobId}.`, ML, y); y += 7;
 
-  // cols: Timestamp 44 | Action 58 | Reference 46 | User remainder
-  fill(30,41,59); doc.rect(ML,y,CW,7.5,"F");
-  sz(6.5); fnt("bold"); clr(255,255,255);
-  txt("Timestamp",  ML+2,    y+5);
-  txt("Action",     ML+46,   y+5);
-  txt("Reference",  ML+104,  y+5);
-  txt("User",       RX,      y+5, {align:"right"});
-  y+=7.5;
+  fill(HDR_BG); strk(HDR_BG); lw(0);
+  doc.rect(ML, y, CW, 7.5, "F");
+  sz(6.5); fnt("bold"); clr(WHITE);
+  txt("Timestamp", ML+2,   y+5);
+  txt("Action",    ML+46,  y+5);
+  txt("Reference", ML+106, y+5);
+  txt("User",      RX-2,   y+5, {align:"right"});
+  y += 7.5;
 
-  if(auditLog.length===0){
-    fill(248,250,252); doc.rect(ML,y,CW,8,"F");
-    sz(8); fnt("normal"); clr(148,163,184); txt("No actions recorded in this session.", ML+3, y+5.5);
-    y+=10;
+  if (auditLog.length === 0) {
+    fill(ROW_ALT); strk(RULE); lw(0.1); doc.rect(ML, y, CW, 8, "FD");
+    sz(8); fnt("normal"); clr(MID); txt("No actions recorded in this session.", ML+3, y+5.5);
+    y += 10;
   } else {
-    auditLog.forEach((e,i)=>{
-      if(y>272){ y=newPage("Audit Trail (cont.)"); }
-      if(i%2===0){fill(248,250,252);}else{fill(255,255,255);}
-      doc.rect(ML,y,CW,7,"F");
-      strk(226,232,240); lw(0.1); doc.rect(ML,y,CW,7,"S");
+    auditLog.forEach((e,i) => {
+      if (y > 272) { y = newPage("Audit Trail (cont.)"); }
+      fill(i%2===0 ? WHITE : ROW_ALT);
+      strk(RULE); lw(0.1);
+      doc.rect(ML, y, CW, 7, "F");
+      doc.line(ML, y+7, RX, y+7);
       sz(7); fnt("normal");
-      clr(100,116,139); txt(new Date(e.ts).toLocaleString("en-ZA"), ML+2,  y+5);
-      clr(15,23,42);    txt(ACTION_LABELS[e.action],                 ML+46, y+5);
-      clr(100,116,139); txt(e.target_id,                             ML+104,y+5);
-      txt(e.user,                                                     RX,    y+5, {align:"right"});
-      y+=7;
+      clr(MID);  txt(new Date(e.ts).toLocaleString("en-ZA"), ML+2,   y+4.8);
+      clr(INK);  txt(ACTION_LABELS[e.action],                ML+46,  y+4.8);
+      clr(MID);  txt(e.target_id,                            ML+106, y+4.8);
+                 txt(e.user,                                 RX-2,   y+4.8, {align:"right"});
+      y += 7;
     });
-    y+=4;
+    y += 4;
   }
 
   // ════════════════════════════════════════════════════════════
   // DECLARATION & SIGN-OFF
   // ════════════════════════════════════════════════════════════
-  if(y>210){ y=newPage("Declaration"); }
+  if (y > 210) { y = newPage("Declaration & Sign-off"); }
 
-  sz(12); fnt("bold"); clr(15,23,42); txt("6.  Declaration & Sign-off", ML, y); y+=6;
-  hln(y); y+=6;
+  sz(11); fnt("bold"); clr(INK); txt("6.  Declaration & Sign-off", ML, y); y += 4;
+  hln(y, ML, RX, 0.4, INK); y += 8;
 
-  sz(8); fnt("normal"); clr(51,65,85);
-  const declLines=doc.splitTextToSize(
-    `I, the undersigned, being a duly authorised representative of ${company}, declare that this Bank Reconciliation Report for the period ${period} is true, accurate and complete to the best of my knowledge. It was prepared using ${bankInst} bank records and ${ledgerSoft} ledger data and is available for inspection upon request.`,
+  sz(8); fnt("normal"); clr(DARK);
+  const declLines = doc.splitTextToSize(
+    `I, the undersigned, being a duly authorised representative of ${company}, declare that this Bank Reconciliation Statement for the period ${period} is true, accurate and complete to the best of my knowledge. It was prepared using ${bankInst||"bank"} records and ${ledgerSoft||"ledger"} data and is available for inspection upon request by the board, auditors or any competent authority.`,
     CW
   );
-  doc.text(declLines, ML, y); y+=declLines.length*4.8+12;
+  doc.text(declLines, ML, y); y += declLines.length*4.8 + 14;
 
-  // Signature lines
-  const sig=(label:string, x:number, w:number)=>{
-    strk(148,163,184); lw(0.4); doc.line(x,y+12,x+w,y+12);
-    sz(6.5); fnt("normal"); clr(148,163,184); txt(label,x,y+16);
-    doc.line(x,y+22,x+w,y+22);
-    txt("Date",x,y+26);
+  // Signature blocks
+  const sig = (label:string, x:number, w:number) => {
+    strk(INK); lw(0.25);
+    doc.line(x, y+14, x+w, y+14);
+    sz(6.5); fnt("normal"); clr(MID); txt(label, x, y+18);
+    doc.line(x, y+26, x+w, y+26);
+    txt("Date", x, y+30);
   };
-  sig("Preparer — Full Name & Designation", ML,           (CW/2)-4);
-  sig("Reviewer / Authorised Signatory",    ML+(CW/2)+4,  (CW/2)-4);
-  y+=32;
+  sig("Preparer — Full Name & Designation",  ML,            (CW/2)-6);
+  sig("Reviewer / Authorised Signatory",     ML+(CW/2)+6,   (CW/2)-6);
+  y += 36;
 
-  // Footer metadata line
-  hln(y+6); y+=10;
-  sz(6); fnt("normal"); clr(180,185,195);
-  txt(`Generated by Addup  ·  ${genTs}  ·  ${reportRef}`, ML, y);
+  hln(y+4, ML, RX, 0.15, RULE); y += 8;
+  sz(5.5); fnt("normal"); clr(LIGHT);
+  txt(`Prepared by Addup Financial Reconciliation Platform  ·  ${genTs}  ·  ${reportRef}`, ML, y);
 
-  const slug=(company||"report").toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
-  doc.save(`Addup-Recon-${slug}-${(period||"report").replace(/\s+/g,"-")}.pdf`);
+  const slug = (company||"report").toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+  doc.save(`Recon-Statement-${slug}-${(period||"report").replace(/\s+/g,"-")}.pdf`);
 }
 
 function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, bank: Tx[], ledger: Tx[], jobId: string, period: string) {
