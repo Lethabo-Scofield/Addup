@@ -1830,46 +1830,6 @@ export default function Engine() {
           </div>
         </div>
 
-        {/* Active job card */}
-        {hasData && (
-          <div className="mx-3 mt-4 p-3 bg-white border border-gray-200 shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Active Job</span>
-              <span className="text-[10px] font-bold text-blue-600">{overallConf}% matched</span>
-            </div>
-            {/* Progress bar */}
-            <div className="w-full h-1 bg-gray-200 mb-3">
-              <div className="h-full bg-blue-500 transition-all" style={{ width:`${overallConf}%` }} />
-            </div>
-            {/* Source pair */}
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-              <span className="truncate max-w-[70px]">{bankInst || "Bank"}</span>
-              <ArrowLeftRight className="h-2.5 w-2.5 text-gray-400 shrink-0" />
-              <span className="truncate max-w-[70px]">{ledgerSoft || "Ledger"}</span>
-            </div>
-            {period && (
-              <p className="text-[10px] text-gray-400 mt-1">{period}</p>
-            )}
-          </div>
-        )}
-
-        {/* Reconciliation stats */}
-        {hasData && (
-          <div className="mx-3 mt-2 grid grid-cols-2 gap-px bg-gray-200 border border-gray-200 shrink-0 text-center">
-            {[
-              { label:"Matched",   val: matchedCount,   color:"text-emerald-600" },
-              { label:"Review",    val: reviewCount,     color:"text-amber-600"   },
-              { label:"Unmatched", val: unmatchedCount,  color:"text-red-500"     },
-              { label:"Total",     val: bankData.length, color:"text-gray-700"    },
-            ].map(({ label, val, color }) => (
-              <div key={label} className="bg-gray-100 py-2.5 px-2">
-                <p className={`text-sm font-bold ${color}`}>{val}</p>
-                <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV.map(item => (
