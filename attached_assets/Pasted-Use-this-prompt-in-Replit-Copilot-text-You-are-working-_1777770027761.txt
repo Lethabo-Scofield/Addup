@@ -1,0 +1,436 @@
+Use this prompt in Replit/Copilot:
+
+```text
+You are working on Addup, an AI reconciliation product by Olyxee.
+
+Goal:
+Fix the reconciliation engine so it behaves like a probabilistic reconciliation system, not a strict rule-based matcher.
+
+Current issue:
+The latest test output shows:
+- 88 total review items
+- 0 matched
+- 7 possible matches
+- 43 unmatched bank transactions
+- 38 unmatched ledger transactions
+- 0 invalid rows
+
+This is wrong for the complex test dataset. The engine is too conservative and is not resolving enough matches.
+
+Expected target:
+For the complex dataset, the system should roughly produce:
+- 25–40% matched
+- 20–30% possible matches
+- 20–30% manual review
+- 10–20% invalid/filtered rows
+
+Do not force these numbers artificially. Improve the matching logic so these results happen naturally.
+
+Main problems to fix:
+1. Weak text normalization
+2. Too-strict amount matching
+3. Too-strict date matching
+4. No candidate ranking
+5. No invalid-row filtering before matching
+6. No synonym handling
+7. No confidence explanation strong enough for review
+8. Everything uncertain is becoming unmatched instead of possible/manual review
+
+Implement the following changes.
+
+==================================================
+1. ADD NORMALIZATION PIPELINE
+==================================================
+
+Create or update a normalization module.
+
+For every bank and ledger transaction, produce:
+
+{
+  id,
+  source: "bank" | "ledger",
+  raw_date,
+  normalized_date,
+  raw_description,
+  normalized_description,
+  raw_amount,
+  normalized_amount,
+  direction: "debit" | "credit",
+  quality_status: "valid" | "warning" | "invalid",
+  quality_issues: [],
+  normalization_confidence
+}
+
+Normalize descriptions:
+- lowercase
+- trim whitespace
+- remove OCR artifacts such as "|", "[", "]", "...", duplicated spaces
+- remove punctuation except useful reference numbers
+- expand abbreviations
+- map synonyms
+
+Use this synonym map:
+
+{
+  "sal apr pay": "salary payment",
+  "salary payment apr": "salary payment",
+  "salary payment": "salary payment",
+
+  "eqp purch": "equipment purchase",
+  "equipment buy": "equipment purchase",
+  "equipment purchase": "equipment purchase",
+
+  "isp payment": "internet subscription",
+  "internet sub apr": "internet subscription",
+  "internet subscription": "internet subscription",
+
+  "trf to sav": "transfer savings",
+  "transfer sav": "transfer savings",
+  "transfer to savings": "transfer savings",
+
+  "bank charges": "bank charges",
+  "bank fee": "bank charges",
+  "monthly fee": "bank charges",
+
+  "office supplies cpt": "office supplies",
+  "stationary purchase": "office supplies",
+  "stationery purchase": "office supplies",
+  "office supplies": "office supplies",
+
+  "refund vendor": "vendor refund",
+  "vendor refund": "vendor refund",
+
+  "client inv 1001": "client payment",
+  "client payment ref a12": "client payment",
+  "client payment": "client payment"
+}
+
+Also store original raw description for display.
+
+==================================================
+2. ADD DATA QUALITY VALIDATION
+==================================================
+
+Before matching, validate each transaction.
+
+Mark as invalid if:
+- date is missing
+- date cannot be parsed
+- year is less than 2025
+- year is greater than 2027
+- amount is missing
+- amount is 0
+- amount is not a number
+- description is empty after normalization
+
+Mark as warning if:
+- description contains OCR artifacts
+- date year differs from the bank statement period
+- amount is unusually large compared to dataset median
+- duplicate-like transaction exists
+- description was heavily changed during normalization
+
+Invalid rows must not be matched automatically.
+They must go to an Invalid Rows section with reasons.
+
+Do not leave bad 2012 ledger rows as normal unmatched ledger rows.
+They must be marked invalid with reason:
+"Invalid year detected: 2012"
+
+==================================================
+3. ADD FUZZY MATCHING ENGINE
+==================================================
+
+Replace exact matching with candidate ranking.
+
+For every valid bank transaction, compare against valid ledger transactions.
+
+Calculate:
+
+amount_score:
+- exact same signed amount: 1.0
+- same absolute amount but opposite sign: 0.75 with warning "direction differs"
+- percentage difference <= 2%: 0.9
+- percentage difference <= 5%: 0.8
+- percentage difference <= 10%: 0.65
+- percentage difference <= 15%: 0.5
+- else: 0.0
+
+date_score:
+- same date: 1.0
+- 1 day difference: 0.95
+- 2–3 days difference: 0.85
+- 4–7 days difference: 0.65
+- 8–14 days difference: 0.35
+- else: 0.0
+
+description_score:
+Use normalized descriptions.
+- exact normalized description match: 1.0
+- synonym match: 0.95
+- strong fuzzy similarity: 0.8
+- moderate fuzzy similarity: 0.6
+- weak similarity: 0.35
+- no similarity: 0.0
+
+Use a string similarity function such as:
+- token similarity
+- Levenshtein ratio
+- Jaro-Winkler
+- built-in simple implementation if no package exists
+
+final_score:
+final_score =
+  0.45 * amount_score +
+  0.30 * description_score +
+  0.25 * date_score
+
+Important:
+Do not match if amount_score is 0 unless description_score >= 0.95 and date_score >= 0.85.
+Do not match invalid rows.
+Do not auto-match if there are multiple similar candidates with close scores.
+
+==================================================
+4. CLASSIFICATION RULES
+==================================================
+
+Classify candidate results:
+
+Matched:
+- final_score >= 0.82
+- amount_score >= 0.65
+- date_score >= 0.65
+- no critical warnings
+- candidate is not already used
+
+Possible Match:
+- final_score >= 0.55 and < 0.82
+- or strong description match but amount/date uncertainty exists
+
+Manual Review:
+- final_score >= 0.40 and < 0.55
+- or duplicate-like candidates exist
+- or direction differs
+- or amount difference > 10%
+- or date difference > 7 days
+
+Unmatched Bank:
+- no candidate above 0.40
+
+Unmatched Ledger:
+- valid ledger transaction not used in any match or possible match
+
+Invalid:
+- failed validation
+
+==================================================
+5. TOP CANDIDATE RANKING
+==================================================
+
+For each bank transaction, store top 3 ledger candidates:
+
+candidate_matches: [
+  {
+    ledger_id,
+    final_score,
+    amount_score,
+    date_score,
+    description_score,
+    reasons: [],
+    warnings: []
+  }
+]
+
+In the UI, possible/manual review rows must show the best candidate and allow the user to inspect alternatives.
+
+==================================================
+6. EXPLANATION OBJECT
+==================================================
+
+Every result must include:
+
+{
+  match_status,
+  confidence,
+  bank_id,
+  ledger_id,
+  reasons,
+  warnings,
+  suggested_action,
+  score_breakdown: {
+    amount_score,
+    date_score,
+    description_score,
+    final_score
+  }
+}
+
+Examples of reasons:
+- "Normalized description match: SAL APR PAY → salary payment"
+- "Amount within 5% tolerance"
+- "Date within 3 days"
+- "Exact amount match"
+- "Similar description after OCR cleanup"
+
+Examples of warnings:
+- "Amount differs by R 577.00"
+- "Date differs by 5 days"
+- "Direction differs"
+- "Ledger row contains OCR artifacts"
+- "Multiple similar candidates found"
+- "Invalid year detected: 2012"
+
+==================================================
+7. ONE-TO-ONE MATCH SAFETY
+==================================================
+
+A ledger transaction can only be used once for an automatic Matched result.
+
+If two bank transactions compete for the same ledger transaction:
+- assign it to the highest scoring bank transaction
+- downgrade the other to Manual Review
+- add warning: "Competing candidate already used by stronger match"
+
+Possible matches can reference the same ledger row, but must show warning:
+"Candidate may already be linked elsewhere"
+
+==================================================
+8. UI CHANGES
+==================================================
+
+Update the UI to show these sections:
+
+Summary cards:
+- Total bank transactions
+- Total ledger transactions
+- Matched
+- Possible
+- Manual Review
+- Invalid
+- Unmatched Bank
+- Unmatched Ledger
+- Average confidence
+
+Tabs or filters:
+- All
+- Matched
+- Possible
+- Manual Review
+- Invalid
+- No Ledger
+- No Bank
+
+Each row should show:
+- status badge
+- source
+- bank id / ledger id
+- normalized description
+- raw description on hover or detail panel
+- date
+- amount
+- confidence percentage
+- warnings count
+- action button
+
+Detail panel:
+When clicking a row, show:
+- Bank transaction
+- Ledger transaction
+- Raw vs normalized values
+- Score breakdown
+- Reasons
+- Warnings
+- Top 3 alternative candidates
+- Buttons:
+  - Approve Match
+  - Reject Match
+  - Mark Manual Review
+  - Mark Invalid
+  - Edit Normalized Data
+
+Invalid section:
+Show invalid rows clearly with:
+- row id
+- source
+- raw date
+- raw description
+- raw amount
+- validation issue
+- suggested fix
+
+==================================================
+9. AUDIT LOG
+==================================================
+
+Whenever the user clicks an action button, write an audit entry:
+
+{
+  timestamp,
+  job_id,
+  action,
+  target_id,
+  previous_status,
+  new_status,
+  previous_values,
+  new_values,
+  user: "local_user"
+}
+
+Actions:
+- approve_match
+- reject_match
+- mark_manual_review
+- mark_invalid
+- edit_normalized_data
+- export_report
+
+==================================================
+10. EXPORT REPORT
+==================================================
+
+Add export JSON report button.
+
+Report must include:
+{
+  job_id,
+  summary,
+  results,
+  invalid_rows,
+  unmatched_bank,
+  unmatched_ledger,
+  possible_matches,
+  manual_reviews,
+  audit_log,
+  generated_at
+}
+
+==================================================
+11. ACCEPTANCE CRITERIA
+==================================================
+
+After changes, run the complex bank statement and complex ledger files again.
+
+The result must:
+- not produce 0 matched unless the dataset truly has no valid matches
+- mark 2012 ledger rows as invalid
+- show normalized descriptions
+- produce top 3 candidate matches
+- show score breakdown per match
+- separate invalid rows from unmatched rows
+- include clear reasons and warnings
+- update the UI summary cards correctly
+- allow sign-off actions
+- export a complete reconciliation report
+
+Do not hard-code specific row IDs.
+Do not fake matches.
+Do not force target percentages.
+Improve the actual scoring, validation, and UI.
+
+After implementation, return:
+1. Files changed
+2. Matching algorithm summary
+3. Example output for one matched item
+4. Example output for one invalid item
+5. Remaining limitations
+```

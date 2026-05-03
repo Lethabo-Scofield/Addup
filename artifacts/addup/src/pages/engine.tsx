@@ -65,12 +65,31 @@ function Loader({ onDone }: { onDone: () => void }) {
 type NavId = "dashboard" | "uploads" | "jobs" | "review" | "audit" | "settings";
 type TxStatus = "matched" | "possible_match" | "manual_review" | "invalid_row" | "unmatched_bank" | "unmatched_ledger";
 type ActionType = "approve_match" | "reject_match" | "mark_manual" | "edit_field" | "export_json" | "export_pdf";
+type QualityStatus = "valid" | "warning" | "invalid";
 
 interface RawField { raw: string; normalized: string; confidence: number; issue?: string }
 interface Tx {
   id: string; date: string; desc: string; amt: number;
+  normalizedDesc?: string;
+  qualityStatus?: QualityStatus;
+  qualityIssues?: string[];
   rawDate?: RawField; rawAmt?: RawField; rawDesc?: RawField;
   issues?: string[];
+}
+interface ScoreBreakdown {
+  amount_score: number;
+  date_score: number;
+  description_score: number;
+  final_score: number;
+}
+interface Candidate {
+  ledger_id: string;
+  final_score: number;
+  amount_score: number;
+  date_score: number;
+  description_score: number;
+  reasons: string[];
+  warnings: string[];
 }
 interface ReconRow {
   id: string; status: TxStatus;
@@ -78,6 +97,8 @@ interface ReconRow {
   confidence: number; dateDiff: number; amtDiff: number; descSim: number;
   reasons: string[]; warnings: string[]; action: string;
   userStatus?: "approved" | "rejected" | "manual";
+  scoreBreakdown?: ScoreBreakdown;
+  candidates?: Candidate[];
 }
 interface AuditEntry {
   ts: string; job_id: string; action: ActionType; target_id: string;
@@ -139,59 +160,288 @@ function normalizeDate(raw: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,"0")}-${dmy[1].padStart(2,"0")}`;
+  const mdy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,"0")}-${mdy[2].padStart(2,"0")}`;
   const d = new Date(s);
   return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+}
+
+// ── Normalization + synonym map ───────────────────────────────────────────────
+
+const SYNONYMS: Record<string, string> = {
+  "sal apr pay": "salary payment",
+  "salary payment apr": "salary payment",
+  "salary payment": "salary payment",
+  "eqp purch": "equipment purchase",
+  "equipment buy": "equipment purchase",
+  "equipment purchase": "equipment purchase",
+  "isp payment": "internet subscription",
+  "internet sub apr": "internet subscription",
+  "internet subscription": "internet subscription",
+  "trf to sav": "transfer savings",
+  "transfer sav": "transfer savings",
+  "transfer to savings": "transfer savings",
+  "bank charges": "bank charges",
+  "bank fee": "bank charges",
+  "monthly fee": "bank charges",
+  "office supplies cpt": "office supplies",
+  "stationary purchase": "office supplies",
+  "stationery purchase": "office supplies",
+  "office supplies": "office supplies",
+  "refund vendor": "vendor refund",
+  "vendor refund": "vendor refund",
+  "client inv 1001": "client payment",
+  "client payment ref a12": "client payment",
+  "client payment": "client payment",
+};
+
+const SYNONYM_KEYS = Object.keys(SYNONYMS).sort((a, b) => b.length - a.length);
+
+function hasOcrArtifacts(s: string): boolean {
+  return /[|\[\]]/.test(s) || /\.{3,}/.test(s) || / {3,}/.test(s);
+}
+
+function normalizeDesc(raw: string): string {
+  let s = raw.toLowerCase().trim();
+  s = s.replace(/[|\[\]]+/g, " ").replace(/\.{3,}/g, " ").replace(/\s{2,}/g, " ").trim();
+  s = s.replace(/[^a-z0-9\s]/g, " ").replace(/\s{2,}/g, " ").trim();
+  for (const key of SYNONYM_KEYS) {
+    if (s === key || s.startsWith(key + " ") || s.endsWith(" " + key) || s.includes(" " + key + " ")) {
+      return SYNONYMS[key];
+    }
+  }
+  const sWords = s.split(/\s+/).filter(Boolean);
+  for (const key of SYNONYM_KEYS) {
+    const kWords = key.split(/\s+/).filter(Boolean);
+    if (kWords.length < 2) continue;
+    const overlap = kWords.filter(w => sWords.includes(w)).length;
+    if (overlap >= Math.ceil(kWords.length * 0.8)) return SYNONYMS[key];
+  }
+  return s;
+}
+
+// ── String similarity ─────────────────────────────────────────────────────────
+
+function jaroWinkler(s1: string, s2: string): number {
+  if (s1 === s2) return 1.0;
+  const l1 = s1.length, l2 = s2.length;
+  if (l1 === 0 || l2 === 0) return 0.0;
+  const matchDist = Math.max(Math.floor(Math.max(l1, l2) / 2) - 1, 0);
+  const m1 = new Array(l1).fill(false);
+  const m2 = new Array(l2).fill(false);
+  let matches = 0;
+  for (let i = 0; i < l1; i++) {
+    const lo = Math.max(0, i - matchDist);
+    const hi = Math.min(i + matchDist + 1, l2);
+    for (let j = lo; j < hi; j++) {
+      if (m2[j] || s1[i] !== s2[j]) continue;
+      m1[i] = m2[j] = true; matches++; break;
+    }
+  }
+  if (matches === 0) return 0.0;
+  let trans = 0, k = 0;
+  for (let i = 0; i < l1; i++) {
+    if (!m1[i]) continue;
+    while (!m2[k]) k++;
+    if (s1[i] !== s2[k]) trans++;
+    k++;
+  }
+  const jaro = (matches/l1 + matches/l2 + (matches - trans/2)/matches) / 3;
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, Math.min(l1, l2)); i++) {
+    if (s1[i] === s2[i]) prefix++; else break;
+  }
+  return jaro + prefix * 0.1 * (1 - jaro);
+}
+
+function tokenSim(a: string, b: string): number {
+  const wa = new Set(a.split(/\s+/).filter(Boolean));
+  const wb = new Set(b.split(/\s+/).filter(Boolean));
+  if (wa.size === 0 && wb.size === 0) return 1;
+  if (wa.size === 0 || wb.size === 0) return 0;
+  let common = 0;
+  wa.forEach(w => { if (wb.has(w)) common++; });
+  return common / Math.max(wa.size, wb.size);
+}
+
+function computeDescScore(normA: string, normB: string, rawA: string, rawB: string): { score: number; reason: string } {
+  if (normA === normB) {
+    const changed = normA !== rawA.toLowerCase().trim() || normB !== rawB.toLowerCase().trim();
+    return { score: changed ? 0.95 : 1.0, reason: changed ? `Normalized description match: "${normA}"` : "Exact description match" };
+  }
+  const combined = Math.max(jaroWinkler(normA, normB), tokenSim(normA, normB));
+  if (combined >= 0.90) return { score: 0.80, reason: `Strong description similarity (${Math.round(combined * 100)}%)` };
+  if (combined >= 0.70) return { score: 0.60, reason: `Moderate description similarity (${Math.round(combined * 100)}%)` };
+  if (combined >= 0.50) return { score: 0.35, reason: `Weak description similarity (${Math.round(combined * 100)}%)` };
+  return { score: 0.0, reason: "Descriptions do not match" };
 }
 
 function csvToTx(rows: Record<string, string>[], prefix: string): { txns: Tx[]; invalid: Tx[] } {
   if (!rows.length) return { txns: [], invalid: [] };
   const keys = Object.keys(rows[0]);
   const find = (...pats: RegExp[]) => keys.find(k => pats.some(p => p.test(k))) ?? "";
-  const dateKey  = find(/date/i, /period/i);
-  const descKey  = find(/desc/i, /narr/i, /particular/i, /detail/i, /memo/i, /reference/i);
-  const amtKey   = find(/^amount$/i, /^amt$/i, /^value$/i, /transaction.amount/i);
-  const debitKey = find(/debit/i);
-  const creditKey= find(/credit/i);
+  const dateKey   = find(/date/i, /period/i);
+  const descKey   = find(/desc/i, /narr/i, /particular/i, /detail/i, /memo/i, /reference/i);
+  const amtKey    = find(/^amount$/i, /^amt$/i, /^value$/i, /transaction.amount/i);
+  const debitKey  = find(/debit/i);
+  const creditKey = find(/credit/i);
 
   const txns: Tx[] = [], invalid: Tx[] = [];
+  const seenSignatures = new Map<string, number>();
+
   rows.forEach((row, i) => {
     const id      = `${prefix}${String(i + 1).padStart(3, "0")}`;
-    const rawDate = row[dateKey] ?? "";
-    const rawDesc = row[descKey] ?? row[keys[1]] ?? "";
+    const rawDate = (row[dateKey] ?? "").trim();
+    const rawDesc = (row[descKey] ?? row[keys[1]] ?? "").trim();
+
     let amt = 0;
+    let amtRaw = "";
     if (amtKey && row[amtKey]) {
-      amt = parseFloat(row[amtKey].replace(/[,\sR$£€]/g, "")) || 0;
+      amtRaw = row[amtKey];
+      amt = parseFloat(amtRaw.replace(/[,\sR$£€]/g, "")) || 0;
     } else {
       const d = parseFloat((row[debitKey]  || "0").replace(/[,\sR$£€]/g, "")) || 0;
       const c = parseFloat((row[creditKey] || "0").replace(/[,\sR$£€]/g, "")) || 0;
       amt = c - d;
+      amtRaw = amtKey ? (row[amtKey] ?? "") : `${c} / ${d}`;
     }
-    const date = normalizeDate(rawDate);
-    const desc = rawDesc.trim();
-    const issues: string[] = [];
-    if (!date) issues.push("invalid_date");
-    if (!desc) issues.push("missing_description");
-    const tx: Tx = { id, date: date || rawDate, desc: desc || "(blank)", amt };
-    if (issues.length) { tx.issues = issues; invalid.push(tx); }
-    else               { txns.push(tx); }
+
+    const date         = normalizeDate(rawDate);
+    const desc         = rawDesc;
+    const normDesc     = normalizeDesc(rawDesc);
+    const qualityIssues: string[] = [];
+    let   qualityStatus: QualityStatus = "valid";
+
+    // ── Hard invalids ──
+    if (!rawDate || !date) qualityIssues.push("Missing or unparseable date");
+    else {
+      const year = parseInt(date.slice(0, 4), 10);
+      if (year < 2025) qualityIssues.push(`Invalid year detected: ${year}`);
+      else if (year > 2027) qualityIssues.push(`Future year detected: ${year}`);
+    }
+    if (amtRaw === "" && !debitKey && !creditKey) qualityIssues.push("Missing amount");
+    else if (amt === 0) qualityIssues.push("Amount is zero");
+    else if (isNaN(amt)) qualityIssues.push("Amount is not a number");
+    if (!normDesc || normDesc.length === 0) qualityIssues.push("Description is empty after normalization");
+
+    // ── Warnings ──
+    const warnings: string[] = [];
+    if (hasOcrArtifacts(rawDesc)) warnings.push("Description contains OCR artifacts");
+    const sig = `${date}|${amt}|${normDesc}`;
+    const prev = seenSignatures.get(sig);
+    if (prev !== undefined) warnings.push(`Possible duplicate of row ${prefix}${String(prev + 1).padStart(3, "0")}`);
+    else seenSignatures.set(sig, i);
+
+    if (qualityIssues.length > 0) qualityStatus = "invalid";
+    else if (warnings.length > 0) qualityStatus = "warning";
+
+    const tx: Tx = {
+      id,
+      date: date || rawDate,
+      desc: desc || "(blank)",
+      amt,
+      normalizedDesc: normDesc,
+      qualityStatus,
+      qualityIssues: [...qualityIssues, ...warnings],
+      issues: qualityIssues.length > 0 ? qualityIssues : undefined,
+    };
+
+    if (qualityStatus === "invalid") { invalid.push(tx); }
+    else                             { txns.push(tx); }
   });
   return { txns, invalid };
 }
 
 // ── Reconciliation engine ─────────────────────────────────────────────────────
 
-function wordSim(a: string, b: string): number {
-  const wa = new Set(a.toLowerCase().split(/\W+/).filter(Boolean));
-  const wb = new Set(b.toLowerCase().split(/\W+/).filter(Boolean));
-  let common = 0;
-  wa.forEach(w => { if (wb.has(w)) common++; });
-  return common / Math.max(wa.size, wb.size, 1);
-}
-
 function derivePeriod(txns: Tx[]): string {
   const dates = txns.map(t => t.date).filter(Boolean).sort();
   if (!dates.length) return "";
   return new Date(dates[0]).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+}
+
+interface CandidateInternal {
+  ledger: Tx;
+  final_score: number;
+  amount_score: number;
+  date_score: number;
+  description_score: number;
+  reasons: string[];
+  warnings: string[];
+}
+
+function scorePair(b: Tx, l: Tx): CandidateInternal | null {
+  const normB = b.normalizedDesc ?? normalizeDesc(b.desc);
+  const normL = l.normalizedDesc ?? normalizeDesc(l.desc);
+  const reasons: string[] = [];
+  const warnings: string[] = [];
+
+  // ── Amount score ──────────────────────────────────────────
+  let amount_score: number;
+  const absDiff = Math.abs(b.amt - l.amt);
+  const pct     = Math.abs(b.amt) > 0.01 ? absDiff / Math.abs(b.amt) : (absDiff > 0 ? 1 : 0);
+
+  if (absDiff < 0.01) {
+    amount_score = 1.0;
+    reasons.push("Exact amount match");
+  } else if (Math.abs(b.amt + l.amt) < 0.01 && Math.abs(b.amt) > 0.01) {
+    amount_score = 0.75;
+    warnings.push("Direction differs — same absolute amount, opposite sign");
+  } else if (pct <= 0.02) {
+    amount_score = 0.9;
+    reasons.push(`Amount within 2% tolerance (diff: ${fmt(absDiff)})`);
+  } else if (pct <= 0.05) {
+    amount_score = 0.8;
+    warnings.push(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+  } else if (pct <= 0.10) {
+    amount_score = 0.65;
+    warnings.push(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+  } else if (pct <= 0.15) {
+    amount_score = 0.5;
+    warnings.push(`Significant amount difference: ${fmt(absDiff)} (${Math.round(pct * 100)}%)`);
+  } else {
+    amount_score = 0.0;
+  }
+
+  // ── Date score ────────────────────────────────────────────
+  let date_score: number;
+  const bMs = new Date(b.date).getTime();
+  const lMs = new Date(l.date).getTime();
+  const daysDiff = isNaN(bMs) || isNaN(lMs) ? Infinity : Math.abs(bMs - lMs) / 86400000;
+
+  if (daysDiff === 0) {
+    date_score = 1.0;
+    reasons.push("Exact date match");
+  } else if (daysDiff <= 1) {
+    date_score = 0.95;
+    reasons.push(`Date within 1 day (${b.date} vs ${l.date})`);
+  } else if (daysDiff <= 3) {
+    date_score = 0.85;
+    warnings.push(`Date off by ${Math.round(daysDiff)} days: ${b.date} vs ${l.date}`);
+  } else if (daysDiff <= 7) {
+    date_score = 0.65;
+    warnings.push(`Date off by ${Math.round(daysDiff)} days`);
+  } else if (daysDiff <= 14) {
+    date_score = 0.35;
+    warnings.push(`Date off by ${Math.round(daysDiff)} days`);
+  } else {
+    date_score = 0.0;
+    warnings.push(`Dates too far apart: ${Math.round(daysDiff)} days`);
+  }
+
+  // ── Description score ─────────────────────────────────────
+  const { score: description_score, reason: descReason } = computeDescScore(normB, normL, b.desc, l.desc);
+  if (description_score >= 0.6) reasons.push(descReason);
+  else if (description_score > 0) warnings.push(descReason);
+  else warnings.push("Descriptions do not match");
+
+  // Skip if amount is zero and other signals aren't strong enough
+  if (amount_score === 0.0 && !(description_score >= 0.95 && date_score >= 0.85)) return null;
+
+  const final_score = 0.45 * amount_score + 0.30 * description_score + 0.25 * date_score;
+  if (final_score <= 0) return null;
+
+  return { ledger: l, final_score, amount_score, date_score, description_score, reasons, warnings };
 }
 
 function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
@@ -200,60 +450,131 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
   let rowN = 0;
   const rid = () => `R${String(++rowN).padStart(3, "0")}`;
 
-  for (const b of bank) {
-    let bestScore = -1, bestMatch: Tx | null = null;
-    let bestReasons: string[] = [], bestWarnings: string[] = [];
+  // ── Separate valid from invalid ───────────────────────────
+  const validBank    = bank.filter(t => t.qualityStatus !== "invalid");
+  const invalidBank  = bank.filter(t => t.qualityStatus === "invalid");
+  const validLedger  = ledger.filter(t => t.qualityStatus !== "invalid");
+  const invalidLedger= ledger.filter(t => t.qualityStatus === "invalid");
 
-    for (const l of ledger) {
-      if (usedLedger.has(l.id)) continue;
-      const amtDiff = Math.abs(b.amt - l.amt);
-      if (amtDiff > Math.max(Math.abs(b.amt) * 0.20, 1)) continue;
+  // Emit invalid rows immediately (before matching)
+  for (const b of invalidBank) {
+    rows.push({ id: rid(), status: "invalid_row", bank: b,
+      confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
+      reasons: [], warnings: b.qualityIssues ?? ["Invalid data"], action: "fix_data" });
+  }
+  for (const l of invalidLedger) {
+    rows.push({ id: rid(), status: "invalid_row", ledger: l,
+      confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
+      reasons: [], warnings: l.qualityIssues ?? ["Invalid data"], action: "fix_data" });
+  }
 
-      const dateDiffDays = Math.abs(new Date(b.date).getTime() - new Date(l.date).getTime()) / 86400000;
-      const descSim = wordSim(b.desc, l.desc);
-      let score = 0;
-      const reasons: string[] = [], warnings: string[] = [];
-
-      if (amtDiff < 0.01) { score += 50; reasons.push("Exact amount match"); }
-      else                 { score += 20; warnings.push(`Amount difference: ${fmt(b.amt)} vs ${fmt(l.amt)}`); }
-
-      if (dateDiffDays === 0)    { score += 30; reasons.push("Exact date match"); }
-      else if (dateDiffDays <= 3){ score += 15; warnings.push(`Date off by ${Math.round(dateDiffDays)} day(s): ${b.date} vs ${l.date}`); }
-      else if (dateDiffDays <= 7){ score +=  5; warnings.push(`Date off by ${Math.round(dateDiffDays)} days`); }
-
-      if (descSim > 0.7)      { score += 20; reasons.push("High description similarity"); }
-      else if (descSim > 0.4) { score += 10; reasons.push("Partial description match"); }
-      else                    { warnings.push("Description differs significantly"); }
-
-      if (score > bestScore) { bestScore = score; bestMatch = l; bestReasons = reasons; bestWarnings = warnings; }
+  // ── Score all valid bank vs valid ledger pairs ────────────
+  const bankCandidateMap = new Map<string, CandidateInternal[]>();
+  for (const b of validBank) {
+    const scored: CandidateInternal[] = [];
+    for (const l of validLedger) {
+      const c = scorePair(b, l);
+      if (c && c.final_score > 0) scored.push(c);
     }
+    scored.sort((a, b) => b.final_score - a.final_score);
+    bankCandidateMap.set(b.id, scored);
+  }
 
-    if (bestMatch && bestScore >= 80) {
-      usedLedger.add(bestMatch.id);
-      rows.push({ id: rid(), status: "matched", bank: b, ledger: bestMatch,
-        confidence: Math.min(bestScore, 100), dateDiff: 0, amtDiff: Math.abs(b.amt - bestMatch.amt),
-        descSim: wordSim(b.desc, bestMatch.desc), reasons: bestReasons, warnings: bestWarnings, action: "auto_approve" });
-    } else if (bestMatch && bestScore >= 45) {
-      usedLedger.add(bestMatch.id);
-      rows.push({ id: rid(), status: "possible_match", bank: b, ledger: bestMatch,
-        confidence: bestScore, dateDiff: 0, amtDiff: Math.abs(b.amt - bestMatch.amt),
-        descSim: wordSim(b.desc, bestMatch.desc), reasons: bestReasons, warnings: bestWarnings, action: "review" });
-    } else {
+  // ── Greedy assignment: highest final_score gets first pick ─
+  const sortedBank = [...validBank].sort((a, b) => {
+    const as = bankCandidateMap.get(a.id)?.[0]?.final_score ?? 0;
+    const bs = bankCandidateMap.get(b.id)?.[0]?.final_score ?? 0;
+    return bs - as;
+  });
+
+  for (const b of sortedBank) {
+    const allCandidates = (bankCandidateMap.get(b.id) ?? []);
+    const available     = allCandidates.filter(c => !usedLedger.has(c.ledger.id));
+    const best          = available[0];
+
+    const topCandidates: Candidate[] = available.slice(0, 3).map(c => ({
+      ledger_id: c.ledger.id, final_score: c.final_score,
+      amount_score: c.amount_score, date_score: c.date_score,
+      description_score: c.description_score,
+      reasons: c.reasons, warnings: c.warnings,
+    }));
+
+    if (!best || best.final_score < 0.40) {
       rows.push({ id: rid(), status: "unmatched_bank", bank: b,
         confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-        reasons: [], warnings: ["No matching ledger entry found"], action: "create_entry" });
+        reasons: [], warnings: ["No matching ledger entry found"], action: "create_entry",
+        candidates: topCandidates });
+      continue;
+    }
+
+    // Competing candidates within 0.08 of best
+    const competing = available.filter(c => best.final_score - c.final_score < 0.08).length;
+    const extraWarnings = [...best.warnings];
+    if (competing > 1) extraWarnings.push(`Multiple similar candidates found (${competing})`);
+
+    const scoreBreakdown: ScoreBreakdown = {
+      amount_score: best.amount_score, date_score: best.date_score,
+      description_score: best.description_score, final_score: best.final_score,
+    };
+    const dateDiffDays = Math.abs(new Date(b.date).getTime() - new Date(best.ledger.date).getTime()) / 86400000;
+
+    // ── Classification ────────────────────────────────────────
+    const directionIssue = extraWarnings.some(w => w.includes("Direction differs"));
+    const amtHighDiff    = best.amount_score < 0.65;
+    const dateHighDiff   = best.date_score   < 0.65;
+    const hasCompeting   = competing > 1;
+
+    let status: TxStatus;
+    if (
+      best.final_score >= 0.82 &&
+      best.amount_score >= 0.65 &&
+      best.date_score   >= 0.65 &&
+      !hasCompeting && !directionIssue
+    ) {
+      status = "matched";
+    } else if (
+      best.final_score >= 0.55 ||
+      (best.description_score >= 0.8 && (best.amount_score >= 0.5 || best.date_score >= 0.65))
+    ) {
+      status = "possible_match";
+    } else if (best.final_score >= 0.40) {
+      status = "manual_review";
+    } else {
+      status = "unmatched_bank";
+    }
+
+    // Downgrade matched → manual_review if critical issues present
+    if (status === "matched" && (amtHighDiff || dateHighDiff || directionIssue || hasCompeting)) {
+      status = "manual_review";
+    }
+    // Downgrade possible → manual if direction differs or date > 7 days
+    if (status === "possible_match" && (directionIssue || dateDiffDays > 7 || best.amount_score < 0.5)) {
+      status = "manual_review";
+    }
+
+    if (status !== "unmatched_bank") usedLedger.add(best.ledger.id);
+
+    rows.push({
+      id: rid(), status, bank: b, ledger: best.ledger,
+      confidence: Math.round(best.final_score * 100),
+      dateDiff: Math.round(dateDiffDays),
+      amtDiff: Math.abs(b.amt - best.ledger.amt),
+      descSim: best.description_score,
+      reasons: best.reasons, warnings: extraWarnings,
+      action: status === "matched" ? "auto_approve" : "review",
+      scoreBreakdown, candidates: topCandidates,
+    });
+  }
+
+  // ── Unmatched valid ledger ────────────────────────────────
+  for (const l of validLedger) {
+    if (!usedLedger.has(l.id)) {
+      rows.push({ id: rid(), status: "unmatched_ledger", ledger: l,
+        confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
+        reasons: [], warnings: ["No matching bank transaction found"], action: "create_entry" });
     }
   }
 
-  for (const l of ledger) {
-    if (!usedLedger.has(l.id)) {
-      const inv = !!(l.issues && l.issues.length > 0);
-      rows.push({ id: rid(), status: inv ? "invalid_row" : "unmatched_ledger", ledger: l,
-        confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
-        reasons: [], warnings: inv ? (l.issues ?? []).map(i => i.replace(/_/g," ")) : ["No matching bank transaction found"],
-        action: inv ? "fix_data" : "create_entry" });
-    }
-  }
   return rows;
 }
 
@@ -452,7 +773,22 @@ function ReviewPanel({
             <StatusBadge status={row.status} />
           </div>
           <ConfBar pct={row.confidence} />
-          {row.confidence > 0 && (
+          {row.scoreBreakdown && (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[
+                { label:"Amount",      val: `${Math.round(row.scoreBreakdown.amount_score * 100)}%`,      ok: row.scoreBreakdown.amount_score >= 0.65 },
+                { label:"Date",        val: `${Math.round(row.scoreBreakdown.date_score   * 100)}%`,      ok: row.scoreBreakdown.date_score   >= 0.65 },
+                { label:"Description", val: `${Math.round(row.scoreBreakdown.description_score * 100)}%`, ok: row.scoreBreakdown.description_score >= 0.6 },
+                { label:"Final",       val: `${Math.round(row.scoreBreakdown.final_score  * 100)}%`,      ok: row.scoreBreakdown.final_score  >= 0.82 },
+              ].map(({ label, val, ok }) => (
+                <div key={label} className="border border-gray-100 px-2 py-2">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase">{label}</p>
+                  <p className={`text-xs font-bold mt-0.5 ${ok ? "text-emerald-600" : "text-amber-600"}`}>{val}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {!row.scoreBreakdown && row.confidence > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-3">
               {[
                 { label:"Date diff",     val: row.dateDiff === 0 ? "Exact" : `${row.dateDiff}d apart`, ok: row.dateDiff === 0 },
@@ -496,6 +832,64 @@ function ReviewPanel({
           </div>
         )}
 
+        {/* Normalized descriptions */}
+        {(row.bank?.normalizedDesc || row.ledger?.normalizedDesc) && (
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Normalized descriptions</p>
+            <div className="space-y-2">
+              {row.bank?.normalizedDesc && (
+                <div className="flex gap-3">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase w-10 shrink-0 pt-0.5">Bank</span>
+                  <div>
+                    <p className="text-xs text-gray-700 font-medium">{row.bank.normalizedDesc}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.bank.desc}</p>
+                  </div>
+                </div>
+              )}
+              {row.ledger?.normalizedDesc && (
+                <div className="flex gap-3">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase w-10 shrink-0 pt-0.5">Ledger</span>
+                  <div>
+                    <p className="text-xs text-gray-700 font-medium">{row.ledger.normalizedDesc}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.ledger.desc}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Top candidates */}
+        {row.candidates && row.candidates.length > 0 && (
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              Top {row.candidates.length} candidate{row.candidates.length !== 1 && "s"}
+            </p>
+            <div className="space-y-2">
+              {row.candidates.map((c, i) => (
+                <div key={c.ledger_id} className={`border px-3 py-2 ${i === 0 ? "border-blue-200 bg-blue-50" : "border-gray-100 bg-white"}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-gray-500 font-mono">{c.ledger_id}</span>
+                    <span className={`text-[11px] font-bold ${i === 0 ? "text-blue-700" : "text-gray-500"}`}>
+                      {Math.round(c.final_score * 100)}%
+                    </span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-gray-500">
+                    <span>Amt <span className="font-semibold">{Math.round(c.amount_score * 100)}%</span></span>
+                    <span>Date <span className="font-semibold">{Math.round(c.date_score * 100)}%</span></span>
+                    <span>Desc <span className="font-semibold">{Math.round(c.description_score * 100)}%</span></span>
+                  </div>
+                  {c.warnings.length > 0 && (
+                    <p className="text-[10px] text-amber-600 mt-1 truncate">
+                      {c.warnings[0]}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Ask Grok */}
         <div className="px-5 py-4 border-b border-gray-100">
           <button
@@ -504,7 +898,7 @@ function ReviewPanel({
               if (!resp && !streaming) {
                 explain(
                   `Explain this reconciliation item: ${row.bank?.desc ?? row.ledger?.desc ?? row.id}`,
-                  `Status: ${row.status}. Confidence: ${row.confidence}%. Warnings: ${row.warnings.join("; ")}. Reasons: ${row.reasons.join("; ")}.`
+                  `Status: ${row.status}. Confidence: ${row.confidence}%. Score breakdown: Amount ${Math.round((row.scoreBreakdown?.amount_score ?? 0)*100)}%, Date ${Math.round((row.scoreBreakdown?.date_score ?? 0)*100)}%, Desc ${Math.round((row.scoreBreakdown?.description_score ?? 0)*100)}%. Warnings: ${row.warnings.join("; ")}. Reasons: ${row.reasons.join("; ")}.`
                 );
               }
             }}
@@ -646,10 +1040,21 @@ function ReconTable({
                     </td>
                     <td className="px-4 py-3">
                       <span className={`font-medium text-[12px] ${isSelected ? "text-white" : "text-gray-800"}`}>
-                        {tx?.desc.slice(0, 36)}{(tx?.desc.length ?? 0) > 36 && "…"}
+                        {(tx?.normalizedDesc ?? tx?.desc ?? "").slice(0, 36)}
+                        {((tx?.normalizedDesc ?? tx?.desc ?? "").length > 36) && "…"}
                       </span>
-                      {tx?.issues && tx.issues.length > 0 && (
+                      {tx?.normalizedDesc && tx.normalizedDesc !== tx.desc.toLowerCase().trim() && (
+                        <span className={`block text-[10px] font-mono truncate max-w-[200px] ${isSelected ? "text-gray-400" : "text-gray-300"}`}>
+                          {tx.desc.slice(0, 32)}{tx.desc.length > 32 && "…"}
+                        </span>
+                      )}
+                      {(tx?.qualityIssues?.length ?? 0) > 0 && (
                         <AlertTriangle className={`inline ml-1 h-3 w-3 ${isSelected ? "text-amber-300" : "text-amber-500"}`} />
+                      )}
+                      {row.warnings.length > 0 && row.status !== "invalid_row" && (
+                        <span className={`inline-flex items-center gap-0.5 ml-1 text-[9px] font-bold ${isSelected ? "text-amber-300" : "text-amber-500"}`}>
+                          <AlertTriangle className="h-2.5 w-2.5" />{row.warnings.length}
+                        </span>
                       )}
                     </td>
                     <td className={`px-4 py-3 font-mono text-[11px] ${isSelected ? "text-gray-300" : "text-gray-500"}`}>
@@ -1739,24 +2144,73 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
 }
 
 function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, bank: Tx[], ledger: Tx[], jobId: string, period: string) {
+  const matched       = rows.filter(r => r.status === "matched");
+  const possible      = rows.filter(r => r.status === "possible_match");
+  const manual        = rows.filter(r => r.status === "manual_review");
+  const invalid       = rows.filter(r => r.status === "invalid_row");
+  const unmatchedBank = rows.filter(r => r.status === "unmatched_bank");
+  const unmatchedLedger = rows.filter(r => r.status === "unmatched_ledger");
+  const avgConf       = matched.length > 0
+    ? Math.round(matched.reduce((a, r) => a + r.confidence, 0) / matched.length)
+    : 0;
+
+  const serializeRow = (r: ReconRow) => ({
+    id: r.id,
+    status: r.status,
+    confidence: r.confidence,
+    bank: r.bank ? {
+      id: r.bank.id, date: r.bank.date,
+      description: r.bank.desc,
+      normalized_description: r.bank.normalizedDesc,
+      amount: r.bank.amt,
+      quality_status: r.bank.qualityStatus,
+      quality_issues: r.bank.qualityIssues,
+    } : null,
+    ledger: r.ledger ? {
+      id: r.ledger.id, date: r.ledger.date,
+      description: r.ledger.desc,
+      normalized_description: r.ledger.normalizedDesc,
+      amount: r.ledger.amt,
+      quality_status: r.ledger.qualityStatus,
+      quality_issues: r.ledger.qualityIssues,
+    } : null,
+    score_breakdown: r.scoreBreakdown ?? null,
+    top_candidates: r.candidates ?? [],
+    reasons: r.reasons,
+    warnings: r.warnings,
+    user_decision: r.userStatus ?? null,
+    suggested_action: r.action,
+  });
+
   const data = {
-    meta: { job_id: jobId, period, company, generated: now(), version:"1.0" },
+    job_id: jobId,
+    meta: { period, company, generated: now(), version: "2.0" },
     summary: {
-      bank_transactions: bank.length, ledger_entries: ledger.length,
-      matched: rows.filter(r=>r.status==="matched").length,
-      possible_match: rows.filter(r=>r.status==="possible_match").length,
-      manual_review: rows.filter(r=>r.status==="manual_review").length,
-      invalid_rows: rows.filter(r=>r.status==="invalid_row").length,
-      unmatched_bank: rows.filter(r=>r.status==="unmatched_bank").length,
-      unmatched_ledger: rows.filter(r=>r.status==="unmatched_ledger").length,
-      overall_confidence: bank.length > 0 ? Math.round(rows.filter(r=>r.status==="matched").length / bank.length * 100) : 0,
+      bank_transactions: bank.length,
+      ledger_entries: ledger.length,
+      matched: matched.length,
+      possible_matches: possible.length,
+      manual_review: manual.length,
+      invalid_rows: invalid.length,
+      unmatched_bank: unmatchedBank.length,
+      unmatched_ledger: unmatchedLedger.length,
+      overall_confidence: bank.length > 0
+        ? Math.round(matched.length / bank.filter(b => b.qualityStatus !== "invalid").length * 100)
+        : 0,
+      average_match_confidence: avgConf,
     },
-    rows: rows.map(r=>({ id:r.id, status:r.status, confidence:r.confidence,
-      bank_id: r.bank?.id, ledger_id: r.ledger?.id,
-      reasons: r.reasons, warnings: r.warnings, user_decision: r.userStatus })),
+    results: rows.map(serializeRow),
+    matched_items: matched.map(serializeRow),
+    possible_matches: possible.map(serializeRow),
+    manual_reviews: manual.map(serializeRow),
+    invalid_rows: invalid.map(serializeRow),
+    unmatched_bank: unmatchedBank.map(serializeRow),
+    unmatched_ledger: unmatchedLedger.map(serializeRow),
     audit_log: auditLog,
+    generated_at: now(),
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = `addup-${jobId || "report"}.json`; a.click();
