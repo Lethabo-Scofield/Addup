@@ -231,6 +231,62 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
   );
 }
 
+// ── Skeleton primitives ───────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-sm bg-gray-200 ${className ?? ""}`} />
+  );
+}
+
+function SkeletonCaseCard() {
+  return (
+    <div className="border border-gray-100 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 space-y-2">
+          <div className="flex gap-1.5">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-2/3" />
+        </div>
+        <div className="shrink-0 space-y-2 text-right">
+          <Skeleton className="h-4 w-16 ml-auto" />
+          <Skeleton className="h-3 w-10 ml-auto" />
+          <Skeleton className="h-3 w-4 ml-auto" />
+        </div>
+      </div>
+      <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+        <Skeleton className="h-3 w-3" />
+        <Skeleton className="h-3 flex-1" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonStatCard() {
+  return (
+    <div className="border border-gray-100 px-4 py-3 space-y-1.5">
+      <Skeleton className="h-7 w-8" />
+      <Skeleton className="h-3 w-24" />
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <div className="border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+      <Skeleton className="h-4 w-4 shrink-0" />
+      <Skeleton className="h-4 flex-1" />
+      <Skeleton className="h-4 w-24 shrink-0" />
+      <Skeleton className="h-4 w-20 shrink-0" />
+      <Skeleton className="h-5 w-16 shrink-0" />
+    </div>
+  );
+}
+
 // ── Transaction card (side-by-side review) ────────────────────────────────────
 
 function TxCard({ tx, side, highlight, bankLogo }: { tx?: Tx; side: "bank" | "ledger"; highlight?: string[]; bankLogo?: string | null }) {
@@ -699,12 +755,13 @@ function ReconTable({
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 
-function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overallConf, jobId, period, bankInst, ledgerSoft }: {
+function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overallConf, jobId, period, bankInst, ledgerSoft, loading }: {
   rows: ReconRow[];
   onNav: (v: NavId) => void;
   onBulkApprove: () => void;
   bankLen: number; ledgerLen: number; overallConf: number;
   jobId: string; period: string; bankInst: string; ledgerSoft: string;
+  loading?: boolean;
 }) {
   const matched        = rows.filter(r => r.status === "matched").length;
   const pendingApprove = rows.filter(r => r.status === "matched" && !r.userStatus).length;
@@ -723,6 +780,23 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
     { label:"Unmatched bank",    val: uBank,    sub:"No ledger entry found",          color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"review" },
     { label:"Unmatched ledger",  val: uLedger,  sub:"No bank transaction found",      color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"review" },
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
+        <div className="mb-6 space-y-2">
+          <Skeleton className="h-6 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+        <div className="border border-gray-100 bg-white divide-y divide-gray-100">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
@@ -852,8 +926,9 @@ function CaseCard({ c, onClick }: { c: DiscrepancyCase; onClick: () => void }) {
 
 type CaseFilter = "all" | "needs_review" | "proposed" | "resolved" | "auto";
 
-function CaseDashboardView({ cases, onSelectCase, onNav }: {
+function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   cases: DiscrepancyCase[];
+  loading?: boolean;
   onSelectCase: (c: DiscrepancyCase) => void;
   onNav: (n: NavId) => void;
 }) {
@@ -882,6 +957,26 @@ function CaseDashboardView({ cases, onSelectCase, onNav }: {
     { key:"resolved",     label:"Resolved",      count: decided.length },
     { key:"auto",         label:"Auto-matched",  count: auto.length },
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
+        <div className="mb-5 space-y-2">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-24" />)}
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCaseCard key={i} />)}
+        </div>
+      </div>
+    );
+  }
 
   if (cases.length === 0) {
     return (
@@ -1292,14 +1387,20 @@ function UploadsView({ onReconcile }: {
             </div>
             <div className="p-5">
               {file
-                ? <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200">
-                    <FileText className="h-4 w-4 text-blue-600 shrink-0" />
-                    <span className="text-xs font-medium text-blue-700 flex-1 truncate">{file.name}</span>
-                    <span className="text-[10px] text-blue-500 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
-                    <button onClick={() => { set(null); setError(null); }} className="text-blue-500 hover:text-blue-700 ml-1">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                ? parsing
+                  ? <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100">
+                      <Skeleton className="h-4 w-4 shrink-0" />
+                      <Skeleton className="h-3 flex-1" />
+                      <Skeleton className="h-3 w-14 shrink-0" />
+                    </div>
+                  : <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200">
+                      <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span className="text-xs font-medium text-blue-700 flex-1 truncate">{file.name}</span>
+                      <span className="text-[10px] text-blue-500 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                      <button onClick={() => { set(null); setError(null); }} className="text-blue-500 hover:text-blue-700 ml-1">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                 : <button onClick={() => ref.current?.click()}
                     className="w-full flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
                     <Upload className="h-7 w-7 text-gray-300 group-hover:text-gray-500 mb-2.5" />
@@ -1466,13 +1567,14 @@ function JobsView({
 // ── Review Queue view ─────────────────────────────────────────────────────────
 
 function ReviewQueueView({
-  rows, setRows, addAudit, jobId, bankInst,
+  rows, setRows, addAudit, jobId, bankInst, loading,
 }: {
   rows: ReconRow[];
   setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
   jobId: string;
   bankInst?: string;
+  loading?: boolean;
 }) {
   const [statusFilter, setStatusFilter] = useState<TxStatus | "all">("all");
   const [selected, setSelected] = useState<ReconRow | null>(null);
@@ -1495,6 +1597,23 @@ function ReviewQueueView({
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, userStatus } : r));
     addAudit({ job_id: jobId, action: actionType, target_id: row.id, next: userStatus });
     setSelected(null);
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
+        <div className="mb-4 space-y-2">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="flex gap-1.5 mb-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-20" />)}
+        </div>
+        <div className="border border-gray-100 bg-white">
+          {Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -2229,6 +2348,7 @@ export default function Engine() {
   const [jobId,       setJobId]       = useState("");
   const [period,      setPeriod]      = useState("");
   const [pdfLoading,  setPdfLoading]  = useState(false);
+  const [reconciling, setReconciling] = useState(false);
 
   const hasData = bankData.length > 0 && ledgerData.length > 0;
   const overallConf = hasData
@@ -2239,7 +2359,13 @@ export default function Engine() {
     setAuditLog(prev => [...prev, { ...a, ts: now(), user: "local_user" }]);
   }, []);
 
-  function handleReconcile(bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) {
+  async function handleReconcile(bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) {
+    // Navigate first so skeleton renders immediately, then run heavy work
+    setReconciling(true);
+    setSelectedCase(null);
+    setNav("cases");
+    await new Promise(r => setTimeout(r, 40));
+
     const newJobId  = `rec_${Date.now()}_001`;
     const newPeriod = derivePeriod(bank) || derivePeriod(ledger);
     const reconRows  = runReconciliation(bank, ledger);
@@ -2248,13 +2374,12 @@ export default function Engine() {
     setLedgerData(ledger);
     setRows(reconRows);
     setCases(reconCases);
-    setSelectedCase(null);
     setJobId(newJobId);
     setPeriod(newPeriod);
     if (!bankInst)   setBankInst(bankName.replace(/\.[^.]+$/, ""));
     if (!ledgerSoft) setLedgerSoft(ledgerName.replace(/\.[^.]+$/, ""));
     setAuditLog([]);
-    setNav("cases");
+    setReconciling(false);
   }
 
   const reviewCount = rows.filter(r =>
@@ -2415,11 +2540,13 @@ export default function Engine() {
         <main className="flex-1 overflow-auto relative">
           {nav === "cases"     && <CaseDashboardView
               cases={cases}
+              loading={reconciling}
               onSelectCase={c => setSelectedCase(c)}
               onNav={setNav}
             />}
           {nav === "dashboard" && <DashboardView
               rows={rows} onNav={setNav}
+              loading={reconciling}
               bankLen={bankData.length} ledgerLen={ledgerData.length}
               overallConf={overallConf} jobId={jobId} period={period}
               bankInst={bankInst} ledgerSoft={ledgerSoft}
@@ -2431,7 +2558,7 @@ export default function Engine() {
             />}
           {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
           {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
-          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
+          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} loading={reconciling} />}
           {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {
               addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
