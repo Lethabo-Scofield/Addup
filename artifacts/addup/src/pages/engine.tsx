@@ -504,14 +504,12 @@ function ReconTable({
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Status</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Source</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">Description</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Date</th>
             <th className="text-right px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
             <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">Confidence</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Action</th>
             <th className="px-4 py-3 w-8" />
           </tr>
         </thead>
@@ -519,7 +517,7 @@ function ReconTable({
           {grouped.map(({ status, items }) => (
             <React.Fragment key={status}>
               <tr>
-                <td colSpan={9} className="px-4 py-2 bg-gray-50 border-y border-gray-100">
+                <td colSpan={7} className="px-4 py-2 bg-gray-50 border-y border-gray-100">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     {STATUS_CFG[status].label} — {items.length}
                   </span>
@@ -535,7 +533,6 @@ function ReconTable({
                     className={`border-b border-gray-100 cursor-pointer transition-colors
                       ${isSelected ? "bg-gray-900 text-white" : i % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50/50 hover:bg-gray-100/50"}`}
                   >
-                    <td className="px-4 py-3 font-mono text-gray-400 text-[10px]">{i + 1}</td>
                     <td className="px-4 py-3">
                       {isSelected
                         ? <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${STATUS_CFG[status].text}`}>
@@ -573,10 +570,6 @@ function ReconTable({
                         ? <ConfBar pct={row.confidence} />
                         : <span className={`text-[11px] ${isSelected ? "text-gray-400" : "text-gray-300"}`}>—</span>
                       }
-                    </td>
-                    <td className={`px-4 py-3 text-[10px] font-semibold uppercase tracking-wider
-                      ${isSelected ? "text-gray-300" : "text-gray-400"}`}>
-                      {row.action.replace(/_/g, " ")}
                     </td>
                     <td className="px-4 py-3">
                       <ChevronRight className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-gray-300"}`} />
@@ -638,19 +631,6 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
         <div className="h-3 bg-gray-100 w-full">
           <div className="h-full bg-emerald-500 transition-all" style={{ width:`${OVERALL_CONF}%` }} />
         </div>
-        <div className="flex gap-4 mt-3">
-          {[
-            { label:"Matched",  pct: Math.round(matched / BANK.length * 100),  color:"bg-emerald-500" },
-            { label:"Review",   pct: Math.round(possible / BANK.length * 100), color:"bg-blue-500"    },
-            { label:"Issues",   pct: Math.round((manual + invalid) / BANK.length * 100), color:"bg-amber-500" },
-            { label:"No match", pct: Math.round((uBank + uLedger) / BANK.length * 100), color:"bg-red-400" },
-          ].map(({ label, pct, color }) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <span className={`w-2.5 h-2.5 ${color}`} />
-              <span className="text-[11px] text-gray-500">{label} <b className="text-gray-900">{pct}%</b></span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Summary cards */}
@@ -668,24 +648,6 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
         ))}
       </div>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { label:"Open reconciliation workspace", icon:<Briefcase className="h-4 w-4"/>, nav:"jobs"   as NavId, desc:"View and review all transactions" },
-          { label:"Go to review queue",            icon:<AlertCircle className="h-4 w-4"/>, nav:"review" as NavId, desc:`${possible + manual + invalid} items need attention` },
-          { label:"View audit log",                icon:<Clock className="h-4 w-4"/>,      nav:"audit"  as NavId, desc:"Track all actions on this job" },
-        ].map(({ label, icon, nav, desc }) => (
-          <button key={nav} onClick={() => onNav(nav)}
-            className="flex items-start gap-3 border border-gray-200 p-4 text-left hover:bg-gray-50 hover:border-gray-300 transition-colors bg-white">
-            <span className="mt-0.5 text-gray-400">{icon}</span>
-            <div>
-              <p className="text-xs font-semibold text-gray-800">{label}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{desc}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-gray-300 ml-auto mt-0.5 shrink-0" />
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -748,12 +710,6 @@ function UploadsView() {
         </div>
       )}
 
-      <div className="mt-6 border border-gray-100 p-4 bg-gray-50">
-        <p className="text-[11px] text-gray-400 leading-relaxed">
-          Addup accepts standard bank statement exports and accounting software ledger exports.
-          Supported formats: CSV, XLSX. Column headers are detected automatically.
-        </p>
-      </div>
     </div>
   );
 }
@@ -796,23 +752,6 @@ function JobsView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Job header */}
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-white shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-base font-bold text-gray-900">Reconciliation Workspace</h1>
-            <p className="text-xs text-gray-400 mt-0.5 font-mono truncate">{JOB_ID} · {PERIOD} · {COMPANY}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[11px] text-gray-400 hidden md:block">{BANK_INST} + {LEDGER_SOFT}</span>
-            <span className="h-4 w-px bg-gray-200 hidden md:block" />
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
-              <Activity className="h-3 w-3" />{OVERALL_CONF}% confidence
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Filter tabs + search */}
       <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-2 overflow-x-auto">
         {(["all", ...STATUS_ORDER] as const).map(s => (
