@@ -83,84 +83,153 @@ interface AuditEntry {
   prev?: string; next?: string; user: string;
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── CSV parser ────────────────────────────────────────────────────────────────
 
-const JOB_ID = "rec_20260502151654_001";
-const PERIOD = "April 2026";
-const COMPANY = "Acme Trading (Pty) Ltd";
-const BANK_INST = "FNB Business";
-const LEDGER_SOFT = "Xero";
+function splitCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = "", inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ""; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result.map(v => v.trim().replace(/^"|"$/g, ""));
+}
 
-const BANK: Tx[] = [
-  { id:"B001", date:"2026-04-01", desc:"CHECKERS HYPER POS #4412",   amt:-2850.00 },
-  { id:"B002", date:"2026-04-03", desc:"PICK N PAY STORES #221",      amt:-1240.50 },
-  { id:"B003", date:"2026-04-05", desc:"ESKOM PAYMENT ONLINE",        amt:-5600.00 },
-  { id:"B004", date:"2026-04-25", desc:"SALARY CREDIT OLYXEE",        amt: 45000.00 },
-  { id:"B005", date:"2026-04-07", desc:"MTN MOBILE MONTHLY",          amt: -799.00 },
-  { id:"B006", date:"2026-04-10", desc:"UBER EATS ORDER",             amt: -340.00 },
-  { id:"B007", date:"2026-04-15", desc:"NEDBANK EFT TRANSFER",        amt:-15000.00 },
-  { id:"B008", date:"2026-04-20", desc:"COFFEE SHOP DOWNTOWN",        amt:    -4.50 },
-  { id:"B009", date:"2026-04-28", desc:"WIRE TRANSFER INCOMING",      amt: 10000.00 },
-];
+function parseCSVText(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = splitCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = splitCSVLine(line);
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
+  });
+}
 
-const LEDGER: Tx[] = [
-  { id:"L001", date:"2026-04-01", desc:"Checkers Hyper",              amt:-2850.00 },
-  { id:"L002", date:"2026-04-04", desc:"Pik n Pay",                   amt:-1240.50,
-    rawDesc:{ raw:"Pik n Pay", normalized:"Pick n Pay", confidence:0.72, issue:"Spelling variation" } },
-  { id:"L003", date:"2026-04-05", desc:"Esk0m - electricity",         amt: -560.00,
-    rawAmt:{ raw:"-560.00", normalized:"-5600.00", confidence:0.40, issue:"Possible OCR decimal shift" },
-    rawDesc:{ raw:"Esk0m", normalized:"Eskom", confidence:0.65, issue:"OCR: letter O substituted for digit 0" },
-    issues:["ocr_symbol","amount_mismatch"] },
-  { id:"L004", date:"2026-04-25", desc:"Salary Payment",              amt: 45000.00 },
-  { id:"L005", date:"2026-04-07", desc:"MTN Mobile",                  amt:  -799.00 },
-  { id:"L006", date:"2026-04-11", desc:"Ubereats",                    amt:  -340.00 },
-  { id:"L007", date:"2026-04-16", desc:"Bank Transfer EFT",           amt:-15000.00 },
-  { id:"L008", date:"2O26-O4-O8", desc:"Office supplies",             amt:  -650.00,
-    rawDate:{ raw:"2O26-O4-O8", normalized:"2026-04-08", confidence:0.0, issue:"OCR: letter O for digit 0 — unparseable" },
-    issues:["invalid_date","ocr_symbol"] },
-  { id:"L009", date:"2026-04-12", desc:"Refund received",             amt:-99999.00,
-    rawAmt:{ raw:"-99,999.00", normalized:"unknown", confidence:0.0, issue:"Amount exceeds plausible threshold" },
-    issues:["impossible_amount"] },
-  { id:"L010", date:"2026-04-01", desc:"Checkers Hyper (duplicate)",  amt:-2850.00, issues:["duplicate"] },
-  { id:"L011", date:"2026-04-22", desc:"Vodacom contract",            amt:  -599.00 },
-];
+function normalizeDate(raw: string): string {
+  if (!raw) return "";
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,"0")}-${dmy[1].padStart(2,"0")}`;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+}
 
-const ROWS: ReconRow[] = [
-  { id:"R001", status:"matched",         bank:BANK[0], ledger:LEDGER[0],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.92,
-    reasons:["Exact amount match","Exact date match","High description similarity"], warnings:[], action:"auto_approve" },
-  { id:"R002", status:"matched",         bank:BANK[3], ledger:LEDGER[3],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.85,
-    reasons:["Exact amount match","Exact date match"], warnings:[], action:"auto_approve" },
-  { id:"R003", status:"matched",         bank:BANK[4], ledger:LEDGER[4],  confidence:100, dateDiff:0, amtDiff:0,    descSim:0.95,
-    reasons:["Exact amount match","Exact date match","Exact vendor match"], warnings:[], action:"auto_approve" },
-  { id:"R004", status:"possible_match",  bank:BANK[1], ledger:LEDGER[1],  confidence:85,  dateDiff:1, amtDiff:0,    descSim:0.72,
-    reasons:["Exact amount match","Date off by 1 day","Similar description"],
-    warnings:["Spelling differs: 'PICK N PAY' vs 'Pik n Pay' — possible OCR error","Date discrepancy: bank 2026-04-03, ledger 2026-04-04"], action:"review" },
-  { id:"R005", status:"possible_match",  bank:BANK[5], ledger:LEDGER[5],  confidence:88,  dateDiff:1, amtDiff:0,    descSim:0.78,
-    reasons:["Exact amount match","Date off by 1 day"],
-    warnings:["Date discrepancy: bank 2026-04-10, ledger 2026-04-11"], action:"review" },
-  { id:"R006", status:"possible_match",  bank:BANK[6], ledger:LEDGER[6],  confidence:82,  dateDiff:1, amtDiff:0,    descSim:0.68,
-    reasons:["Exact amount match","Date off by 1 day"],
-    warnings:["Description differs: 'NEDBANK EFT TRANSFER' vs 'Bank Transfer EFT'","Date discrepancy: bank 2026-04-15, ledger 2026-04-16"], action:"review" },
-  { id:"R007", status:"manual_review",   bank:BANK[2], ledger:LEDGER[2],  confidence:45,  dateDiff:0, amtDiff:5040, descSim:0.55,
-    reasons:["Date match","Vendor name partially similar"],
-    warnings:["Amount mismatch: bank R5,600 vs ledger R560 — 10x difference","OCR issue: '0' in 'Esk0m' may be letter O","Possible OCR decimal parsing error in ledger amount"], action:"manual_review" },
-  { id:"R008", status:"manual_review",   bank:undefined, ledger:LEDGER[9], confidence:20, dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["Duplicate detected: same amount and date as L001 — likely double-entry"], action:"manual_review" },
-  { id:"R009", status:"invalid_row",     bank:undefined, ledger:LEDGER[7], confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["Invalid date format '2O26-O4-O8' — OCR substituted letter O for digit 0","Row cannot be processed until date is corrected"], action:"fix_data" },
-  { id:"R010", status:"invalid_row",     bank:undefined, ledger:LEDGER[8], confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["Impossible amount: R99,999 credit flagged as likely OCR error","Exceeds typical transaction threshold — manual verification required"], action:"fix_data" },
-  { id:"R011", status:"unmatched_bank",  bank:BANK[7],  ledger:undefined, confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["No ledger entry found for this bank transaction","Small amount (R4.50) — may be unrecorded petty cash"], action:"create_entry" },
-  { id:"R012", status:"unmatched_bank",  bank:BANK[8],  ledger:undefined, confidence:0,  dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["Large unrecorded credit: R10,000","Incoming wire — verify source and record in ledger"], action:"create_entry" },
-  { id:"R013", status:"unmatched_ledger",bank:undefined, ledger:LEDGER[10],confidence:0, dateDiff:0, amtDiff:0,    descSim:0,
-    reasons:[], warnings:["No bank transaction found for this ledger entry","May be an outstanding payment or direct debit not yet cleared"], action:"create_entry" },
-];
+function csvToTx(rows: Record<string, string>[], prefix: string): { txns: Tx[]; invalid: Tx[] } {
+  if (!rows.length) return { txns: [], invalid: [] };
+  const keys = Object.keys(rows[0]);
+  const find = (...pats: RegExp[]) => keys.find(k => pats.some(p => p.test(k))) ?? "";
+  const dateKey  = find(/date/i, /period/i);
+  const descKey  = find(/desc/i, /narr/i, /particular/i, /detail/i, /memo/i, /reference/i);
+  const amtKey   = find(/^amount$/i, /^amt$/i, /^value$/i, /transaction.amount/i);
+  const debitKey = find(/debit/i);
+  const creditKey= find(/credit/i);
 
-const OVERALL_CONF = Math.round(
-  ROWS.filter(r => r.status === "matched").length / BANK.length * 100
-);
+  const txns: Tx[] = [], invalid: Tx[] = [];
+  rows.forEach((row, i) => {
+    const id      = `${prefix}${String(i + 1).padStart(3, "0")}`;
+    const rawDate = row[dateKey] ?? "";
+    const rawDesc = row[descKey] ?? row[keys[1]] ?? "";
+    let amt = 0;
+    if (amtKey && row[amtKey]) {
+      amt = parseFloat(row[amtKey].replace(/[,\sR$£€]/g, "")) || 0;
+    } else {
+      const d = parseFloat((row[debitKey]  || "0").replace(/[,\sR$£€]/g, "")) || 0;
+      const c = parseFloat((row[creditKey] || "0").replace(/[,\sR$£€]/g, "")) || 0;
+      amt = c - d;
+    }
+    const date = normalizeDate(rawDate);
+    const desc = rawDesc.trim();
+    const issues: string[] = [];
+    if (!date) issues.push("invalid_date");
+    if (!desc) issues.push("missing_description");
+    const tx: Tx = { id, date: date || rawDate, desc: desc || "(blank)", amt };
+    if (issues.length) { tx.issues = issues; invalid.push(tx); }
+    else               { txns.push(tx); }
+  });
+  return { txns, invalid };
+}
+
+// ── Reconciliation engine ─────────────────────────────────────────────────────
+
+function wordSim(a: string, b: string): number {
+  const wa = new Set(a.toLowerCase().split(/\W+/).filter(Boolean));
+  const wb = new Set(b.toLowerCase().split(/\W+/).filter(Boolean));
+  let common = 0;
+  wa.forEach(w => { if (wb.has(w)) common++; });
+  return common / Math.max(wa.size, wb.size, 1);
+}
+
+function derivePeriod(txns: Tx[]): string {
+  const dates = txns.map(t => t.date).filter(Boolean).sort();
+  if (!dates.length) return "";
+  return new Date(dates[0]).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+}
+
+function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
+  const rows: ReconRow[] = [];
+  const usedLedger = new Set<string>();
+  let rowN = 0;
+  const rid = () => `R${String(++rowN).padStart(3, "0")}`;
+
+  for (const b of bank) {
+    let bestScore = -1, bestMatch: Tx | null = null;
+    let bestReasons: string[] = [], bestWarnings: string[] = [];
+
+    for (const l of ledger) {
+      if (usedLedger.has(l.id)) continue;
+      const amtDiff = Math.abs(b.amt - l.amt);
+      if (amtDiff > Math.max(Math.abs(b.amt) * 0.20, 1)) continue;
+
+      const dateDiffDays = Math.abs(new Date(b.date).getTime() - new Date(l.date).getTime()) / 86400000;
+      const descSim = wordSim(b.desc, l.desc);
+      let score = 0;
+      const reasons: string[] = [], warnings: string[] = [];
+
+      if (amtDiff < 0.01) { score += 50; reasons.push("Exact amount match"); }
+      else                 { score += 20; warnings.push(`Amount difference: ${fmt(b.amt)} vs ${fmt(l.amt)}`); }
+
+      if (dateDiffDays === 0)    { score += 30; reasons.push("Exact date match"); }
+      else if (dateDiffDays <= 3){ score += 15; warnings.push(`Date off by ${Math.round(dateDiffDays)} day(s): ${b.date} vs ${l.date}`); }
+      else if (dateDiffDays <= 7){ score +=  5; warnings.push(`Date off by ${Math.round(dateDiffDays)} days`); }
+
+      if (descSim > 0.7)      { score += 20; reasons.push("High description similarity"); }
+      else if (descSim > 0.4) { score += 10; reasons.push("Partial description match"); }
+      else                    { warnings.push("Description differs significantly"); }
+
+      if (score > bestScore) { bestScore = score; bestMatch = l; bestReasons = reasons; bestWarnings = warnings; }
+    }
+
+    if (bestMatch && bestScore >= 80) {
+      usedLedger.add(bestMatch.id);
+      rows.push({ id: rid(), status: "matched", bank: b, ledger: bestMatch,
+        confidence: Math.min(bestScore, 100), dateDiff: 0, amtDiff: Math.abs(b.amt - bestMatch.amt),
+        descSim: wordSim(b.desc, bestMatch.desc), reasons: bestReasons, warnings: bestWarnings, action: "auto_approve" });
+    } else if (bestMatch && bestScore >= 45) {
+      usedLedger.add(bestMatch.id);
+      rows.push({ id: rid(), status: "possible_match", bank: b, ledger: bestMatch,
+        confidence: bestScore, dateDiff: 0, amtDiff: Math.abs(b.amt - bestMatch.amt),
+        descSim: wordSim(b.desc, bestMatch.desc), reasons: bestReasons, warnings: bestWarnings, action: "review" });
+    } else {
+      rows.push({ id: rid(), status: "unmatched_bank", bank: b,
+        confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
+        reasons: [], warnings: ["No matching ledger entry found"], action: "create_entry" });
+    }
+  }
+
+  for (const l of ledger) {
+    if (!usedLedger.has(l.id)) {
+      const inv = !!(l.issues && l.issues.length > 0);
+      rows.push({ id: rid(), status: inv ? "invalid_row" : "unmatched_ledger", ledger: l,
+        confidence: 0, dateDiff: 0, amtDiff: 0, descSim: 0,
+        reasons: [], warnings: inv ? (l.issues ?? []).map(i => i.replace(/_/g," ")) : ["No matching bank transaction found"],
+        action: inv ? "fix_data" : "create_entry" });
+    }
+  }
+  return rows;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -587,10 +656,12 @@ function ReconTable({
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 
-function DashboardView({ rows, onNav, onBulkApprove }: {
+function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overallConf, jobId, period, bankInst, ledgerSoft }: {
   rows: ReconRow[];
   onNav: (v: NavId) => void;
   onBulkApprove: () => void;
+  bankLen: number; ledgerLen: number; overallConf: number;
+  jobId: string; period: string; bankInst: string; ledgerSoft: string;
 }) {
   const matched        = rows.filter(r => r.status === "matched").length;
   const pendingApprove = rows.filter(r => r.status === "matched" && !r.userStatus).length;
@@ -602,8 +673,8 @@ function DashboardView({ rows, onNav, onBulkApprove }: {
   const exceptions     = possible + manual + invalid + uBank + uLedger;
 
   const cards: { label:string; val:number; sub:string; color:string; bg:string; border:string; nav:NavId }[] = [
-    { label:"Bank transactions",  val: BANK.length,   sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
-    { label:"Ledger entries",     val: LEDGER.length, sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
+    { label:"Bank transactions",  val: bankLen,       sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
+    { label:"Ledger entries",     val: ledgerLen,     sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
     { label:"Auto-matched",       val: matched,       sub:"Engine matched, no admin needed", color:"text-emerald-700", bg:"bg-emerald-50", border:"hover:border-emerald-400", nav:"jobs"   },
     { label:"Possible matches",   val: possible,      sub:"Engine flagged — needs sign-off", color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"review" },
     { label:"Engine escalated",   val: manual,        sub:"Requires human judgement",        color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"review" },
@@ -616,7 +687,7 @@ function DashboardView({ rows, onNav, onBulkApprove }: {
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Automation Report</h1>
-        <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{JOB_ID}</span> · {PERIOD} · {COMPANY}</p>
+        <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{jobId}</span> · {period}</p>
       </div>
 
       {/* Automation summary */}
@@ -624,9 +695,9 @@ function DashboardView({ rows, onNav, onBulkApprove }: {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Engine automation rate</p>
-            <p className="text-3xl font-bold text-gray-900">{OVERALL_CONF}%</p>
+            <p className="text-3xl font-bold text-gray-900">{overallConf}%</p>
             <p className="text-xs text-gray-400 mt-1">
-              <span className="font-semibold text-emerald-600">{matched} of {BANK.length}</span> transactions handled automatically — no manual admin needed
+              <span className="font-semibold text-emerald-600">{matched} of {bankLen}</span> transactions handled automatically — no manual admin needed
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -649,11 +720,11 @@ function DashboardView({ rows, onNav, onBulkApprove }: {
                 {exceptions} exception{exceptions !== 1 && "s"} need sign-off
               </button>
             )}
-            <p className="text-[10px] text-gray-400">{BANK_INST} · {LEDGER_SOFT}</p>
+            <p className="text-[10px] text-gray-400">{bankInst} · {ledgerSoft}</p>
           </div>
         </div>
         <div className="h-2 bg-gray-100 w-full">
-          <div className="h-full bg-emerald-500 transition-all" style={{ width:`${OVERALL_CONF}%` }} />
+          <div className="h-full bg-emerald-500 transition-all" style={{ width:`${overallConf}%` }} />
         </div>
       </div>
 
@@ -677,22 +748,58 @@ function DashboardView({ rows, onNav, onBulkApprove }: {
 
 // ── Uploads view ──────────────────────────────────────────────────────────────
 
-function UploadsView() {
-  const bankRef   = useRef<HTMLInputElement>(null);
-  const ledgerRef = useRef<HTMLInputElement>(null);
-  const [bank, setBank]     = useState<string | null>(null);
-  const [ledger, setLedger] = useState<string | null>(null);
+function UploadsView({ onReconcile }: {
+  onReconcile: (bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) => void;
+}) {
+  const bankRef    = useRef<HTMLInputElement>(null);
+  const ledgerRef  = useRef<HTMLInputElement>(null);
+  const [bankFile,   setBankFile]   = useState<File | null>(null);
+  const [ledgerFile, setLedgerFile] = useState<File | null>(null);
+  const [parsing,    setParsing]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  function readText(file: File): Promise<string> {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = e => res(e.target?.result as string ?? "");
+      r.onerror = () => rej(new Error("Could not read file."));
+      r.readAsText(file);
+    });
+  }
+
+  async function handleRun() {
+    if (!bankFile || !ledgerFile) return;
+    setParsing(true); setError(null);
+    try {
+      const [bankText, ledgerText] = await Promise.all([readText(bankFile), readText(ledgerFile)]);
+      const bankRows   = parseCSVText(bankText);
+      const ledgerRows = parseCSVText(ledgerText);
+      if (!bankRows.length)   throw new Error("Bank statement is empty or could not be parsed. Check it has a header row.");
+      if (!ledgerRows.length) throw new Error("General ledger is empty or could not be parsed. Check it has a header row.");
+      const { txns: bankTxns,   invalid: bankInv   } = csvToTx(bankRows,   "B");
+      const { txns: ledgerTxns, invalid: ledgerInv } = csvToTx(ledgerRows, "L");
+      onReconcile([...bankTxns, ...bankInv], [...ledgerTxns, ...ledgerInv], bankFile.name, ledgerFile.name);
+    } catch (e: any) {
+      setError(e.message ?? "Something went wrong parsing your files.");
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  const slots = [
+    { label:"Bank Statement",  sub:"Export from your bank as CSV",        ref:bankRef,   file:bankFile,   set:setBankFile   },
+    { label:"General Ledger",  sub:"Accounting software export as CSV",   ref:ledgerRef, file:ledgerFile, set:setLedgerFile },
+  ] as const;
 
   return (
     <div className="p-6 sm:p-8 max-w-2xl mx-auto w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Upload Files</h1>
-      <p className="text-sm text-gray-400 mb-6">Upload your bank statement and general ledger export to start reconciliation.</p>
+      <p className="text-sm text-gray-400 mb-6">
+        Upload your bank statement and general ledger as CSV files. The engine will match transactions automatically.
+      </p>
 
       <div className="space-y-4">
-        {[
-          { label:"Bank Statement", sub:"Export from your bank — CSV or XLSX", ref:bankRef, file:bank, set:setBank, accept:".csv,.xlsx,.xls" },
-          { label:"General Ledger", sub:"Accounting software export — CSV or XLSX", ref:ledgerRef, file:ledger, set:setLedger, accept:".csv,.xlsx,.xls" },
-        ].map(({ label, sub, ref, file, set, accept }) => (
+        {slots.map(({ label, sub, ref, file, set }) => (
           <div key={label} className="border border-gray-200 bg-white">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <div>
@@ -704,35 +811,68 @@ function UploadsView() {
             <div className="p-5">
               {file
                 ? <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200">
-                    <FileText className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-medium text-emerald-700 flex-1">{file}</span>
-                    <button onClick={() => set(null)} className="text-emerald-500 hover:text-emerald-700"><X className="h-3.5 w-3.5" /></button>
+                    <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-medium text-emerald-700 flex-1 truncate">{file.name}</span>
+                    <span className="text-[10px] text-emerald-500 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                    <button onClick={() => { set(null); setError(null); }} className="text-emerald-500 hover:text-emerald-700 ml-1">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 : <button onClick={() => ref.current?.click()}
                     className="w-full flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
                     <Upload className="h-7 w-7 text-gray-300 group-hover:text-gray-500 mb-2.5" />
                     <p className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">Click to upload</p>
-                    <p className="text-[11px] text-gray-300 mt-1">CSV or XLSX · up to 10 MB</p>
+                    <p className="text-[11px] text-gray-300 mt-1">CSV · up to 10 MB</p>
                   </button>
               }
-              <input ref={ref} type="file" accept={accept} className="hidden" onChange={e => set(e.target.files?.[0]?.name ?? null)} />
+              <input ref={ref} type="file" accept=".csv" className="hidden"
+                onChange={e => { set(e.target.files?.[0] ?? null); setError(null); e.target.value = ""; }} />
             </div>
           </div>
         ))}
       </div>
 
-      {bank && ledger && (
+      {error && (
+        <div className="mt-4 p-4 border border-red-200 bg-red-50 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+      )}
+
+      {bankFile && ledgerFile && !error && (
         <div className="mt-5 flex items-center justify-between p-4 border border-emerald-200 bg-emerald-50">
           <div>
             <p className="text-sm font-bold text-emerald-800">Ready to reconcile</p>
-            <p className="text-xs text-emerald-600">Both files loaded — click to run the reconciliation engine.</p>
+            <p className="text-xs text-emerald-600 mt-0.5">The engine will match transactions automatically.</p>
           </div>
-          <button className="h-9 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors">
-            Run now
+          <button onClick={handleRun} disabled={parsing}
+            className="h-9 px-5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
+            {parsing
+              ? <><motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}><RefreshCw className="h-3.5 w-3.5"/></motion.div>Running...</>
+              : "Run now"
+            }
           </button>
         </div>
       )}
 
+      <div className="mt-8 border border-gray-100 p-5 bg-gray-50">
+        <p className="text-xs font-semibold text-gray-500 mb-3">Expected CSV columns</p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Amount column</p>
+            <code className="block text-[10px] text-gray-500 bg-white border border-gray-200 p-2 leading-relaxed whitespace-pre">{"Date,Description,Amount\n2026-04-01,CHECKERS,-2850.00\n2026-04-03,PICK N PAY,-1240.50"}</code>
+            <p className="text-[10px] text-gray-400 mt-1.5">Or separate Debit / Credit columns</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Dates accepted</p>
+            <div className="bg-white border border-gray-200 p-2 space-y-0.5">
+              {["YYYY-MM-DD  (2026-04-01)", "DD/MM/YYYY  (01/04/2026)", "DD-MM-YYYY  (01-04-2026)", "MM/DD/YYYY  (04/01/2026)"].map(f => (
+                <p key={f} className="text-[10px] text-gray-500 font-mono">{f}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -740,11 +880,12 @@ function UploadsView() {
 // ── Jobs / workspace view ─────────────────────────────────────────────────────
 
 function JobsView({
-  rows, setRows, addAudit,
+  rows, setRows, addAudit, jobId,
 }: {
   rows: ReconRow[];
   setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
+  jobId: string;
 }) {
   const [selected, setSelected] = useState<ReconRow | null>(null);
   const [filter, setFilter]     = useState<TxStatus | "all">("all");
@@ -769,7 +910,7 @@ function JobsView({
     const actionType: ActionType = action === "approve" ? "approve_match" : action === "reject" ? "reject_match" : "mark_manual";
     const userStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "manual";
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, userStatus } : r));
-    addAudit({ job_id: JOB_ID, action: actionType, target_id: row.id, prev: row.userStatus, next: userStatus });
+    addAudit({ job_id: jobId, action: actionType, target_id: row.id, prev: row.userStatus, next: userStatus });
     setSelected(null);
   }
 
@@ -827,11 +968,12 @@ function JobsView({
 // ── Review Queue view ─────────────────────────────────────────────────────────
 
 function ReviewQueueView({
-  rows, setRows, addAudit,
+  rows, setRows, addAudit, jobId,
 }: {
   rows: ReconRow[];
   setRows: React.Dispatch<React.SetStateAction<ReconRow[]>>;
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
+  jobId: string;
 }) {
   const [confFilter, setConfFilter] = useState(100);
   const [statusFilter, setStatusFilter] = useState<TxStatus | "all">("all");
@@ -850,7 +992,7 @@ function ReviewQueueView({
     const actionType: ActionType = action === "approve" ? "approve_match" : action === "reject" ? "reject_match" : "mark_manual";
     const userStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "manual";
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, userStatus } : r));
-    addAudit({ job_id: JOB_ID, action: actionType, target_id: row.id, next: userStatus });
+    addAudit({ job_id: jobId, action: actionType, target_id: row.id, next: userStatus });
     setSelected(null);
   }
 
@@ -953,13 +1095,13 @@ function ReviewQueueView({
 
 // ── Audit log view ────────────────────────────────────────────────────────────
 
-function AuditLogView({ log, onExport }: { log: AuditEntry[]; onExport: () => void }) {
+function AuditLogView({ log, onExport, jobId }: { log: AuditEntry[]; onExport: () => void; jobId: string }) {
   return (
     <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
-          <p className="text-sm text-gray-400 mt-1">{log.length} entries · {JOB_ID}</p>
+          <p className="text-sm text-gray-400 mt-1">{log.length} entries{jobId ? ` · ${jobId}` : ""}</p>
         </div>
         <button onClick={onExport}
           className="self-start sm:self-auto flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
@@ -1103,14 +1245,14 @@ async function loadImgDataUrl(url: string): Promise<string> {
   });
 }
 
-async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: string, bankInst: string, ledgerSoft: string) {
+async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: string, bankInst: string, ledgerSoft: string, bank: Tx[], ledger: Tx[], jobId: string, period: string) {
   const logoData = await loadImgDataUrl(addupLogo).catch(() => null);
   const doc = new jsPDF({ unit:"mm", format:"a4" });
 
   const W=210, H=297, ML=18, MR=18, CW=W-ML-MR, RX=W-MR;
   const genDate = new Date().toLocaleDateString("en-ZA",{day:"2-digit",month:"long",year:"numeric"});
   const genTs   = new Date().toLocaleString("en-ZA");
-  const reportRef = `RPT-${JOB_ID.slice(4,12).toUpperCase()}-001`;
+  const reportRef = `RPT-${(jobId||"XXXXXXXX").slice(4,12).toUpperCase()}-001`;
 
   const clr  = (r:number,g:number,b:number) => doc.setTextColor(r,g,b);
   const fill = (r:number,g:number,b:number) => doc.setFillColor(r,g,b);
@@ -1138,7 +1280,7 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
     const fy = H-10;
     hln(fy-4,ML,RX,0.2,[209,213,219]);
     fnt("normal"); sz(6.5); clr(156,163,175);
-    txt(`CONFIDENTIAL  |  ${company}  |  ${reportRef}  |  ${PERIOD}`, ML, fy);
+    txt(`CONFIDENTIAL  |  ${company}  |  ${reportRef}  |  ${period}`, ML, fy);
     txt(`Page ${p}`, RX, fy, {align:"right"});
     if (logoData) doc.addImage(logoData,"PNG",W/2-7,fy-3,14,4.5);
     else { fnt("bold"); clr(107,114,128); txt("Addup",W/2,fy,{align:"center"}); }
@@ -1150,7 +1292,7 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
     fnt("bold"); sz(7.5); clr(55,65,81);
     txt("BANK RECONCILIATION REPORT", ML, 9);
     fnt("normal"); clr(156,163,175);
-    txt(`${company}  |  ${PERIOD}  |  ${title}`, RX, 9, {align:"right"});
+    txt(`${company}  |  ${period}  |  ${title}`, RX, 9, {align:"right"});
     addFooter(p);
   };
 
@@ -1184,10 +1326,10 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
     sz(6.5); fnt("bold"); clr(156,163,175); txt(label,x,y);
     sz(8.5); fnt("normal"); clr(17,17,17); txt(val,x,y+5);
   };
-  cdet("RECONCILIATION PERIOD",  PERIOD,           ML+2,    cy);
+  cdet("RECONCILIATION PERIOD",  period,            ML+2,    cy);
   cdet("BANK INSTITUTION",       bankInst,          ML+2+90, cy); cy+=13;
   cdet("ACCOUNTING SOFTWARE",    ledgerSoft,        ML+2,    cy);
-  cdet("JOB REFERENCE",          JOB_ID,            ML+2+90, cy); cy+=13;
+  cdet("JOB REFERENCE",          jobId,             ML+2+90, cy); cy+=13;
   cdet("REPORT REFERENCE",       reportRef,         ML+2,    cy);
   cdet("DATE GENERATED",         genDate,           ML+2+90, cy); cy+=13;
   cdet("TAX REFERENCE NUMBER",   "_______________________________", ML+2,    cy);
@@ -1204,11 +1346,11 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   const invalid  = rows.filter(r=>r.status==="invalid_row").length;
   const uBank    = rows.filter(r=>r.status==="unmatched_bank").length;
   const uLedger  = rows.filter(r=>r.status==="unmatched_ledger").length;
-  const conf     = Math.round(matched/BANK.length*100);
+  const conf     = bank.length > 0 ? Math.round(matched/bank.length*100) : 0;
   const exceptions = rows.filter(r=>r.status!=="matched");
 
   const kpis = [
-    {val:`${matched}/${BANK.length}`, lbl:"AUTO-MATCHED"},
+    {val:`${matched}/${bank.length}`, lbl:"AUTO-MATCHED"},
     {val:`${conf}%`,                  lbl:"CONFIDENCE"},
     {val:`${possible}`,               lbl:"NEEDS REVIEW"},
     {val:`${manual+invalid+uBank+uLedger}`, lbl:"EXCEPTIONS"},
@@ -1246,8 +1388,8 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   sz(8.5); fnt("normal"); clr(55,65,81);
   const opinion = doc.splitTextToSize(
     conf>=80
-      ? `Based on an automated reconciliation of ${BANK.length} bank transactions against ${LEDGER.length} general ledger entries for the period ${PERIOD}, a total of ${matched} transactions (${conf}%) were matched with high confidence. The remaining ${exceptions.length} items are catalogued in the Exceptions Register (Section 4) and must be resolved by the responsible accountant before this reconciliation can be finalised and submitted.`
-      : `The automated reconciliation for ${PERIOD} has identified material discrepancies that require resolution prior to submission. Of ${BANK.length} bank transactions reviewed, ${matched} were matched automatically. The remaining ${exceptions.length} items in the Exceptions Register (Section 4) require corrective action.`,
+      ? `Based on an automated reconciliation of ${bank.length} bank transactions against ${ledger.length} general ledger entries for the period ${period}, a total of ${matched} transactions (${conf}%) were matched with high confidence. The remaining ${exceptions.length} items are catalogued in the Exceptions Register (Section 4) and must be resolved by the responsible accountant before this reconciliation can be finalised and submitted.`
+      : `The automated reconciliation for ${period} has identified material discrepancies that require resolution prior to submission. Of ${bank.length} bank transactions reviewed, ${matched} were matched automatically. The remaining ${exceptions.length} items in the Exceptions Register (Section 4) require corrective action.`,
     CW
   );
   doc.text(opinion,ML,y); y+=opinion.length*4.5+8;
@@ -1295,8 +1437,8 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   y+=4;
 
   // Totals
-  const tBank   = BANK.reduce((a,b)=>a+Math.abs(b.amt),0);
-  const tLedger = LEDGER.reduce((a,l)=>a+Math.abs(l.amt),0);
+  const tBank   = bank.reduce((a,b)=>a+Math.abs(b.amt),0);
+  const tLedger = ledger.reduce((a,l)=>a+Math.abs(l.amt),0);
   const discAmt = Math.abs(tBank-tLedger);
   const fmtR    = (n:number)=>`R ${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`;
 
@@ -1328,7 +1470,7 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
 
   sz(11); fnt("bold"); clr(17,17,17); txt("3.  Full Transaction Register",ML,y); y+=5;
   sz(7.5); fnt("normal"); clr(107,114,128);
-  txt(`${BANK.length} bank transactions and ${LEDGER.length} ledger entries for ${PERIOD}. All amounts in South African Rand (ZAR).`,ML,y); y+=8;
+  txt(`${bank.length} bank transactions and ${ledger.length} ledger entries for ${period}. All amounts in South African Rand (ZAR).`,ML,y); y+=8;
 
   const tCols=[
     {h:"Row",       x:ML,      w:12},
@@ -1459,7 +1601,7 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
 
   sz(11); fnt("bold"); clr(17,17,17); txt("5.  Audit Trail",ML,y); y+=5;
   sz(7.5); fnt("normal"); clr(107,114,128);
-  txt(`Complete record of all system actions performed during reconciliation ${JOB_ID}.`,ML,y); y+=8;
+  txt(`Complete record of all system actions performed during reconciliation ${jobId}.`,ML,y); y+=8;
 
   fill(30,41,59); doc.rect(ML,y,CW,7,"F");
   [{h:"Timestamp",x:ML+2,w:0},{h:"Action Performed",x:ML+48,w:0},{h:"Target Reference",x:ML+108,w:0},{h:"User",x:RX,w:0,r:true}].forEach(c=>{
@@ -1496,7 +1638,7 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
 
   sz(8.5); fnt("normal"); clr(55,65,81);
   const decl=doc.splitTextToSize(
-    `I, the undersigned, being a duly authorised representative of ${company}, hereby declare that the information contained in this Bank Reconciliation Report is true, accurate and complete to the best of my knowledge and belief. This reconciliation was performed for the period ${PERIOD} using ${bankInst} bank records and the ${ledgerSoft} general ledger. This report has been prepared for the purposes of compliance with the Income Tax Act 58 of 1962 and/or the Value-Added Tax Act 89 of 1991, and is available for inspection by the South African Revenue Service (SARS) upon request.`,
+    `I, the undersigned, being a duly authorised representative of ${company}, hereby declare that the information contained in this Bank Reconciliation Report is true, accurate and complete to the best of my knowledge and belief. This reconciliation was performed for the period ${period} using ${bankInst} bank records and the ${ledgerSoft} general ledger. This report has been prepared for the purposes of compliance with the Income Tax Act 58 of 1962 and/or the Value-Added Tax Act 89 of 1991, and is available for inspection by the South African Revenue Service (SARS) upon request.`,
     CW
   );
   doc.text(decl,ML,y); y+=decl.length*4.5+10;
@@ -1525,24 +1667,24 @@ async function exportPDF(rows: ReconRow[], auditLog: AuditEntry[], company: stri
   // Generated by
   hln(y); y+=5;
   sz(6.5); fnt("normal"); clr(156,163,175);
-  txt(`Generated by Addup Reconciliation Engine  |  ${genTs}  |  Job: ${JOB_ID}  |  Ref: ${reportRef}`,ML,y);
+  txt(`Generated by Addup Reconciliation Engine  |  ${genTs}  |  Job: ${jobId}  |  Ref: ${reportRef}`,ML,y);
 
   const slug=(company||"report").toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
-  doc.save(`Addup-Recon-${slug}-${PERIOD.replace(/\s+/g,"-")}.pdf`);
+  doc.save(`Addup-Recon-${slug}-${(period||"report").replace(/\s+/g,"-")}.pdf`);
 }
 
-function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string) {
+function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, bank: Tx[], ledger: Tx[], jobId: string, period: string) {
   const data = {
-    meta: { job_id: JOB_ID, period: PERIOD, company, generated: now(), version:"1.0" },
+    meta: { job_id: jobId, period, company, generated: now(), version:"1.0" },
     summary: {
-      bank_transactions: BANK.length, ledger_entries: LEDGER.length,
+      bank_transactions: bank.length, ledger_entries: ledger.length,
       matched: rows.filter(r=>r.status==="matched").length,
       possible_match: rows.filter(r=>r.status==="possible_match").length,
       manual_review: rows.filter(r=>r.status==="manual_review").length,
       invalid_rows: rows.filter(r=>r.status==="invalid_row").length,
       unmatched_bank: rows.filter(r=>r.status==="unmatched_bank").length,
       unmatched_ledger: rows.filter(r=>r.status==="unmatched_ledger").length,
-      overall_confidence: Math.round(rows.filter(r=>r.status==="matched").length / BANK.length * 100),
+      overall_confidence: bank.length > 0 ? Math.round(rows.filter(r=>r.status==="matched").length / bank.length * 100) : 0,
     },
     rows: rows.map(r=>({ id:r.id, status:r.status, confidence:r.confidence,
       bank_id: r.bank?.id, ledger_id: r.ledger?.id,
@@ -1552,7 +1694,7 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `addup-${JOB_ID}.json`; a.click();
+  a.href = url; a.download = `addup-${jobId || "report"}.json`; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -1560,18 +1702,42 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string) {
 
 export default function Engine() {
   const [loading,    setLoading]    = useState(true);
-  const [nav,        setNav]        = useState<NavId>("dashboard");
+  const [nav,        setNav]        = useState<NavId>("uploads");
   const [sidebarOpen,setSidebarOpen]= useState(false);
-  const [rows,       setRows]       = useState<ReconRow[]>(ROWS);
+  const [bankData,   setBankData]   = useState<Tx[]>([]);
+  const [ledgerData, setLedgerData] = useState<Tx[]>([]);
+  const [rows,       setRows]       = useState<ReconRow[]>([]);
   const [auditLog,   setAuditLog]   = useState<AuditEntry[]>([]);
-  const [company,    setCompany]    = useState(COMPANY);
-  const [bankInst,   setBankInst]   = useState(BANK_INST);
-  const [ledgerSoft, setLedgerSoft] = useState(LEDGER_SOFT);
+  const [company,    setCompany]    = useState("");
+  const [bankInst,   setBankInst]   = useState("");
+  const [ledgerSoft, setLedgerSoft] = useState("");
+  const [jobId,      setJobId]      = useState("");
+  const [period,     setPeriod]     = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  const hasData = bankData.length > 0 && ledgerData.length > 0;
+  const overallConf = hasData
+    ? Math.round(rows.filter(r => r.status === "matched").length / bankData.length * 100)
+    : 0;
 
   const addAudit = useCallback((a: Omit<AuditEntry, "ts" | "user">) => {
     setAuditLog(prev => [...prev, { ...a, ts: now(), user: "local_user" }]);
   }, []);
+
+  function handleReconcile(bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) {
+    const newJobId = `rec_${Date.now()}_001`;
+    const newPeriod = derivePeriod(bank) || derivePeriod(ledger);
+    const reconRows = runReconciliation(bank, ledger);
+    setBankData(bank);
+    setLedgerData(ledger);
+    setRows(reconRows);
+    setJobId(newJobId);
+    setPeriod(newPeriod);
+    if (!bankInst)   setBankInst(bankName.replace(/\.[^.]+$/, ""));
+    if (!ledgerSoft) setLedgerSoft(ledgerName.replace(/\.[^.]+$/, ""));
+    setAuditLog([]);
+    setNav("dashboard");
+  }
 
   const reviewCount = rows.filter(r =>
     (r.status === "possible_match" || r.status === "manual_review" ||
@@ -1604,14 +1770,20 @@ export default function Engine() {
         {/* Job summary */}
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
           <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Active Job</p>
-          <p className="text-[10px] font-mono text-gray-500 truncate">{JOB_ID}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">{PERIOD} · {company}</p>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1 bg-gray-100">
-              <div className="h-full bg-emerald-500" style={{ width:`${OVERALL_CONF}%` }} />
-            </div>
-            <span className="text-[10px] font-bold text-emerald-600">{OVERALL_CONF}%</span>
-          </div>
+          {hasData ? (
+            <>
+              <p className="text-[10px] font-mono text-gray-500 truncate">{jobId}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{period}{company ? ` · ${company}` : ""}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-1 bg-gray-100">
+                  <div className="h-full bg-emerald-500" style={{ width:`${overallConf}%` }} />
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600">{overallConf}%</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-[10px] text-gray-300 italic">No data loaded — upload files to begin</p>
+          )}
         </div>
 
         {/* Navigation */}
@@ -1638,8 +1810,8 @@ export default function Engine() {
           <button
             onClick={async () => {
               setPdfLoading(true);
-              addAudit({ job_id:JOB_ID, action:"export_pdf", target_id:JOB_ID });
-              await exportPDF(rows, auditLog, company, bankInst, ledgerSoft);
+              addAudit({ job_id:jobId, action:"export_pdf", target_id:jobId });
+              await exportPDF(rows, auditLog, company, bankInst, ledgerSoft, bankData, ledgerData, jobId, period);
               setPdfLoading(false);
             }}
             disabled={pdfLoading}
@@ -1652,8 +1824,8 @@ export default function Engine() {
           </button>
           <button
             onClick={() => {
-              addAudit({ job_id:JOB_ID, action:"export_json", target_id:JOB_ID });
-              exportJSON(rows, auditLog, company);
+              addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
+              exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
             }}
             className="w-full flex items-center justify-center gap-2 h-9 border border-gray-200 text-gray-500 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
           >
@@ -1702,29 +1874,43 @@ export default function Engine() {
           </button>
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Shield className="h-3.5 w-3.5 text-gray-300" />
-            <span className="font-mono text-gray-500">{JOB_ID}</span>
+            {hasData
+              ? <span className="font-mono text-gray-500 truncate max-w-[140px]">{jobId}</span>
+              : <span className="text-gray-300 italic">No job loaded</span>
+            }
             <ChevronRight className="h-3 w-3" />
             <span className="font-semibold text-gray-700 capitalize">{nav.replace("_"," ")}</span>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-[10px] text-gray-400 hidden sm:block">{company}</span>
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
-              <BarChart3 className="h-3 w-3" />{OVERALL_CONF}%
-            </span>
+            {company && <span className="text-[10px] text-gray-400 hidden sm:block">{company}</span>}
+            {hasData && (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+                <BarChart3 className="h-3 w-3" />{overallConf}%
+              </span>
+            )}
           </div>
         </header>
 
         {/* View content */}
         <main className="flex-1 overflow-auto">
-          {nav === "dashboard" && <DashboardView rows={rows} onNav={setNav} onBulkApprove={() => {
-              const pending = rows.filter(r => r.status === "matched" && !r.userStatus);
-              setRows(prev => prev.map(r => r.status === "matched" && !r.userStatus ? { ...r, userStatus: "approved" } : r));
-              pending.forEach(r => addAudit({ job_id: JOB_ID, action: "approve_match", target_id: r.id, next: "approved" }));
+          {nav === "dashboard" && <DashboardView
+              rows={rows} onNav={setNav}
+              bankLen={bankData.length} ledgerLen={ledgerData.length}
+              overallConf={overallConf} jobId={jobId} period={period}
+              bankInst={bankInst} ledgerSoft={ledgerSoft}
+              onBulkApprove={() => {
+                const pending = rows.filter(r => r.status === "matched" && !r.userStatus);
+                setRows(prev => prev.map(r => r.status === "matched" && !r.userStatus ? { ...r, userStatus: "approved" } : r));
+                pending.forEach(r => addAudit({ job_id: jobId, action: "approve_match", target_id: r.id, next: "approved" }));
+              }}
+            />}
+          {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
+          {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} />}
+          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} />}
+          {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {
+              addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
+              exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
             }} />}
-          {nav === "uploads"   && <UploadsView />}
-          {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} />}
-          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} />}
-          {nav === "audit"     && <AuditLogView log={auditLog} onExport={() => { addAudit({job_id:JOB_ID,action:"export_json",target_id:JOB_ID}); exportJSON(rows, auditLog, company); }} />}
           {nav === "settings"  && <SettingsView company={company} setCompany={setCompany} bank={bankInst} setBank={setBankInst} ledger={ledgerSoft} setLedger={setLedgerSoft} />}
         </main>
       </div>
