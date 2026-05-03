@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Upload, Briefcase, AlertCircle, Clock, Settings2,
-  CheckCircle2, XCircle, AlertTriangle, HelpCircle,
+  CheckCircle2, XCircle, AlertTriangle, HelpCircle, Info,
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
   ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight, ChevronLeft,
   BarChart3, Shield, Activity, Eye, ChevronDown, CalendarDays,
@@ -207,6 +207,10 @@ function normalizeDesc(raw: string): string {
   s = s.replace(/[^a-z0-9\s]/g, " ").replace(/\s{2,}/g, " ").trim();
   for (const key of SYNONYM_KEYS) {
     if (s === key || s.startsWith(key + " ") || s.endsWith(" " + key) || s.includes(" " + key + " ")) {
+      return SYNONYMS[key];
+    }
+    // Handle digit-suffix variants: "vendor refund2" matches key "vendor refund"
+    if (s.startsWith(key) && s.length > key.length && /^\d/.test(s[key.length])) {
       return SYNONYMS[key];
     }
   }
@@ -507,10 +511,10 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
       continue;
     }
 
-    // Competing candidates within 0.08 of best
-    const competing = available.filter(c => best.final_score - c.final_score < 0.08).length;
+    // Competing: a second candidate within 0.05 of the best score is a genuine conflict
+    const hasCompeting = available.length > 1 && (best.final_score - available[1].final_score < 0.05);
     const extraWarnings = [...best.warnings];
-    if (competing > 1) extraWarnings.push(`Multiple similar candidates found (${competing})`);
+    if (hasCompeting) extraWarnings.push(`Multiple similar candidates found`);
 
     const scoreBreakdown: ScoreBreakdown = {
       amount_score: best.amount_score, date_score: best.date_score,
@@ -520,35 +524,24 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
 
     // ── Classification ────────────────────────────────────────
     const directionIssue = extraWarnings.some(w => w.includes("Direction differs"));
-    const amtHighDiff    = best.amount_score < 0.65;
-    const dateHighDiff   = best.date_score   < 0.65;
-    const hasCompeting   = competing > 1;
 
     let status: TxStatus;
-    if (
-      best.final_score >= 0.82 &&
-      best.amount_score >= 0.65 &&
-      best.date_score   >= 0.65 &&
-      !hasCompeting && !directionIssue
-    ) {
+    if (best.final_score >= 0.82 && !directionIssue) {
       status = "matched";
-    } else if (
-      best.final_score >= 0.55 ||
-      (best.description_score >= 0.8 && (best.amount_score >= 0.5 || best.date_score >= 0.65))
-    ) {
+    } else if (best.final_score >= 0.55) {
       status = "possible_match";
-    } else if (best.final_score >= 0.40) {
+    } else if (best.final_score >= 0.38) {
       status = "manual_review";
     } else {
       status = "unmatched_bank";
     }
 
-    // Downgrade matched → manual_review if critical issues present
-    if (status === "matched" && (amtHighDiff || dateHighDiff || directionIssue || hasCompeting)) {
-      status = "manual_review";
+    // Downgrade matched → possible_match if individual scores are soft or there is a genuine competitor
+    if (status === "matched" && (best.amount_score < 0.65 || best.date_score < 0.45 || hasCompeting)) {
+      status = "possible_match";
     }
-    // Downgrade possible → manual if direction differs or date > 7 days
-    if (status === "possible_match" && (directionIssue || dateDiffDays > 7 || best.amount_score < 0.5)) {
+    // Downgrade possible → manual only when both direction AND date are severe problems
+    if (status === "possible_match" && directionIssue && dateDiffDays > 14) {
       status = "manual_review";
     }
 
@@ -743,6 +736,12 @@ function ReviewPanel({
   const { resp, streaming, error, explain, reset } = useGrokExplain();
   const [grokOpen, setGrokOpen] = useState(false);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const diffHighlights: string[] = [];
   if (row.dateDiff > 0)  diffHighlights.push("Date");
   if (row.amtDiff  > 0)  diffHighlights.push("Amount");
@@ -752,7 +751,7 @@ function ReviewPanel({
     <motion.div
       initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
       transition={{ type:"spring", stiffness:300, damping:30 }}
-      className="fixed right-0 top-0 h-full w-full max-w-[680px] bg-white border-l border-gray-200 z-40 flex flex-col shadow-2xl"
+      className="fixed right-0 top-0 h-full w-full max-w-[680px] bg-white border-l border-gray-200 z-50 flex flex-col shadow-2xl"
     >
       {/* Panel header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
@@ -760,7 +759,7 @@ function ReviewPanel({
           <h2 className="text-sm font-bold text-gray-900">Side-by-side Review</h2>
           <p className="text-xs text-gray-400 mt-0.5">{row.id} · {STATUS_CFG[row.status].label}</p>
         </div>
-        <button onClick={onClose} className="p-1.5 hover:bg-gray-100 transition-colors">
+        <button onClick={onClose} aria-label="Close panel" className="p-1.5 hover:bg-gray-100 transition-colors">
           <X className="h-4 w-4 text-gray-400" />
         </button>
       </div>
@@ -814,23 +813,39 @@ function ReviewPanel({
         </div>
 
         {/* Explanation */}
-        {(row.reasons.length > 0 || row.warnings.length > 0) && (
-          <div className="px-5 py-4 border-b border-gray-100">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Match explanation</p>
-            {row.reasons.map(r => (
-              <div key={r} className="flex items-start gap-2 mb-2">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-700">{r}</p>
-              </div>
-            ))}
-            {row.warnings.map(w => (
-              <div key={w} className="flex items-start gap-2 mb-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700">{w}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Match explanation</p>
+          {row.reasons.length === 0 && row.warnings.length === 0 && (
+            <div className="flex items-start gap-2 mb-2">
+              <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-500">
+                {row.status === "matched"
+                  ? "All scoring dimensions aligned within thresholds. Automatic match."
+                  : row.status === "possible_match"
+                  ? "Partial match detected. Verify transaction details before approving."
+                  : row.status === "manual_review"
+                  ? "Low confidence match. Manual verification required before posting."
+                  : row.status === "unmatched_bank"
+                  ? "No suitable ledger entry found for this bank transaction."
+                  : row.status === "unmatched_ledger"
+                  ? "No bank transaction found for this ledger entry."
+                  : "Row excluded from matching due to data quality issues."}
+              </p>
+            </div>
+          )}
+          {row.reasons.map(r => (
+            <div key={r} className="flex items-start gap-2 mb-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-700">{r}</p>
+            </div>
+          ))}
+          {row.warnings.map(w => (
+            <div key={w} className="flex items-start gap-2 mb-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">{w}</p>
+            </div>
+          ))}
+        </div>
 
         {/* Normalized descriptions */}
         {(row.bank?.normalizedDesc || row.ledger?.normalizedDesc) && (
