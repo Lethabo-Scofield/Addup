@@ -2,11 +2,11 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from "react"
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Upload, Briefcase, AlertCircle, Clock, Settings2,
+  LayoutDashboard, Upload, AlertCircle, Clock, Settings2,
   CheckCircle2, XCircle, AlertTriangle, HelpCircle, Info,
   Download, FileText, Sparkles, RefreshCw, X, Check, Search,
-  ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight, ChevronLeft,
-  BarChart3, Shield, Activity, Eye, ChevronDown, CalendarDays,
+  ThumbsUp, ThumbsDown, Edit3, Menu, ChevronRight,
+  Eye, ChevronDown,
 } from "lucide-react";
 import addupLogo from "@assets/Addup_1777332904059.png";
 import jsPDF from "jspdf";
@@ -617,21 +617,19 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
   const exceptions     = possible + manual + invalid + uBank + uLedger;
 
   const cards: { label:string; val:number; sub:string; color:string; bg:string; border:string; nav:NavId }[] = [
-    { label:"Bank transactions",  val: bankLen,       sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
-    { label:"Ledger entries",     val: ledgerLen,     sub:"Ingested by engine",              color:"text-gray-900",    bg:"bg-white",      border:"hover:border-gray-400",    nav:"jobs"   },
-    { label:"Auto-matched",       val: matched,       sub:"Engine matched, no admin needed", color:"text-emerald-700", bg:"bg-emerald-50", border:"hover:border-emerald-400", nav:"jobs"   },
-    { label:"Possible matches",   val: possible,      sub:"Engine flagged — needs sign-off", color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"review" },
-    { label:"Engine escalated",   val: manual,        sub:"Requires human judgement",        color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"review" },
-    { label:"Data quality issues",val: invalid,       sub:"Engine detected bad data",        color:"text-red-700",     bg:"bg-red-50",     border:"hover:border-red-400",     nav:"review" },
-    { label:"Unmatched bank",     val: uBank,         sub:"Engine found no ledger pair",     color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"review" },
-    { label:"Unmatched ledger",   val: uLedger,       sub:"Engine found no bank pair",       color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"review" },
+    { label:"Auto-matched",      val: matched,  sub:"No human action needed",        color:"text-emerald-700", bg:"bg-emerald-50", border:"hover:border-emerald-400", nav:"jobs"   },
+    { label:"Likely matches",    val: possible, sub:"Verify before approving",        color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"review" },
+    { label:"Needs attention",   val: manual,   sub:"Low confidence — review needed", color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"review" },
+    { label:"Data issues",       val: invalid,  sub:"Bad or unreadable data",         color:"text-red-700",     bg:"bg-red-50",     border:"hover:border-red-400",     nav:"review" },
+    { label:"Unmatched bank",    val: uBank,    sub:"No ledger entry found",          color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"review" },
+    { label:"Unmatched ledger",  val: uLedger,  sub:"No bank transaction found",      color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"review" },
   ];
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Automation Report</h1>
-        <p className="text-sm text-gray-400 mt-1">Job <span className="font-mono">{jobId}</span> · {period}</p>
+        <h1 className="text-xl font-bold text-gray-900">Reconciliation Summary</h1>
+        <p className="text-sm text-gray-400 mt-1">{period}{bankInst ? ` · ${bankInst}` : ""}{ledgerSoft ? ` · ${ledgerSoft}` : ""}</p>
       </div>
 
       {/* Automation summary */}
@@ -673,7 +671,7 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {cards.map(({ label, val, sub, color, bg, border, nav }) => (
           <button key={label} onClick={() => onNav(nav)}
             className={`border border-gray-200 p-4 ${bg} ${border} text-left transition-all group cursor-pointer hover:shadow-sm`}>
@@ -1180,35 +1178,6 @@ function SettingsView({ company, setCompany, bank, setBank, ledger, setLedger }:
         ))}
       </div>
 
-      <div className="mt-6 border border-gray-200 bg-white divide-y divide-gray-100">
-        <div className="px-5 py-4 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-700">Date tolerance</p>
-            <p className="text-[10px] text-gray-400">Max days apart for a possible match</p>
-          </div>
-          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none shrink-0">
-            <option>1 day</option><option>2 days</option><option>3 days</option><option>7 days</option>
-          </select>
-        </div>
-        <div className="px-5 py-4 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-700">Confidence threshold</p>
-            <p className="text-[10px] text-gray-400">Minimum confidence to auto-approve</p>
-          </div>
-          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none shrink-0">
-            <option>100%</option><option>95%</option><option>90%</option>
-          </select>
-        </div>
-        <div className="px-5 py-4 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-700">OCR validation</p>
-            <p className="text-[10px] text-gray-400">Flag rows with suspected OCR errors</p>
-          </div>
-          <button className="relative w-10 h-5 bg-emerald-500 flex items-center shrink-0">
-            <span className="absolute right-0.5 w-4 h-4 bg-white shadow-sm" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1730,153 +1699,6 @@ function exportJSON(rows: ReconRow[], auditLog: AuditEntry[], company: string, b
   URL.revokeObjectURL(url);
 }
 
-// ── Header clock + calendar popup ─────────────────────────────────────────────
-
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DAY_ABBRS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-
-function HeaderClock() {
-  const [now,      setNow]      = useState(() => new Date());
-  const [open,     setOpen]     = useState(false);
-  const [viewDate, setViewDate] = useState(() => new Date());
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Tick every second
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Sync viewDate month to now when closed
-  useEffect(() => {
-    if (!open) setViewDate(new Date());
-  }, [open]);
-
-  // Click-outside to close
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Calendar grid helpers
-  const today = new Date();
-  const vy = viewDate.getFullYear();
-  const vm = viewDate.getMonth();
-  const firstDay  = new Date(vy, vm, 1).getDay();       // 0=Sun
-  const daysInMon = new Date(vy, vm + 1, 0).getDate();
-
-  function prevMonth() { setViewDate(new Date(vy, vm - 1, 1)); }
-  function nextMonth() { setViewDate(new Date(vy, vm + 1, 1)); }
-
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  const dateStr = `${pad(now.getDate())} ${MONTH_NAMES[now.getMonth()].slice(0,3)} ${now.getFullYear()}`;
-
-  // Grid: leading empty cells + day numbers
-  const cells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMon }, (_, i) => i + 1),
-  ];
-  // Pad to full rows
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 h-8 px-3 border transition-colors text-[11px] font-mono
-          ${open
-            ? "border-gray-400 bg-gray-50 text-gray-800"
-            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-500"
-          }`}
-      >
-        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-        <span className="font-bold text-gray-700 tracking-tight hidden sm:inline">{timeStr}</span>
-        <span className="text-gray-400 hidden md:inline">{dateStr}</span>
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-10 z-50 w-[272px] bg-white border border-gray-200 shadow-lg"
-          >
-            {/* Time display */}
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-mono font-bold text-gray-900 tracking-tight">{timeStr}</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {MONTH_NAMES[today.getMonth()]} {today.getDate()}, {today.getFullYear()}
-                  {" · "}
-                  {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][today.getDay()]}
-                </p>
-              </div>
-              <Clock className="h-5 w-5 text-gray-200" />
-            </div>
-
-            {/* Calendar */}
-            <div className="p-4">
-              {/* Month nav */}
-              <div className="flex items-center justify-between mb-3">
-                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 transition-colors">
-                  <ChevronLeft className="h-3.5 w-3.5 text-gray-500" />
-                </button>
-                <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                  {MONTH_NAMES[vm]} {vy}
-                </p>
-                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 transition-colors">
-                  <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
-                </button>
-              </div>
-
-              {/* Day-of-week headers */}
-              <div className="grid grid-cols-7 mb-1">
-                {DAY_ABBRS.map(d => (
-                  <div key={d} className="text-center text-[9px] font-bold text-gray-300 uppercase py-1">{d}</div>
-                ))}
-              </div>
-
-              {/* Day cells */}
-              <div className="grid grid-cols-7 gap-y-0.5">
-                {cells.map((day, i) => {
-                  const isToday = day !== null && vy === today.getFullYear() && vm === today.getMonth() && day === today.getDate();
-                  return (
-                    <div key={i} className="flex items-center justify-center">
-                      {day !== null ? (
-                        <span className={`w-7 h-7 flex items-center justify-center text-[11px] font-medium transition-colors
-                          ${isToday
-                            ? "bg-gray-900 text-white font-bold"
-                            : "text-gray-600 hover:bg-gray-100 cursor-default"
-                          }`}>
-                          {day}
-                        </span>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Today shortcut */}
-              {(vy !== today.getFullYear() || vm !== today.getMonth()) && (
-                <button onClick={() => setViewDate(new Date())}
-                  className="mt-3 w-full text-[10px] font-semibold text-gray-400 hover:text-gray-700 transition-colors py-1 border-t border-gray-100">
-                  Back to today
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 // ── Main Engine ───────────────────────────────────────────────────────────────
 
@@ -1926,11 +1748,10 @@ export default function Engine() {
   ).length;
 
   const NAV = [
-    { id:"dashboard" as NavId, label:"Dashboard",    icon:<LayoutDashboard className="h-4 w-4"/> },
-    { id:"uploads"   as NavId, label:"Uploads",      icon:<Upload className="h-4 w-4"/>          },
-    { id:"jobs"      as NavId, label:"Reconciliation Jobs", icon:<Briefcase className="h-4 w-4"/> },
-    { id:"review"    as NavId, label:"Exceptions",   icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
-    { id:"audit"     as NavId, label:"Audit Log",    icon:<Clock className="h-4 w-4"/>, badge: auditLog.length > 0 ? auditLog.length : undefined },
+    { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>          },
+    { id:"dashboard" as NavId, label:"Overview",     icon:<LayoutDashboard className="h-4 w-4"/> },
+    { id:"review"    as NavId, label:"Needs Review", icon:<AlertCircle className="h-4 w-4"/>, badge: reviewCount > 0 ? reviewCount : undefined },
+    { id:"audit"     as NavId, label:"History",      icon:<Clock className="h-4 w-4"/>            },
     { id:"settings"  as NavId, label:"Settings",     icon:<Settings2 className="h-4 w-4"/>       },
   ];
 
@@ -1945,25 +1766,6 @@ export default function Engine() {
           <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">
             Reconciliation Engine
           </p>
-        </div>
-
-        {/* Job summary */}
-        <div className="px-4 py-3 border-b border-gray-100 shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Active Job</p>
-          {hasData ? (
-            <>
-              <p className="text-[10px] font-mono text-gray-500 truncate">{jobId}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{period}{company ? ` · ${company}` : ""}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex-1 h-1 bg-gray-100">
-                  <div className="h-full bg-emerald-500" style={{ width:`${overallConf}%` }} />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600">{overallConf}%</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-[10px] text-gray-300 italic">No data loaded — upload files to begin</p>
-          )}
         </div>
 
         {/* Navigation */}
@@ -2052,23 +1854,16 @@ export default function Engine() {
           <button onClick={()=>setSidebarOpen(true)} className="lg:hidden p-1.5 hover:bg-gray-100 transition-colors">
             <Menu className="h-4 w-4 text-gray-600" />
           </button>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <Shield className="h-3.5 w-3.5 text-gray-300" />
-            {hasData
-              ? <span className="font-mono text-gray-500 truncate max-w-[140px]">{jobId}</span>
-              : <span className="text-gray-300 italic">No job loaded</span>
-            }
-            <ChevronRight className="h-3 w-3" />
-            <span className="font-semibold text-gray-700 capitalize">{nav.replace("_"," ")}</span>
-          </div>
+          <span className="text-sm font-semibold text-gray-800">
+            {NAV.find(n => n.id === nav)?.label ?? nav}
+          </span>
           <div className="ml-auto flex items-center gap-3">
-            {company && <span className="text-[10px] text-gray-400 hidden sm:block">{company}</span>}
+            {company && <span className="text-xs text-gray-400 hidden sm:block">{company}</span>}
             {hasData && (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
-                <BarChart3 className="h-3 w-3" />{overallConf}%
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+                {overallConf}% matched
               </span>
             )}
-            <HeaderClock />
           </div>
         </header>
 
