@@ -622,12 +622,12 @@ function DashboardView({ rows, onNav }: { rows: ReconRow[]; onNav: (v: NavId) =>
 
       {/* Overall confidence */}
       <div className="border border-gray-200 p-5 mb-6 bg-white">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Overall reconciliation confidence</p>
             <p className="text-3xl font-bold text-gray-900">{OVERALL_CONF}%</p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
               <span className="w-1.5 h-1.5 bg-emerald-500" />
               {matched} of {BANK.length} auto-matched
@@ -797,15 +797,15 @@ function JobsView({
   return (
     <div className="flex flex-col h-full">
       {/* Job header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-base font-bold text-gray-900">Reconciliation Workspace</h1>
-            <p className="text-xs text-gray-400 mt-0.5 font-mono">{JOB_ID} · {PERIOD} · {COMPANY}</p>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono truncate">{JOB_ID} · {PERIOD} · {COMPANY}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-gray-400">{BANK_INST} + {LEDGER_SOFT}</span>
-            <span className="h-4 w-px bg-gray-200" />
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] text-gray-400 hidden md:block">{BANK_INST} + {LEDGER_SOFT}</span>
+            <span className="h-4 w-px bg-gray-200 hidden md:block" />
             <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
               <Activity className="h-3 w-3" />{OVERALL_CONF}% confidence
             </span>
@@ -814,17 +814,17 @@ function JobsView({
       </div>
 
       {/* Filter tabs + search */}
-      <div className="px-6 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-3 overflow-x-auto">
+      <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-2 overflow-x-auto">
         {(["all", ...STATUS_ORDER] as const).map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`shrink-0 flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold transition-colors border
+            className={`shrink-0 flex items-center gap-1 h-8 px-2.5 text-[11px] font-semibold transition-colors border
               ${filter === s
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800"
               }`}
           >
             {s === "all" ? "All" : STATUS_CFG[s as TxStatus].short}
-            <span className={`text-[10px] px-1.5 py-0.5 font-bold min-w-[20px] text-center
+            <span className={`text-[10px] px-1 py-0.5 font-bold min-w-[18px] text-center
               ${filter === s ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
               {counts[s] ?? 0}
             </span>
@@ -833,7 +833,7 @@ function JobsView({
         <div className="ml-auto flex items-center gap-2 border border-gray-200 px-3 h-8 shrink-0">
           <Search className="h-3.5 w-3.5 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            className="w-32 text-xs outline-none bg-transparent text-gray-700 placeholder-gray-300" />
+            className="w-24 sm:w-32 text-xs outline-none bg-transparent text-gray-700 placeholder-gray-300" />
         </div>
       </div>
 
@@ -894,13 +894,13 @@ function ReviewQueueView({
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Review Queue</h1>
           <p className="text-sm text-gray-400 mt-1">{queue.length} items requiring your attention</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-400 font-semibold">CONFIDENCE MAX</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] text-gray-400 font-semibold hidden sm:block">CONFIDENCE MAX</span>
           <select value={confFilter} onChange={e => setConfFilter(Number(e.target.value))}
             className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
             {[100, 90, 80, 70, 50].map(v => <option key={v} value={v}>{v}%</option>)}
@@ -927,10 +927,10 @@ function ReviewQueueView({
             const tx = row.bank ?? row.ledger;
             return (
               <div key={row.id} className="border border-gray-200 bg-white hover:border-gray-300 transition-colors">
-                <div className="flex items-center gap-4 px-5 py-4">
-                  <div className={`w-1 self-stretch ${STATUS_CFG[row.status].dot}`} />
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4">
+                  <div className={`w-1 self-stretch shrink-0 ${STATUS_CFG[row.status].dot}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <StatusBadge status={row.status} />
                       {row.warnings.length > 0 && (
                         <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
@@ -940,16 +940,22 @@ function ReviewQueueView({
                     </div>
                     <p className="text-sm font-semibold text-gray-800 truncate">{tx?.desc ?? "—"}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{tx?.id} · {tx?.date}</p>
+                    <div className="flex items-center gap-3 mt-2 sm:hidden">
+                      <p className={`text-sm font-bold ${tx && tx.amt >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {tx ? fmt(tx.amt) : "—"}
+                      </p>
+                      {row.confidence > 0 && <div className="w-24"><ConfBar pct={row.confidence} /></div>}
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 hidden sm:block">
                     <p className={`text-sm font-bold ${tx && tx.amt >= 0 ? "text-emerald-600" : "text-red-500"}`}>
                       {tx ? fmt(tx.amt) : "—"}
                     </p>
                     <div className="mt-1 w-32"><ConfBar pct={row.confidence} /></div>
                   </div>
                   <button onClick={() => setSelected(row)}
-                    className="h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0">
-                    <Eye className="h-3.5 w-3.5" /> Review
+                    className="h-9 px-3 sm:px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 shrink-0">
+                    <Eye className="h-3.5 w-3.5" /><span className="hidden sm:inline">Review</span>
                   </button>
                 </div>
                 {row.warnings.slice(0, 2).map(w => (
@@ -988,55 +994,77 @@ function ReviewQueueView({
 function AuditLogView({ log, onExport }: { log: AuditEntry[]; onExport: () => void }) {
   return (
     <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
           <p className="text-sm text-gray-400 mt-1">{log.length} entries · {JOB_ID}</p>
         </div>
         <button onClick={onExport}
-          className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+          className="self-start sm:self-auto flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
           <Download className="h-3.5 w-3.5" /> Export JSON
         </button>
       </div>
 
       {log.length === 0 ? (
-        <div className="border border-gray-200 py-24 flex flex-col items-center bg-white">
-          <Clock className="h-12 w-12 text-gray-300 mb-3" />
-          <p className="text-sm text-gray-500">No actions recorded yet</p>
-          <p className="text-xs text-gray-400 mt-1">Actions in the Review Queue and Workspace will appear here</p>
+        <div className="border border-gray-200 py-16 sm:py-24 flex flex-col items-center bg-white">
+          <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 mb-3" />
+          <p className="text-sm font-semibold text-gray-500">No actions recorded yet</p>
+          <p className="text-xs text-gray-400 mt-1 text-center px-4">Actions in the Review Queue and Workspace will appear here</p>
         </div>
       ) : (
-        <div className="border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {["Timestamp","Action","Target ID","Previous","New value","User"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...log].reverse().map((entry, i) => (
-                <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                  <td className="px-4 py-3 font-mono text-gray-500 text-[10px]">{new Date(entry.ts).toLocaleTimeString("en-ZA")}</td>
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-1.5 font-semibold text-gray-700">
-                      {entry.action === "approve_match" && <ThumbsUp className="h-3 w-3 text-emerald-500" />}
-                      {entry.action === "reject_match"  && <ThumbsDown className="h-3 w-3 text-red-500" />}
-                      {entry.action === "mark_manual"   && <Edit3 className="h-3 w-3 text-amber-500" />}
-                      {(entry.action === "export_json" || entry.action === "export_pdf") && <Download className="h-3 w-3 text-gray-400" />}
-                      {ACTION_LABELS[entry.action]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-gray-400">{entry.target_id}</td>
-                  <td className="px-4 py-3 text-gray-400">{entry.prev ?? "—"}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-700">{entry.next ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-400">{entry.user}</td>
+        <>
+          {/* Mobile card view */}
+          <div className="sm:hidden space-y-2">
+            {[...log].reverse().map((entry, i) => (
+              <div key={i} className={`border border-gray-200 p-4 ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                <div className="flex items-center gap-1.5 font-semibold text-gray-700 text-xs mb-1">
+                  {entry.action === "approve_match" && <ThumbsUp className="h-3 w-3 text-emerald-500" />}
+                  {entry.action === "reject_match"  && <ThumbsDown className="h-3 w-3 text-red-500" />}
+                  {entry.action === "mark_manual"   && <Edit3 className="h-3 w-3 text-amber-500" />}
+                  {(entry.action === "export_json" || entry.action === "export_pdf") && <Download className="h-3 w-3 text-gray-400" />}
+                  {ACTION_LABELS[entry.action]}
+                </div>
+                <p className="text-[10px] font-mono text-gray-400">{entry.target_id}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[10px] text-gray-400">{new Date(entry.ts).toLocaleTimeString("en-ZA")}</p>
+                  {entry.next && <span className="text-[10px] font-semibold text-gray-600">{entry.next}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table view */}
+          <div className="hidden sm:block border border-gray-200 bg-white overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {["Timestamp","Action","Target ID","Previous","New value","User"].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {[...log].reverse().map((entry, i) => (
+                  <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                    <td className="px-4 py-3 font-mono text-gray-500 text-[10px] whitespace-nowrap">{new Date(entry.ts).toLocaleTimeString("en-ZA")}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="flex items-center gap-1.5 font-semibold text-gray-700">
+                        {entry.action === "approve_match" && <ThumbsUp className="h-3 w-3 text-emerald-500" />}
+                        {entry.action === "reject_match"  && <ThumbsDown className="h-3 w-3 text-red-500" />}
+                        {entry.action === "mark_manual"   && <Edit3 className="h-3 w-3 text-amber-500" />}
+                        {(entry.action === "export_json" || entry.action === "export_pdf") && <Download className="h-3 w-3 text-gray-400" />}
+                        {ACTION_LABELS[entry.action]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-gray-400 whitespace-nowrap">{entry.target_id}</td>
+                    <td className="px-4 py-3 text-gray-400">{entry.prev ?? "—"}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-700">{entry.next ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-400">{entry.user}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1057,39 +1085,39 @@ function SettingsView({ company, setCompany, bank, setBank, ledger, setLedger }:
           { label:"Bank institution",    val:bank,    set:setBank,    placeholder:"e.g. FNB Business" },
           { label:"Ledger software",     val:ledger,  set:setLedger,  placeholder:"e.g. Xero" },
         ].map(({ label, val, set, placeholder }) => (
-          <div key={label} className="px-5 py-4 flex items-center gap-4">
-            <label className="text-xs font-semibold text-gray-600 w-40 shrink-0">{label}</label>
+          <div key={label} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <label className="text-xs font-semibold text-gray-600 sm:w-40 shrink-0">{label}</label>
             <input value={val} onChange={e => set(e.target.value)} placeholder={placeholder}
-              className="flex-1 h-8 border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-400" />
+              className="flex-1 h-9 border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-400" />
           </div>
         ))}
       </div>
 
       <div className="mt-6 border border-gray-200 bg-white divide-y divide-gray-100">
-        <div className="px-5 py-4 flex items-center justify-between">
-          <div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-semibold text-gray-700">Date tolerance</p>
             <p className="text-[10px] text-gray-400">Max days apart for a possible match</p>
           </div>
-          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none shrink-0">
             <option>1 day</option><option>2 days</option><option>3 days</option><option>7 days</option>
           </select>
         </div>
-        <div className="px-5 py-4 flex items-center justify-between">
-          <div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-semibold text-gray-700">Confidence threshold</p>
             <p className="text-[10px] text-gray-400">Minimum confidence to auto-approve</p>
           </div>
-          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none">
+          <select className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none shrink-0">
             <option>100%</option><option>95%</option><option>90%</option>
           </select>
         </div>
-        <div className="px-5 py-4 flex items-center justify-between">
-          <div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-semibold text-gray-700">OCR validation</p>
             <p className="text-[10px] text-gray-400">Flag rows with suspected OCR errors</p>
           </div>
-          <button className="relative w-10 h-5 bg-emerald-500 flex items-center">
+          <button className="relative w-10 h-5 bg-emerald-500 flex items-center shrink-0">
             <span className="absolute right-0.5 w-4 h-4 bg-white shadow-sm" />
           </button>
         </div>
