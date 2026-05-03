@@ -287,6 +287,54 @@ function SkeletonRow() {
   );
 }
 
+// ── Reconciliation loading overlay ────────────────────────────────────────────
+
+function ReconciliationLoader() {
+  const STEPS = [
+    { label: "Reading your files",       from: 0  },
+    { label: "Matching transactions",    from: 26 },
+    { label: "Detecting discrepancies",  from: 56 },
+    { label: "Building your report",     from: 82 },
+  ];
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const start = Date.now();
+    const TOTAL = 1650;
+    const id = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const raw = Math.min(elapsed / TOTAL, 1);
+      const eased = 1 - Math.pow(1 - raw, 2.4);
+      setProgress(Math.min(96, Math.round(eased * 100)));
+    }, 40);
+    return () => clearInterval(id);
+  }, []);
+
+  const step = STEPS.reduce((acc, s) => progress >= s.from ? s : acc, STEPS[0]);
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full bg-white">
+      <img src={addupLogo} alt="Addup" className="h-7 mb-12 opacity-90" />
+      <p className="text-[10px] font-bold tracking-[0.18em] text-gray-400 uppercase mb-8">
+        Processing reconciliation
+      </p>
+      <div className="w-[280px] space-y-3">
+        <div className="flex justify-between items-center h-5">
+          <span className="text-sm text-gray-700 font-medium">{step.label}…</span>
+          <span className="text-xs tabular-nums text-gray-400">{progress}%</span>
+        </div>
+        <div className="h-[2px] bg-gray-100 w-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gray-900"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.06, ease: "linear" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Transaction card (side-by-side review) ────────────────────────────────────
 
 function TxCard({ tx, side, highlight, bankLogo }: { tx?: Tx; side: "bank" | "ledger"; highlight?: string[]; bankLogo?: string | null }) {
@@ -2389,11 +2437,15 @@ export default function Engine() {
   }, []);
 
   async function handleReconcile(bank: Tx[], ledger: Tx[], bankName: string, ledgerName: string) {
-    // Navigate first so skeleton renders immediately, then run heavy work
     setReconciling(true);
     setSelectedCase(null);
     setNav("cases");
-    await new Promise(r => setTimeout(r, 40));
+
+    // Minimum display time so the loader is always visible
+    const minDisplay = new Promise<void>(r => setTimeout(r, 1800));
+
+    // Yield one frame so React can paint the loader before heavy work
+    await new Promise<void>(r => setTimeout(r, 20));
 
     const newJobId  = `rec_${Date.now()}_001`;
     const newPeriod = derivePeriod(bank) || derivePeriod(ledger);
@@ -2408,6 +2460,8 @@ export default function Engine() {
     if (!bankInst)   setBankInst(bankName.replace(/\.[^.]+$/, ""));
     if (!ledgerSoft) setLedgerSoft(ledgerName.replace(/\.[^.]+$/, ""));
     setAuditLog([]);
+
+    await minDisplay;
     setReconciling(false);
   }
 
@@ -2567,6 +2621,23 @@ export default function Engine() {
 
         {/* View content */}
         <main className="flex-1 overflow-auto relative">
+
+          {/* Reconciliation loading overlay */}
+          <AnimatePresence>
+            {reconciling && (
+              <motion.div
+                key="recon-loader"
+                className="absolute inset-0 z-50 bg-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ReconciliationLoader />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {nav === "cases"     && <CaseDashboardView
               cases={cases}
               loading={reconciling}
