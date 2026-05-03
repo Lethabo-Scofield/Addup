@@ -404,21 +404,26 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
     amount_score = 1.0;
     reasons.push("Exact amount match");
   } else if (Math.abs(b.amt + l.amt) < 0.01 && Math.abs(b.amt) > 0.01) {
+    // Direction mismatch — critical
     amount_score = 0.75;
     addW("Direction differs — same absolute amount, opposite sign", true);
   } else if (pct <= 0.02) {
     amount_score = 0.9;
     reasons.push(`Amount within 2% tolerance (diff: ${fmt(absDiff)})`);
   } else if (pct <= 0.05) {
-    amount_score = 0.8;
-    addW(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
+    amount_score = 0.82;
+    reasons.push(`Amount within 5% tolerance (diff: ${fmt(absDiff)})`);
   } else if (pct <= 0.10) {
-    amount_score = 0.65;
+    amount_score = 0.70;
     addW(`Amount differs by ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
   } else if (pct <= 0.15) {
-    amount_score = 0.5;
+    amount_score = 0.55;
     addW(`Significant amount difference: ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
+  } else if (pct <= 0.20) {
+    amount_score = 0.35;
+    addW(`Large amount difference: ${fmt(absDiff)} (${Math.round(pct * 100)}%)`, false);
   } else {
+    // > 20% — critical
     amount_score = 0.0;
     addW(`Amount too far apart: ${fmt(absDiff)} (${Math.round(pct * 100)}% difference)`, true);
   }
@@ -436,31 +441,42 @@ function scorePair(b: Tx, l: Tx): CandidateInternal | null {
     date_score = 0.95;
     reasons.push(`Date within 1 day (${b.date} vs ${l.date})`);
   } else if (daysDiff <= 3) {
-    date_score = 0.85;
-    addW(`Date off by ${Math.round(daysDiff)} days: ${b.date} vs ${l.date}`, false);
+    date_score = 0.88;
+    reasons.push(`Date within 3 days (${b.date} vs ${l.date})`);
   } else if (daysDiff <= 7) {
-    date_score = 0.65;
+    date_score = 0.72;
+    addW(`Date off by ${Math.round(daysDiff)} days: ${b.date} vs ${l.date}`, false);
+  } else if (daysDiff <= 10) {
+    date_score = 0.55;
     addW(`Date off by ${Math.round(daysDiff)} days`, false);
   } else if (daysDiff <= 14) {
-    date_score = 0.35;
+    date_score = 0.38;
     addW(`Date off by ${Math.round(daysDiff)} days`, false);
   } else {
+    // > 14 days — critical
     date_score = 0.0;
     addW(`Dates too far apart: ${Math.round(daysDiff)} days`, true);
   }
 
   // ── Description score ─────────────────────────────────────
   const { score: description_score, reason: descReason } = computeDescScore(normB, normL, b.desc, l.desc);
-  if (description_score >= 0.6) reasons.push(descReason);
-  else addW(descReason, false);
+  if (description_score >= 0.6) {
+    reasons.push(descReason);
+  } else if (description_score >= 0.4) {
+    // Weak but not disqualifying — soft warning
+    addW(descReason, false);
+  } else {
+    // Extremely low similarity — critical
+    addW(descReason, true);
+  }
 
-  // OCR artifact soft warning
+  // OCR artifact — always soft
   if (b.qualityIssues?.some(q => q.toLowerCase().includes("ocr")) ||
       l.qualityIssues?.some(q => q.toLowerCase().includes("ocr"))) {
     addW("OCR artifacts detected — normalized description used for matching", false);
   }
 
-  // Skip if amount is zero and other signals aren't strong enough
+  // Skip if amount is zero and description + date aren't strong enough
   if (amount_score === 0.0 && !(description_score >= 0.95 && date_score >= 0.85)) return null;
 
   const final_score = 0.45 * amount_score + 0.30 * description_score + 0.25 * date_score;
@@ -543,7 +559,12 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
     const hasCompeting  = available.length > 1   && (best.final_score - available[1].final_score < 0.05);
     const criticalWarnings = [...best.criticalWarnings];
     const softWarnings     = [...best.softWarnings];
-    if (hasCompeting) criticalWarnings.push("Duplicate candidate conflict: multiple similar matches found");
+    // Competing candidates: only critical when gap is very tight; soft when just close
+    if (hasCompeting && !clearlyBetter) {
+      criticalWarnings.push("Duplicate candidate conflict: multiple similar matches found");
+    } else if (hasCompeting && clearlyBetter) {
+      softWarnings.push("Multiple similar candidates found — best selected");
+    }
 
     const scoreBreakdown: ScoreBreakdown = {
       amount_score: best.amount_score, date_score: best.date_score,
@@ -554,20 +575,33 @@ function runReconciliation(bank: Tx[], ledger: Tx[]): ReconRow[] {
     const hasCritical  = criticalWarnings.length > 0;
 
     // ── Classification ────────────────────────────────────────
-    // Safe auto-match: score >= 0.72, amount <= 10%, date <= 7d, no critical warnings, clearly best
-    const safeAutoMatch =
-      best.final_score >= 0.72 &&
+    //
+    // MATCHED:       score >= 0.75, amtPct <= 10%, dateDiff <= 7d, no critical
+    // POSSIBLE:      score >= 0.60, no critical
+    //                  OR score >= 0.70, no critical (force upgrade from manual)
+    // MANUAL REVIEW: score 0.40–0.60, OR any critical warning
+    // UNMATCHED:     score < 0.40
+    //
+    const isMatched =
+      best.final_score >= 0.75 &&
       amtPct           <= 0.10 &&
       dateDiffDays     <= 7    &&
-      !hasCritical             &&
-      clearlyBetter;
+      !hasCritical;
+
+    const forceUpgradeToPossible =
+      best.final_score >= 0.70 &&
+      !hasCritical;
+
+    const isPossible =
+      best.final_score >= 0.60 &&
+      !hasCritical;
 
     let status: TxStatus;
-    if ((best.final_score >= 0.82 || safeAutoMatch) && !hasCritical) {
+    if (isMatched) {
       status = "matched";
-    } else if (best.final_score >= 0.55 && !hasCritical && dateDiffDays <= 7 && amtPct <= 0.10) {
+    } else if (isPossible || forceUpgradeToPossible) {
       status = "possible_match";
-    } else if (best.final_score >= 0.38) {
+    } else if (best.final_score >= 0.40) {
       status = "manual_review";
     } else {
       status = "unmatched_bank";
