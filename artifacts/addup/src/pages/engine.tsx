@@ -956,18 +956,20 @@ function ReviewQueueView({
   addAudit: (a: Omit<AuditEntry, "ts" | "user">) => void;
   jobId: string;
 }) {
-  const [confFilter, setConfFilter] = useState(100);
   const [statusFilter, setStatusFilter] = useState<TxStatus | "all">("all");
   const [selected, setSelected] = useState<ReconRow | null>(null);
 
-  const queue = rows.filter(r =>
-    (r.status === "possible_match" || r.status === "manual_review" ||
-     r.status === "invalid_row"   || r.status === "unmatched_bank" ||
-     r.status === "unmatched_ledger") &&
-    r.confidence <= confFilter &&
-    (statusFilter === "all" || r.status === statusFilter) &&
-    !r.userStatus
-  );
+  const REVIEW_STATUSES = ["possible_match","manual_review","invalid_row","unmatched_bank","unmatched_ledger"] as TxStatus[];
+
+  const allPending = rows.filter(r => REVIEW_STATUSES.includes(r.status) && !r.userStatus);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: allPending.length };
+    REVIEW_STATUSES.forEach(s => { c[s] = allPending.filter(r => r.status === s).length; });
+    return c;
+  }, [allPending]);
+
+  const queue = statusFilter === "all" ? allPending : allPending.filter(r => r.status === statusFilter);
 
   function handleAction(row: ReconRow, action: "approve" | "reject" | "manual") {
     const actionType: ActionType = action === "approve" ? "approve_match" : action === "reject" ? "reject_match" : "mark_manual";
@@ -979,18 +981,42 @@ function ReviewQueueView({
 
   return (
     <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Needs Review</h1>
-          <p className="text-sm text-gray-400 mt-1">{queue.length} item{queue.length !== 1 && "s"} need your sign-off</p>
-        </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
-          className="border border-gray-200 text-xs px-2 h-8 text-gray-700 focus:outline-none self-start sm:self-auto">
-          <option value="all">All types</option>
-          {(["possible_match","manual_review","invalid_row","unmatched_bank","unmatched_ledger"] as TxStatus[]).map(s =>
-            <option key={s} value={s}>{STATUS_CFG[s].label}</option>
-          )}
-        </select>
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Needs Review</h1>
+        <p className="text-sm text-gray-400">{counts.all} item{counts.all !== 1 && "s"} need your sign-off</p>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        <button
+          onClick={() => setStatusFilter("all")}
+          className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold border transition-colors
+            ${statusFilter === "all"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-800"}`}
+        >
+          All
+          <span className={`text-[10px] font-bold px-1 py-0.5 min-w-[18px] text-center
+            ${statusFilter === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+            {counts.all}
+          </span>
+        </button>
+        {REVIEW_STATUSES.filter(s => counts[s] > 0).map(s => (
+          <button key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold border transition-colors
+              ${statusFilter === s
+                ? "bg-gray-900 text-white border-gray-900"
+                : "text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-800"}`}
+          >
+            <span className={`w-1.5 h-1.5 shrink-0 ${STATUS_CFG[s].dot}`} />
+            {STATUS_CFG[s].short}
+            <span className={`text-[10px] font-bold px-1 py-0.5 min-w-[18px] text-center
+              ${statusFilter === s ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+              {counts[s]}
+            </span>
+          </button>
+        ))}
       </div>
 
       {queue.length === 0 ? (
