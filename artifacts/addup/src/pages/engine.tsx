@@ -154,7 +154,7 @@ function useGrokExplain() {
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ question, context: ctx }),
       });
-      if (!res.ok || !res.body) { setErr("Could not reach Grok."); setStr(false); return; }
+      if (!res.ok || !res.body) { setErr("Match analysis is temporarily unavailable."); setStr(false); return; }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -619,7 +619,7 @@ function ReviewPanel({
           </div>
         )}
 
-        {/* Ask Grok */}
+        {/* Match analysis (in-product, no third-party branding) */}
         <div className="px-5 py-4 border-b border-gray-100">
           <button
             onClick={() => {
@@ -634,7 +634,7 @@ function ReviewPanel({
             className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            {grokOpen ? "Grok explanation" : "Ask Grok to explain this"}
+            {grokOpen ? "Match analysis" : "Open match analysis"}
             <ChevronDown className={`h-3 w-3 transition-transform ${grokOpen ? "rotate-180" : ""}`} />
           </button>
           <AnimatePresence>
@@ -647,7 +647,7 @@ function ReviewPanel({
                       <motion.div animate={{ rotate:360 }} transition={{ duration:1, repeat:Infinity, ease:"linear" }}>
                         <RefreshCw className="h-3.5 w-3.5" />
                       </motion.div>
-                      Grok is thinking...
+                      Analysing match…
                     </div>
                   )}
                   {resp && <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{resp}</p>}
@@ -1171,42 +1171,104 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
 // see, at a glance, which signals agreed (✓) and which did not (✗), and
 // what the final confidence is. Modeled on §4 of the UX vision.
 
-// Pass/fail thresholds for the per-signal explanation panel. These are
-// deliberately aligned with the matcher's own score buckets in
-// src/engine/matcher.ts so that the UI can never contradict the engine
-// (e.g. claiming "amount failed" on a row the engine considered a
-// match). Reference values:
-//   amount:      0.78 corresponds to "within 5%" (matcher: 0.92 = ≤2%, 0.78 = ≤5%)
-//   reference:   0.60 — the floor the matcher uses to consider a reference meaningful
-//   date:        0.80 — matcher gives 0.80 at ≤7 days, 0.92 at ≤3 days
-//   description: 0.60 — the matcher's own "good enough" cutoff (matcher.ts:149)
+// Pass/fail thresholds for the per-signal explanation panel.
+//
+// IMPORTANT: these are pinned to the engine's "still helpful" floor —
+// i.e. the score below which the matcher itself stops weighting the
+// signal positively in matcher.ts. We deliberately use a permissive
+// floor (not a "strict / good-quality" floor) because the panel must
+// NEVER contradict the engine's verdict: if the engine auto-cleared a
+// case, the explanation must not show a red ✗ on any signal.
+// Stronger signals are surfaced separately via the EXACT badge
+// (≥0.99) and the Deterministic-match chip.
+//
+// Reference values (see src/engine/matcher.ts):
+//   amount:      0.55 ≈ "within ~10%" floor that the matcher still scores positively
+//   reference:   0.60 — floor at which the matcher treats reference as meaningful
+//   date:        0.55 ≈ matcher's score for >7 day lag; still weighted into the total
+//   description: 0.60 — matcher.ts:149's own "good enough" cutoff
 const SIGNAL_THRESHOLDS = {
-  amount:      0.78,
+  amount:      0.55,
   reference:   0.60,
-  date:        0.80,
+  date:        0.55,
   description: 0.60,
 };
 
-function SignalRow({ label, score, threshold, hint }: {
+// Point allocation per signal, mirrored from the matcher's weights in
+// src/engine/matcher.ts (WEIGHT_AMOUNT etc). Surfaced in the UI as
+// "45/45" style scoring so reviewers see the audit-grade quantitative
+// breakdown they're used to from spreadsheet reconciliation.
+const SIGNAL_POINTS = { amount: 45, reference: 25, date: 15, description: 15 };
+
+// Reasoning level — a calibrated tier label that helps reviewers know
+// at a glance how much trust to place in the match. Tied to the
+// engine's blended confidence so it can never disagree with the
+// engine's overall verdict. Subtitle text is deliberately kept
+// general — claims about *which* signals are exact belong on the
+// Deterministic-vs-Probabilistic chip (isDeterministic), not here.
+function reasoningLevel(confidence: number): { label: string; tone: "ok" | "warn" | "danger" | "neutral"; desc: string } {
+  if (confidence >= 98) return { label:"Exact",    tone:"ok",      desc:"Very high confidence" };
+  if (confidence >= 85) return { label:"Strong",   tone:"ok",      desc:"Minor variance only" };
+  if (confidence >= 65) return { label:"Probable", tone:"warn",    desc:"Heuristic / fuzzy match" };
+  return                       { label:"Weak",     tone:"danger",  desc:"Human review recommended" };
+}
+
+// "Deterministic" means every signal is essentially exact (no fuzzy
+// interpretation). "Probabilistic" means the engine relied on one or
+// more fuzzy comparisons. This is the distinction auditors care about.
+function isDeterministic(sb: { amount_score: number; reference_score: number; date_score: number; description_score: number }): boolean {
+  return sb.amount_score >= 0.99 && sb.reference_score >= 0.99 && sb.date_score >= 0.99 && sb.description_score >= 0.99;
+}
+
+// Outgoing payment / Incoming receipt label, from the bank-side sign.
+// Negative bank amount = money leaving the account (payment).
+function txDirection(amt: number | undefined): { label: string; flow: string; tone: "red" | "green" } | null {
+  if (amt == null || amt === 0) return null;
+  return amt < 0
+    ? { label:"Outgoing Payment", flow:"Bank debit ↔ Ledger bank credit",  tone:"red" }
+    : { label:"Incoming Receipt", flow:"Bank credit ↔ Ledger bank debit",  tone:"green" };
+}
+
+function postingLag(bankDate?: string, ledgerDate?: string): { days: number; note: string; tone: "ok" | "warn" } | null {
+  if (!bankDate || !ledgerDate) return null;
+  const b = Date.parse(bankDate), l = Date.parse(ledgerDate);
+  if (!isFinite(b) || !isFinite(l)) return null;
+  const days = Math.round(Math.abs(b - l) / 86_400_000);
+  if (days === 0) return { days, note:"Posted same day",                              tone:"ok"   };
+  if (days <= 3)  return { days, note:"Within typical settlement window",             tone:"ok"   };
+  if (days <= 7)  return { days, note:"Within acceptable settlement tolerance",       tone:"ok"   };
+  return                 { days, note:"Outside typical settlement window — verify",   tone:"warn" };
+}
+
+function normRefForCompare(ref?: string): string {
+  return (ref ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function SignalRow({ label, score, threshold, points }: {
   label:     string;
   score:     number;
   threshold: number;
-  hint?:     string;
+  points:    number;
 }) {
-  const pct  = Math.round(score * 100);
-  const pass = score >= threshold;
+  const pct      = Math.round(score * 100);
+  const earned   = Math.round(score * points);   // "45/45" style — audit-readable
+  const pass     = score >= threshold;
+  const exact    = score >= 0.99;
   return (
-    <li className="flex items-center justify-between py-1.5">
+    <li className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2 min-w-0">
         {pass
           ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
           : <XCircle      className="h-3.5 w-3.5 text-red-500     shrink-0" />}
         <span className="text-xs font-semibold text-gray-700">{label}</span>
-        {hint && <span className="text-[11px] text-gray-400 truncate">· {hint}</span>}
+        {exact && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5">EXACT</span>}
       </div>
-      <span className={`text-[11px] font-mono tabular-nums ${pass ? "text-emerald-700" : "text-red-600"}`}>
-        {pct}%
-      </span>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-[10px] text-gray-400 tabular-nums">{pct}%</span>
+        <span className={`text-xs font-mono font-bold tabular-nums min-w-[44px] text-right ${pass ? "text-gray-800" : "text-red-600"}`}>
+          {earned}/{points}
+        </span>
+      </div>
     </li>
   );
 }
@@ -1214,37 +1276,117 @@ function SignalRow({ label, score, threshold, hint }: {
 function MatchExplanationPanel({ c }: { c: DiscrepancyCase }) {
   const sb = c.scoreBreakdown!;
   const signals = [
-    { key:"amount",      score: sb.amount_score,      threshold: SIGNAL_THRESHOLDS.amount,      label:"Amount match" },
-    { key:"reference",   score: sb.reference_score,   threshold: SIGNAL_THRESHOLDS.reference,   label:"Reference match" },
-    { key:"date",        score: sb.date_score,        threshold: SIGNAL_THRESHOLDS.date,        label:"Date match" },
-    { key:"description", score: sb.description_score, threshold: SIGNAL_THRESHOLDS.description, label:"Description similarity" },
+    { key:"amount",      score: sb.amount_score,      threshold: SIGNAL_THRESHOLDS.amount,      points: SIGNAL_POINTS.amount,      label:"Amount match" },
+    { key:"reference",   score: sb.reference_score,   threshold: SIGNAL_THRESHOLDS.reference,   points: SIGNAL_POINTS.reference,   label:"Reference match" },
+    { key:"date",        score: sb.date_score,        threshold: SIGNAL_THRESHOLDS.date,        points: SIGNAL_POINTS.date,        label:"Date match" },
+    { key:"description", score: sb.description_score, threshold: SIGNAL_THRESHOLDS.description, points: SIGNAL_POINTS.description, label:"Description similarity" },
   ];
   const failed = signals.filter(s => s.score < s.threshold);
-  // Plain-English summary at the top so a reviewer doesn't have to
-  // interpret four scores to know what to do.
+  const totalEarned = signals.reduce((s, x) => s + Math.round(x.score * x.points), 0);
+  const totalPoints = signals.reduce((s, x) => s + x.points, 0);
+
+  const level         = reasoningLevel(c.confidence);
+  const deterministic = isDeterministic(sb);
+  const bankTx        = c.bank_txs[0];
+  const ledgerTx      = c.ledger_txs[0];
+  const direction     = txDirection(bankTx?.amt ?? ledgerTx?.amt);
+  const lag           = postingLag(bankTx?.date, ledgerTx?.date);
+  const bankRef       = bankTx?.reference?.trim();
+  const ledgerRef     = ledgerTx?.reference?.trim();
+  const refsMatch     = !!bankRef && !!ledgerRef && normRefForCompare(bankRef) === normRefForCompare(ledgerRef);
+
   const summary = failed.length === 0
     ? "All four matching signals agree. Safe to approve."
     : failed.length === 1
     ? `One signal disagrees (${failed[0].label.toLowerCase()}). Review the values below before approving.`
     : `${failed.length} signals disagree. Likely needs manual review or a corrected ledger entry.`;
 
+  const levelToneCls =
+    level.tone === "ok"     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : level.tone === "warn" ? "bg-amber-50 text-amber-700 border-amber-200"
+    : level.tone === "danger" ? "bg-red-50 text-red-700 border-red-200"
+    : "bg-gray-50 text-gray-600 border-gray-200";
+
   return (
     <div className="px-5 py-4 bg-gray-50/50">
-      <div className="flex items-center justify-between mb-2">
+      {/* Header row: panel title + reasoning level chip + certainty chip */}
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Match explanation</p>
-        <span className={`text-[10px] font-bold px-2 py-0.5 border
-          ${c.confidence >= 90 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-          : c.confidence >= 70 ? "bg-amber-50 text-amber-700 border-amber-200"
-          : "bg-red-50 text-red-700 border-red-200"}`}>
-          {c.confidence}% confidence
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[10px] font-bold px-2 py-0.5 border ${levelToneCls}`}>
+            {level.label.toUpperCase()} · {level.desc}
+          </span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 border
+            ${deterministic ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+            {deterministic ? "Deterministic match" : "Probabilistic match"}
+          </span>
+        </div>
       </div>
+
       <p className="text-xs text-gray-600 leading-relaxed mb-3">{summary}</p>
+
+      {/* Direction + posting lag — at-a-glance flow info */}
+      {(direction || lag) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          {direction && (
+            <div className="border border-gray-200 bg-white px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                {direction.tone === "red"
+                  ? <ArrowLeftRight className="h-3 w-3 text-red-500" />
+                  : <ArrowLeftRight className="h-3 w-3 text-emerald-500" />}
+                <span className="text-[11px] font-bold text-gray-800">{direction.label}</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-0.5">{direction.flow}</p>
+            </div>
+          )}
+          {lag && (
+            <div className="border border-gray-200 bg-white px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <Clock className={`h-3 w-3 ${lag.tone === "ok" ? "text-emerald-500" : "text-amber-500"}`} />
+                <span className="text-[11px] font-bold text-gray-800">
+                  Posting lag: {lag.days} day{lag.days === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-0.5">{lag.note}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Weighted scoring table */}
       <ul className="divide-y divide-gray-100 border border-gray-200 bg-white px-3">
         {signals.map(s => (
-          <SignalRow key={s.key} label={s.label} score={s.score} threshold={s.threshold} />
+          <SignalRow key={s.key} label={s.label} score={s.score} threshold={s.threshold} points={s.points} />
         ))}
+        <li className="flex items-center justify-between py-2 bg-gray-50 -mx-3 px-3 border-t border-gray-200">
+          <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">Final Confidence</span>
+          <span className="text-sm font-mono font-bold text-gray-900 tabular-nums">{totalEarned}/{totalPoints}</span>
+        </li>
       </ul>
+
+      {/* Normalized reference comparison — finance teams care a lot
+          about reference / EFT / cheque alignment. */}
+      {(bankRef || ledgerRef) && (
+        <div className="mt-3 border border-gray-200 bg-white px-3 py-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Normalized references</p>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 border
+              ${refsMatch ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+              {refsMatch ? "✓ Aligned" : "✗ Differ"}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-gray-400 mb-0.5">Bank-side</p>
+              <p className="text-xs font-mono text-gray-800 truncate">{bankRef || <span className="text-gray-300 italic">none</span>}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 mb-0.5">Ledger-side</p>
+              <p className="text-xs font-mono text-gray-800 truncate">{ledgerRef || <span className="text-gray-300 italic">none</span>}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1414,7 +1556,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
             <button onClick={handleGrok}
               className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors">
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              {grokOpen ? "AI Analysis" : "Get AI analysis"}
+              {grokOpen ? "Match analysis" : "Open match analysis"}
               <ChevronDown className={`h-3 w-3 transition-transform ${grokOpen ? "rotate-180" : ""}`} />
             </button>
             <AnimatePresence>
@@ -1427,7 +1569,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
                         <motion.div animate={{ rotate:360 }} transition={{ duration:1, repeat:Infinity, ease:"linear" }}>
                           <RefreshCw className="h-3.5 w-3.5" />
                         </motion.div>
-                        Analysing case…
+                        Analysing match…
                       </div>
                     )}
                     {resp && <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{resp}</p>}
@@ -1454,9 +1596,14 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
             <button onClick={onClose} className="ml-auto text-xs text-gray-400 hover:text-gray-700">Close</button>
           </div>
         ) : isAuto ? (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">This case was auto-resolved by the engine.</span>
-            <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-700">Close</button>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-bold px-2 py-0.5 border bg-emerald-50 text-emerald-700 border-emerald-200">
+                ✓ System-cleared
+              </span>
+              <span className="text-xs text-gray-500 truncate">Auto-approved by the reconciliation engine.</span>
+            </div>
+            <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-700 shrink-0">Close</button>
           </div>
         ) : (
           <>
