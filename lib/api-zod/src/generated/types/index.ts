@@ -7,7 +7,3 @@
  */
 
 export * from "./healthStatus";
-export * from "./waitlistEntry";
-export * from "./waitlistJoinRequest";
-export * from "./waitlistStats";
-export * from "./errorResponse";

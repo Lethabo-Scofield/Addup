@@ -1,60 +1,45 @@
-# Workspace
+# [Project name]
 
-## Overview
+_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
 
-pnpm workspace monorepo using TypeScript. **Addup** — an AI-powered financial reconciliation SaaS. Built with Vite + React frontend and Express backend. Features full case-level reconciliation: automatic case generation, hypothesis/evidence engine, AI-suggested actions, and an approval workflow.
+## Run & Operate
+
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **Frontend**: React + Vite, Tailwind v4, Radix UI, shadcn/ui, framer-motion, wouter (routing), TanStack Query
-- **API framework**: Express 5 with pino logging
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec at `lib/api-spec/openapi.yaml`)
-- **Build**: esbuild (for api-server)
-- **Email**: Resend (optional — skipped gracefully if `RESEND_API_KEY` not set)
+- pnpm workspaces, Node.js 24, TypeScript 5.9
+- API: Express 5
+- DB: PostgreSQL + Drizzle ORM
+- Validation: Zod (`zod/v4`), `drizzle-zod`
+- API codegen: Orval (from OpenAPI spec)
+- Build: esbuild (CJS bundle)
 
-## Artifacts
+## Where things live
 
-- **artifacts/addup** — React + Vite landing page (preview path: `/`)
-- **artifacts/api-server** — Express API server (preview path: `/api`)
+_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
 
-## Key Commands
+## Architecture decisions
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
-- `pnpm --filter @workspace/addup run dev` — run frontend locally
+_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
 
-## Workspace Packages
+## Product
 
-- `artifacts/addup` — landing page frontend (`@workspace/addup`)
-- `artifacts/api-server` — Express API server (`@workspace/api-server`)
-- `lib/api-spec` — OpenAPI spec (`lib/api-spec/openapi.yaml`)
-- `lib/api-zod` — Zod validators generated from OpenAPI spec (`@workspace/api-zod`)
-- `lib/api-client-react` — TanStack Query hooks generated from OpenAPI spec (`@workspace/api-client-react`)
-- `lib/db` — Drizzle ORM schema + client (`@workspace/db`)
+_Describe the high-level user-facing capabilities of this app once they exist._
 
-## Database Schema
+## User preferences
 
-- `waitlist` table — stores waitlist signups (id, email, company, role, created_at)
+_Populate as you build — explicit user instructions worth remembering across sessions._
 
-## API Endpoints
+## Gotchas
 
-- `GET /api/healthz` — health check
-- `POST /api/waitlist` — join waitlist (email required, company/role optional)
-- `GET /api/waitlist/stats` — public waitlist count
+_Populate as you build — sharp edges, "always run X before Y" rules._
 
-## Environment Variables
+## Pointers
 
-- `DATABASE_URL` — PostgreSQL connection string (provisioned automatically)
-- `RESEND_API_KEY` — optional; enables waitlist confirmation emails
-- `RESEND_FROM_EMAIL` — optional; sender address (defaults to `Addup <onboarding@resend.dev>`)
-
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
