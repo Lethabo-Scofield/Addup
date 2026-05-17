@@ -83,31 +83,50 @@ function Loader({ onDone }: { onDone: () => void }) {
       exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
       className="fixed inset-0 z-[999] bg-white flex flex-col items-center justify-center"
     >
-      {/* Logo */}
-      <motion.img
-        src={addupLogo} alt="Addup"
+      {/* Logo with spinning ring */}
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="h-20 w-auto mb-10"
-      />
+        className="relative flex items-center justify-center mb-8"
+        style={{ width: 140, height: 140 }}
+      >
+        {/* Spinning ring around the logo */}
+        <motion.svg
+          viewBox="0 0 100 100"
+          className="absolute inset-0 w-full h-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+        >
+          <circle
+            cx="50" cy="50" r="46"
+            fill="none"
+            stroke="#e5e7eb"
+            strokeWidth="2"
+          />
+          <circle
+            cx="50" cy="50" r="46"
+            fill="none"
+            stroke="#111827"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="72 289"
+          />
+        </motion.svg>
 
-      {/* Progress bar track */}
-      <div className="w-48 h-[2px] bg-gray-100 overflow-hidden">
-        <motion.div
-          className="h-full bg-gray-900"
-          initial={{ width: "0%" }}
-          animate={{ width: "100%" }}
-          transition={{ duration: LOAD_MS / 1000 - 0.3, ease: [0.4, 0, 0.2, 1] }}
+        <img
+          src={addupLogo}
+          alt="Addup"
+          className="h-16 w-auto relative z-10"
         />
-      </div>
+      </motion.div>
 
       {/* Status line */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.4 }}
-        className="mt-5 text-[11px] font-medium text-gray-400 tracking-wide"
+        className="text-[11px] font-medium text-gray-400 tracking-wide"
       >
         Preparing your workspace
       </motion.p>
