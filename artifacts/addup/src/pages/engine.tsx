@@ -210,25 +210,28 @@ function ConfBar({ pct }: { pct: number }) {
 
 // ── Case type + risk badges ────────────────────────────────────────────────────
 
+// Accounting-aware labels. Finance teams trust accounting vocabulary
+// (Cleared, Outstanding, Variance, Ledger-side, Bank-side) — this is what
+// they would write themselves on a reconciliation worksheet.
 const CASE_TYPE_CFG: Record<CaseType, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
-  AUTO_MATCHED:               { label:"Auto-matched",    bg:"bg-emerald-50",  text:"text-emerald-700", border:"border-emerald-200", icon:<ShieldCheck className="h-3 w-3"/>    },
-  TIMING_DIFFERENCE:          { label:"Timing",          bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<Clock className="h-3 w-3"/>          },
-  BANK_FEES:                  { label:"Bank Fee",        bg:"bg-orange-50",   text:"text-orange-700",  border:"border-orange-200",  icon:<Zap className="h-3 w-3"/>            },
-  MISSING_LEDGER_ENTRY:       { label:"Missing Ledger",  bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<AlertTriangle className="h-3 w-3"/>  },
-  MISSING_BANK_ENTRY:         { label:"Missing Bank",    bg:"bg-purple-50",   text:"text-purple-700",  border:"border-purple-200",  icon:<AlertTriangle className="h-3 w-3"/>  },
-  DUPLICATE_ENTRY:            { label:"Duplicate",       bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
-  AMOUNT_VARIANCE:            { label:"Variance",        bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
-  DESCRIPTION_MISMATCH:       { label:"Desc Mismatch",   bg:"bg-indigo-50",   text:"text-indigo-700",  border:"border-indigo-200",  icon:<Info className="h-3 w-3"/>           },
-  MANY_TO_ONE_MATCH:          { label:"Group Match",     bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
-  ONE_TO_MANY_MATCH:          { label:"Split Match",     bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
-  FX_OR_ROUNDING_DIFFERENCE:  { label:"Rounding",        bg:"bg-cyan-50",     text:"text-cyan-700",    border:"border-cyan-200",    icon:<ArrowLeftRight className="h-3 w-3"/> },
-  UNKNOWN:                    { label:"Unknown",         bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
-  PROPOSED_MATCH:             { label:"Proposed Match",  bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<ShieldCheck className="h-3 w-3"/>    },
-  NEEDS_REVIEW:               { label:"Needs Review",    bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
-  DUPLICATE_BANK_TRANSACTION: { label:"Duplicate Bank",  bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
-  DUPLICATE_LEDGER_ENTRY:     { label:"Duplicate Ledger",bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
-  OPENING_BALANCE:            { label:"Opening Balance", bg:"bg-slate-50",    text:"text-slate-700",   border:"border-slate-200",   icon:<Info className="h-3 w-3"/>           },
-  UNKNOWN_DISCREPANCY:        { label:"Unknown",         bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
+  AUTO_MATCHED:               { label:"Cleared",                bg:"bg-emerald-50",  text:"text-emerald-700", border:"border-emerald-200", icon:<ShieldCheck className="h-3 w-3"/>    },
+  PROPOSED_MATCH:             { label:"Proposed match",         bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<ShieldCheck className="h-3 w-3"/>    },
+  NEEDS_REVIEW:               { label:"Needs review",           bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
+  TIMING_DIFFERENCE:          { label:"Timing difference",      bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<Clock className="h-3 w-3"/>          },
+  BANK_FEES:                  { label:"Bank charge",            bg:"bg-orange-50",   text:"text-orange-700",  border:"border-orange-200",  icon:<Zap className="h-3 w-3"/>            },
+  MISSING_LEDGER_ENTRY:       { label:"Outstanding (ledger)",   bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<AlertTriangle className="h-3 w-3"/>  },
+  MISSING_BANK_ENTRY:         { label:"Outstanding (bank)",     bg:"bg-purple-50",   text:"text-purple-700",  border:"border-purple-200",  icon:<AlertTriangle className="h-3 w-3"/>  },
+  DUPLICATE_ENTRY:            { label:"Duplicate posting",      bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  DUPLICATE_BANK_TRANSACTION: { label:"Duplicate bank entry",   bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  DUPLICATE_LEDGER_ENTRY:     { label:"Duplicate journal",      bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  AMOUNT_VARIANCE:            { label:"Amount variance",        bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
+  DESCRIPTION_MISMATCH:       { label:"Description mismatch",   bg:"bg-indigo-50",   text:"text-indigo-700",  border:"border-indigo-200",  icon:<Info className="h-3 w-3"/>           },
+  MANY_TO_ONE_MATCH:          { label:"Grouped journal",        bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
+  ONE_TO_MANY_MATCH:          { label:"Split journal",          bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
+  FX_OR_ROUNDING_DIFFERENCE:  { label:"FX / rounding",          bg:"bg-cyan-50",     text:"text-cyan-700",    border:"border-cyan-200",    icon:<ArrowLeftRight className="h-3 w-3"/> },
+  OPENING_BALANCE:            { label:"Carry-forward balance",  bg:"bg-slate-50",    text:"text-slate-700",   border:"border-slate-200",   icon:<Info className="h-3 w-3"/>           },
+  UNKNOWN_DISCREPANCY:        { label:"Unclassified",           bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
+  UNKNOWN:                    { label:"Unclassified",           bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
 };
 
 function CaseTypeBadge({ type }: { type: CaseType }) {
@@ -1006,10 +1009,16 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   onSelectCase: (c: DiscrepancyCase) => void;
   onNav: (n: NavId) => void;
 }) {
-  const [filter, setFilter] = useState<CaseFilter>("all");
+  // Default to "Needs Review" so finance teams land directly on the
+  // work that requires their attention — auto-cleared cases are kept
+  // collapsed in their own tab. Principle: reduce cognitive load.
+  const [filter, setFilter] = useState<CaseFilter>("needs_review");
 
   const auto       = cases.filter(c => c.type === "AUTO_MATCHED");
-  const actionable = cases.filter(c => c.type !== "AUTO_MATCHED");
+  const opening    = cases.filter(c => c.type === "OPENING_BALANCE");
+  const actionable = cases.filter(c => c.type !== "AUTO_MATCHED" && c.type !== "OPENING_BALANCE");
+  const needsReview = actionable.filter(c => c.status === "needs_review" && !c.userDecision);
+  const proposed    = actionable.filter(c => c.status === "proposed"     && !c.userDecision);
   const pending    = actionable.filter(c => !c.userDecision);
   const highRisk   = actionable.filter(c => c.risk === "high" && !c.userDecision);
   const decided    = actionable.filter(c => !!c.userDecision);
@@ -1017,19 +1026,19 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   const filtered = filter === "auto"
     ? auto
     : filter === "needs_review"
-    ? actionable.filter(c => c.status === "needs_review" && !c.userDecision)
+    ? needsReview
     : filter === "proposed"
-    ? actionable.filter(c => c.status === "proposed" && !c.userDecision)
+    ? proposed
     : filter === "resolved"
     ? decided
     : actionable;
 
-  const tabs: { key: CaseFilter; label: string; count: number }[] = [
-    { key:"all",          label:"All Cases",     count: actionable.length },
-    { key:"needs_review", label:"Needs Review",  count: actionable.filter(c => c.status === "needs_review" && !c.userDecision).length },
-    { key:"proposed",     label:"Proposed",      count: actionable.filter(c => c.status === "proposed" && !c.userDecision).length },
-    { key:"resolved",     label:"Resolved",      count: decided.length },
-    { key:"auto",         label:"Auto-matched",  count: auto.length },
+  const tabs: { key: CaseFilter; label: string; count: number; tone?: "warn" | "ok" }[] = [
+    { key:"needs_review", label:"Needs review",  count: needsReview.length, tone: needsReview.length ? "warn" : undefined },
+    { key:"proposed",     label:"Proposed",      count: proposed.length },
+    { key:"resolved",     label:"Resolved",      count: decided.length, tone:"ok" },
+    { key:"all",          label:"All open",      count: actionable.length },
+    { key:"auto",         label:"Cleared",       count: auto.length, tone:"ok" },
   ];
 
   if (loading) {
@@ -1073,22 +1082,37 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   return (
     <div className="p-6 sm:p-8 max-w-4xl mx-auto w-full">
 
-      {/* Header */}
+      {/* Header — leads with what the user needs to do, not how many
+          rows there are. */}
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900">Case Review</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-          {cases.length} cases · {auto.length} auto-resolved · {pending.length} need attention
-          {highRisk.length > 0 && <span className="text-red-500 font-semibold"> · {highRisk.length} high risk</span>}
+        <p className="text-sm text-gray-500 mt-1">
+          {pending.length === 0 ? (
+            <>
+              <span className="text-emerald-700 font-semibold">Nothing needs your attention.</span>{" "}
+              {auto.length} transactions cleared automatically.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-gray-700">{pending.length}</span>
+              {" "}item{pending.length === 1 ? "" : "s"} need your attention.
+              {" "}<span className="text-gray-400">{auto.length} cleared automatically{opening.length > 0 && <> · {opening.length} carry-forward</>}.</span>
+              {highRisk.length > 0 && (
+                <span className="text-red-600 font-semibold"> {highRisk.length} high risk.</span>
+              )}
+            </>
+          )}
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — accounting language, with "Cleared" first to anchor a
+          sense of completeness. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label:"Auto-resolved",  val:auto.length,     color:"text-emerald-700", bg:"bg-emerald-50",  border:"border-emerald-100" },
-          { label:"Needs attention",val:pending.length,  color:"text-amber-700",   bg:"bg-amber-50",    border:"border-amber-100"   },
-          { label:"High risk",      val:highRisk.length, color:"text-red-700",     bg:"bg-red-50",      border:"border-red-100"     },
-          { label:"Resolved",       val:decided.length,  color:"text-blue-700",    bg:"bg-blue-50",     border:"border-blue-100"    },
+          { label:"Cleared",        val:auto.length,        color:"text-emerald-700", bg:"bg-emerald-50",  border:"border-emerald-100" },
+          { label:"Needs review",   val:needsReview.length, color:"text-amber-700",   bg:"bg-amber-50",    border:"border-amber-100"   },
+          { label:"High risk",      val:highRisk.length,    color:"text-red-700",     bg:"bg-red-50",      border:"border-red-100"     },
+          { label:"Resolved by you",val:decided.length,     color:"text-blue-700",    bg:"bg-blue-50",     border:"border-blue-100"    },
         ].map(({ label, val, color, bg, border }) => (
           <div key={label} className={`border ${border} ${bg} px-4 py-3`}>
             <p className={`text-2xl font-bold ${color}`}>{val}</p>
@@ -1097,22 +1121,30 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
         ))}
       </div>
 
-      {/* Filter tabs */}
+      {/* Filter tabs — Needs review is first and tinted amber when
+          non-zero so it pulls the eye. Cleared is last (low priority). */}
       <div className="flex flex-wrap gap-1.5 mb-4">
-        {tabs.map(tab => (
-          <button key={tab.key} onClick={() => setFilter(tab.key)}
-            className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold border transition-colors
-              ${filter === tab.key
-                ? "bg-gray-900 text-white border-gray-900"
-                : "text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-800"}`}
-          >
-            {tab.label}
-            <span className={`text-[10px] font-bold px-1 py-0.5 min-w-[18px] text-center
-              ${filter === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const active = filter === tab.key;
+          const baseTone =
+            tab.tone === "warn"
+              ? "text-amber-700 border-amber-200 hover:border-amber-400"
+              : tab.tone === "ok"
+              ? "text-emerald-700 border-emerald-100 hover:border-emerald-300"
+              : "text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-800";
+          return (
+            <button key={tab.key} onClick={() => setFilter(tab.key)}
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold border transition-colors
+                ${active ? "bg-gray-900 text-white border-gray-900" : baseTone}`}
+            >
+              {tab.label}
+              <span className={`text-[10px] font-bold px-1 py-0.5 min-w-[18px] text-center
+                ${active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Case list */}
@@ -1128,6 +1160,91 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Match explanation panel ───────────────────────────────────────────────────
+//
+// Per-signal breakdown of how the engine scored a match. The single most
+// important trust-building block in the detail view: it lets a reviewer
+// see, at a glance, which signals agreed (✓) and which did not (✗), and
+// what the final confidence is. Modeled on §4 of the UX vision.
+
+// Pass/fail thresholds for the per-signal explanation panel. These are
+// deliberately aligned with the matcher's own score buckets in
+// src/engine/matcher.ts so that the UI can never contradict the engine
+// (e.g. claiming "amount failed" on a row the engine considered a
+// match). Reference values:
+//   amount:      0.78 corresponds to "within 5%" (matcher: 0.92 = ≤2%, 0.78 = ≤5%)
+//   reference:   0.60 — the floor the matcher uses to consider a reference meaningful
+//   date:        0.80 — matcher gives 0.80 at ≤7 days, 0.92 at ≤3 days
+//   description: 0.60 — the matcher's own "good enough" cutoff (matcher.ts:149)
+const SIGNAL_THRESHOLDS = {
+  amount:      0.78,
+  reference:   0.60,
+  date:        0.80,
+  description: 0.60,
+};
+
+function SignalRow({ label, score, threshold, hint }: {
+  label:     string;
+  score:     number;
+  threshold: number;
+  hint?:     string;
+}) {
+  const pct  = Math.round(score * 100);
+  const pass = score >= threshold;
+  return (
+    <li className="flex items-center justify-between py-1.5">
+      <div className="flex items-center gap-2 min-w-0">
+        {pass
+          ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+          : <XCircle      className="h-3.5 w-3.5 text-red-500     shrink-0" />}
+        <span className="text-xs font-semibold text-gray-700">{label}</span>
+        {hint && <span className="text-[11px] text-gray-400 truncate">· {hint}</span>}
+      </div>
+      <span className={`text-[11px] font-mono tabular-nums ${pass ? "text-emerald-700" : "text-red-600"}`}>
+        {pct}%
+      </span>
+    </li>
+  );
+}
+
+function MatchExplanationPanel({ c }: { c: DiscrepancyCase }) {
+  const sb = c.scoreBreakdown!;
+  const signals = [
+    { key:"amount",      score: sb.amount_score,      threshold: SIGNAL_THRESHOLDS.amount,      label:"Amount match" },
+    { key:"reference",   score: sb.reference_score,   threshold: SIGNAL_THRESHOLDS.reference,   label:"Reference match" },
+    { key:"date",        score: sb.date_score,        threshold: SIGNAL_THRESHOLDS.date,        label:"Date match" },
+    { key:"description", score: sb.description_score, threshold: SIGNAL_THRESHOLDS.description, label:"Description similarity" },
+  ];
+  const failed = signals.filter(s => s.score < s.threshold);
+  // Plain-English summary at the top so a reviewer doesn't have to
+  // interpret four scores to know what to do.
+  const summary = failed.length === 0
+    ? "All four matching signals agree. Safe to approve."
+    : failed.length === 1
+    ? `One signal disagrees (${failed[0].label.toLowerCase()}). Review the values below before approving.`
+    : `${failed.length} signals disagree. Likely needs manual review or a corrected ledger entry.`;
+
+  return (
+    <div className="px-5 py-4 bg-gray-50/50">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Match explanation</p>
+        <span className={`text-[10px] font-bold px-2 py-0.5 border
+          ${c.confidence >= 90 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+          : c.confidence >= 70 ? "bg-amber-50 text-amber-700 border-amber-200"
+          : "bg-red-50 text-red-700 border-red-200"}`}>
+          {c.confidence}% confidence
+        </span>
+      </div>
+      <p className="text-xs text-gray-600 leading-relaxed mb-3">{summary}</p>
+      <ul className="divide-y divide-gray-100 border border-gray-200 bg-white px-3">
+        {signals.map(s => (
+          <SignalRow key={s.key} label={s.label} score={s.score} threshold={s.threshold} />
+        ))}
+      </ul>
     </div>
   );
 }
@@ -1194,15 +1311,20 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
 
       <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
 
-        {/* Hypothesis */}
+        {/* What we think happened — plain-English summary first. */}
         <div className="px-5 py-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Hypothesis</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What we think happened</p>
           <p className="text-sm text-gray-700 leading-relaxed">{c.hypothesis}</p>
         </div>
 
-        {/* Evidence */}
+        {/* Match Explanation — per-signal breakdown. The single most
+            important trust-building block: shows exactly which signals
+            agreed and which did not, so a reviewer can decide in seconds. */}
+        {c.scoreBreakdown && <MatchExplanationPanel c={c} />}
+
+        {/* What we checked — the evidence the engine collected. */}
         <div className="px-5 py-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Evidence ({c.evidence.length})</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What we checked ({c.evidence.length})</p>
           <ul className="space-y-1.5">
             {c.evidence.map((e, i) => (
               <li key={i} className="flex items-start gap-2">
@@ -1215,7 +1337,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
 
         {/* Suggested action */}
         <div className={`px-5 py-4 ${needsApproval ? "bg-amber-50/40" : "bg-blue-50/20"}`}>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Suggested Action</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recommended next step</p>
           <div className="flex items-start gap-2.5">
             <Sparkles className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
@@ -1235,13 +1357,13 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
         {/* Related transactions */}
         {(c.bank_txs.length > 0 || c.ledger_txs.length > 0) && (
           <div className="px-5 py-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Related Transactions</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Bank-side vs Ledger-side</p>
             <div className="flex gap-3">
               {c.bank_txs.length > 0 && (
                 <div className="flex-1 border border-gray-200 overflow-hidden">
                   <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
                     <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                      Bank {c.bank_txs.length > 1 && `(${c.bank_txs.length})`}
+                      Bank-side {c.bank_txs.length > 1 && `(${c.bank_txs.length})`}
                     </p>
                     {bankLogo && <img src={bankLogo} alt="" className="h-4 w-auto" />}
                   </div>
@@ -1260,7 +1382,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
                 <div className="flex-1 border border-gray-200 overflow-hidden">
                   <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
                     <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                      Ledger {c.ledger_txs.length > 1 && `(${c.ledger_txs.length})`}
+                      Ledger-side {c.ledger_txs.length > 1 && `(${c.ledger_txs.length})`}
                     </p>
                   </div>
                   {c.ledger_txs.map(tx => (
@@ -1280,7 +1402,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
 
         {/* Audit narrative */}
         <div className="px-5 py-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Audit Narrative</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Audit trail entry</p>
           <div className="bg-gray-50 border border-gray-100 p-3">
             <p className="text-xs text-gray-700 leading-relaxed font-mono">{c.audit_narrative}</p>
           </div>

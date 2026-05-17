@@ -1,0 +1,284 @@
+This is becoming genuinely strong.
+
+The UI now communicates:
+
+* why the match happened
+* confidence transparency
+* alternative candidates
+* explainability
+* human override capability
+
+That is enterprise-grade direction.
+
+But there are several important improvements that would make this much more valuable.
+
+# 1. Remove “Ask Grok to explain this”
+
+That weakens trust and breaks product identity.
+
+Addup itself should explain the reconciliation.
+
+Replace with:
+
+```text id="09b9xq"
+View AI Analysis
+```
+
+or
+
+```text id="m0nbf3"
+Open Match Analysis
+```
+
+Never send finance users outside the product for core reasoning.
+
+---
+
+# 2. “Approve match” should not appear for 100% exact matches
+
+If:
+
+* amount = exact
+* date = exact
+* reference = exact
+* description = exact
+
+then this should already be:
+
+* system-cleared
+* auto-approved
+
+Finance teams do not want to approve obvious matches manually.
+
+Instead:
+
+```text id="m8f80d"
+System-cleared
+Auto-approved by reconciliation engine
+```
+
+Then optionally allow:
+
+* override
+* dispute
+* reopen
+
+---
+
+# 3. Add weighted scoring visualization
+
+Current:
+
+```text id="2xqru5"
+Amount 100%
+Date 100%
+Description 100%
+```
+
+Better:
+
+```text id="rjlwmn"
+Amount Match        45/45
+Reference Match     25/25
+Date Match          15/15
+Description Match   15/15
+
+Final Confidence   100/100
+```
+
+This feels:
+
+* audit-ready
+* quantitative
+* trustworthy
+
+---
+
+# 4. Show normalized reference comparison
+
+You already show normalized descriptions.
+
+Also show:
+
+```text id="j18q5x"
+Normalized references
+
+Bank:
+EFT003
+
+Ledger:
+EFT003
+```
+
+This matters a lot in real accounting systems.
+
+---
+
+# 5. Improve candidate explanation
+
+Current:
+
+```text id="yt8zcm"
+Amount too far apart: +R52,000
+```
+
+Better:
+
+```text id="a7c1mu"
+Rejected candidate reasons:
+- Amount variance exceeds threshold (236%)
+- Transaction direction inconsistent
+- Reference mismatch
+- Description similarity below threshold
+```
+
+This makes the engine feel intelligent.
+
+---
+
+# 6. Add transaction direction indicator
+
+Very important visually.
+
+Example:
+
+```text id="8uh1k4"
+Outgoing Payment
+Bank Debit ↔ Ledger Bank Credit
+```
+
+or:
+
+```text id="pcrjrx"
+Incoming Receipt
+Bank Credit ↔ Ledger Bank Debit
+```
+
+This helps accountants verify logic instantly.
+
+---
+
+# 7. Add journal impact view
+
+This becomes extremely valuable.
+
+Under ledger transaction:
+
+```text id="n49m4x"
+Journal Impact
+
+Debit:
+Salaries Expense     R22,000
+
+Credit:
+Bank                 R22,000
+```
+
+Now the user sees:
+
+* what operationally happened
+* what accounting effect occurred
+
+This is huge.
+
+---
+
+# 8. Add reconciliation reasoning level
+
+Not all matches are equal.
+
+Example:
+
+| Level    | Meaning                  |
+| -------- | ------------------------ |
+| Exact    | All signals exact        |
+| Strong   | Minor variance           |
+| Probable | Fuzzy/heuristic          |
+| Weak     | Human review recommended |
+
+This helps trust calibration.
+
+---
+
+# 9. Add “why this candidate ranked first”
+
+For example:
+
+```text id="zvbd4j"
+Ranking rationale:
+L012 ranked highest because:
+- exact amount match
+- exact reference match
+- exact posting date
+- identical normalized description
+```
+
+This makes the engine explainable to auditors.
+
+---
+
+# 10. Add timing analysis
+
+Later this becomes massive.
+
+Example:
+
+```text id="ojm7zu"
+Posting lag: 0 days
+```
+
+or:
+
+```text id="lz19py"
+Posting lag: 2 days
+Within acceptable settlement tolerance
+```
+
+Very useful in real finance operations.
+
+---
+
+# 11. Add “reconciliation certainty”
+
+Instead of only:
+
+```text id="h5vd1m"
+100%
+```
+
+Add:
+
+```text id="n89q9v"
+Certainty: Deterministic Match
+```
+
+versus:
+
+```text id="xqklmt"
+Certainty: Probabilistic Match
+```
+
+This distinction matters deeply.
+
+---
+
+# 12. Biggest product opportunity
+
+Right now this is:
+
+* transaction matching
+
+But with:
+
+* explainability
+* journal understanding
+* integrity rules
+* auditability
+* human approvals
+* reasoning traces
+
+Addup starts becoming:
+
+> a financial integrity operating system
+
+That is much more defensible.

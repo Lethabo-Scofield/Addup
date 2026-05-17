@@ -199,6 +199,13 @@ export interface DiscrepancyCase {
   status:          CaseStatus;
   amount:          number;
   created_at:      string;
+  /**
+   * Per-signal breakdown of how the engine scored the match (amount,
+   * reference, date, description). Present for cases that resulted from
+   * a matching attempt (AUTO_MATCHED / PROPOSED_MATCH / NEEDS_REVIEW),
+   * absent for unmatched / missing / duplicate / opening-balance cases.
+   */
+  scoreBreakdown?: ScoreBreakdown;
   userDecision?:   "approved" | "rejected" | "escalated";
   userNote?:       string;
 }

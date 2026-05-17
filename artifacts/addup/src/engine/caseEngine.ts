@@ -71,6 +71,14 @@ function makeCase(
 ): DiscrepancyCase {
   const exp    = buildExplanation(type, rows, risk);
   const action = proposeAction(type, amount);
+  // The score breakdown lives on the underlying ReconRow when the case
+  // came from a matching attempt. Only surface it for case types where
+  // a match was actually scored — for missing / duplicate / opening
+  // cases the breakdown would be meaningless or absent.
+  const scoreBreakdown =
+    (type === "AUTO_MATCHED" || type === "PROPOSED_MATCH" || type === "NEEDS_REVIEW")
+      ? rows[0]?.scoreBreakdown
+      : undefined;
   return {
     case_id:          nextCaseId(),
     type,
@@ -90,6 +98,7 @@ function makeCase(
     status,
     amount,
     created_at:       now(),
+    scoreBreakdown,
   };
 }
 

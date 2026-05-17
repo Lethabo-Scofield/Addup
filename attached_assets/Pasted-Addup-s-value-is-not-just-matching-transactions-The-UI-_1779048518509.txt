@@ -1,0 +1,361 @@
+Addup’s value is not just “matching transactions.”
+
+The UI must make finance teams feel:
+
+* confident
+* fast
+* audit-ready
+* explainable
+* in control
+
+Right now the engine is becoming good. Now the UI must become a **financial operations workspace**, not just a table viewer.
+
+# What the UI should communicate
+
+The UI should answer these questions immediately:
+
+1. Is the reconciliation healthy?
+2. What needs human attention?
+3. What is risky?
+4. Why did the AI decide this?
+5. What should I do next?
+6. Can I trust this for audit/compliance?
+
+---
+
+# 1. Top-Level Reconciliation Health
+
+This is the most important section.
+
+Instead of:
+
+```text
+92% matched
+```
+
+Show something like:
+
+```text
+Reconciliation Complete
+100% of reconcilable bank transactions matched
+11 matched
+0 unresolved bank discrepancies
+3 excluded opening balances
+```
+
+Why?
+
+Because opening balances are not failures.
+
+---
+
+# 2. Financial Integrity Layer
+
+This is where Addup becomes differentiated.
+
+Add a section:
+
+## Integrity Checks
+
+Example:
+
+```text
+✓ Debits equal credits
+✓ No orphan bank entries
+✓ No duplicate bank transactions
+✓ No duplicate ledger postings
+✓ Opening balances excluded correctly
+✓ Bank movement integrity validated
+✓ Reference consistency passed
+```
+
+This tells finance teams:
+
+> “The system understands accounting.”
+
+Not just CSV matching.
+
+---
+
+# 3. Case Priority UX
+
+Humans should only see:
+
+* uncertain
+* risky
+* anomalous
+* suspicious
+
+cases.
+
+The UI should aggressively reduce noise.
+
+## Good workflow
+
+### Auto-resolved
+
+Collapsed by default.
+
+Finance teams usually do not want to manually inspect:
+
+* perfect matches
+* exact matches
+* low-risk entries
+
+---
+
+### Needs Review
+
+Expanded and prioritized.
+
+Each case should show:
+
+```text
+Why it failed
+What signals matched
+What signals failed
+Recommended action
+Risk level
+AI explanation
+```
+
+---
+
+# 4. Explainability Panel
+
+This is extremely important.
+
+When clicking a transaction:
+
+## Show Matching Signals
+
+Example:
+
+```text
+MATCH EXPLANATION
+
+Amount Match: ✓ Exact
+Reference Match: ✓ EFT002
+Date Match: ✓ Same day
+Description Similarity: 94%
+
+Final Confidence: 99%
+```
+
+For failures:
+
+```text
+MATCH EXPLANATION
+
+Amount Match: ✓
+Reference Match: ✗
+Date Match: ✓
+Description Similarity: 41%
+
+Reason:
+No reliable ledger-side reference found.
+
+Recommendation:
+Review manually.
+```
+
+This builds trust.
+
+---
+
+# 5. Accounting-Aware Terminology
+
+Do not make the UI sound like generic AI software.
+
+Use accounting language.
+
+Good:
+
+* Reconciliation
+* Outstanding
+* Cleared
+* Variance
+* Ledger-side
+* Bank-side
+* Journal entry
+* Carry-forward balance
+
+Bad:
+
+* AI mismatch engine
+* smart discrepancy detector
+* intelligent anomaly resolution
+
+Finance people trust accounting language.
+
+---
+
+# 6. Transaction Timeline View
+
+Very valuable feature.
+
+When clicking a transaction:
+
+```text
+Bank Statement
+↓
+Matched Ledger Entry
+↓
+Journal Impact
+↓
+Final Account State
+```
+
+Example:
+
+```text
+Bank Payment → Bank Credit → Rent Expense Debit
+```
+
+This helps:
+
+* auditors
+* accountants
+* finance managers
+
+understand flow instantly.
+
+---
+
+# 7. Risk Engine UI
+
+Separate:
+
+* operational issues
+  from
+* accounting risks
+
+Example:
+
+| Type        | Meaning                           |
+| ----------- | --------------------------------- |
+| Low Risk    | Timing difference                 |
+| Medium Risk | Missing reference                 |
+| High Risk   | Duplicate or orphan bank movement |
+| Critical    | Debits ≠ Credits                  |
+
+This becomes powerful later.
+
+---
+
+# 8. Reconciliation Intelligence Dashboard
+
+Very important long-term.
+
+Show trends:
+
+```text
+Monthly auto-match rate
+Average reconciliation time
+Most common discrepancy types
+Repeated vendors with mismatches
+Duplicate risk trends
+Bank fee consistency
+```
+
+This transforms Addup from:
+
+* reconciliation software
+
+into:
+
+* financial intelligence infrastructure
+
+---
+
+# 9. AI Recommendation Layer
+
+The AI should not just say:
+
+```text
+Review manually
+```
+
+That is weak.
+
+Instead:
+
+```text
+Likely timing difference:
+The bank transaction occurred 2 days after the ledger posting.
+
+Suggested action:
+Wait for next bank cycle before escalation.
+```
+
+Or:
+
+```text
+Possible duplicate detected:
+Two ledger-side bank credits with identical amount and reference were found.
+
+Suggested action:
+Review journal posting for accidental duplication.
+```
+
+The AI must behave like:
+
+* senior finance operations analyst
+  not
+* chatbot.
+
+---
+
+# 10. Audit Mode
+
+Huge enterprise value.
+
+Add:
+
+## Export Audit Package
+
+Generate:
+
+* reconciliation report
+* matched transactions
+* unresolved cases
+* AI explanations
+* integrity validation
+* timestamps
+* approval history
+
+Auditors love this.
+
+---
+
+# 11. Human Approval Workflow
+
+When humans intervene:
+
+Track:
+
+* who approved
+* who rejected
+* reason
+* timestamp
+* previous AI confidence
+* final decision
+
+This becomes:
+
+* audit trail
+* compliance evidence
+
+---
+
+# 12. Biggest UX Principle
+
+The UI should reduce cognitive load.
+
+Finance teams should feel:
+
+```text
+“I only need to think about real problems.”
+```
+
+That is the real product value.
