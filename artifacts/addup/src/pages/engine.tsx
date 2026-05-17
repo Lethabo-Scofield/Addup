@@ -953,11 +953,11 @@ function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove
 
   const cards: { label:string; val:number; sub:string; color:string; bg:string; border:string; nav:NavId }[] = [
     { label:"Auto-matched",      val: matched,  sub:"No human action needed",        color:"text-emerald-700", bg:"bg-emerald-50", border:"hover:border-emerald-400", nav:"jobs"   },
-    { label:"Likely matches",    val: possible, sub:"Verify before approving",        color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"review" },
-    { label:"Needs attention",   val: manual,   sub:"Low confidence — review needed", color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"review" },
-    { label:"Data issues",       val: invalid,  sub:"Bad or unreadable data",         color:"text-red-700",     bg:"bg-red-50",     border:"hover:border-red-400",     nav:"review" },
-    { label:"Unmatched bank",    val: uBank,    sub:"No ledger entry found",          color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"review" },
-    { label:"Unmatched ledger",  val: uLedger,  sub:"No bank transaction found",      color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"review" },
+    { label:"Likely matches",    val: possible, sub:"Verify before approving",        color:"text-blue-700",    bg:"bg-blue-50",    border:"hover:border-blue-400",    nav:"cases" },
+    { label:"Needs attention",   val: manual,   sub:"Low confidence — review needed", color:"text-amber-700",   bg:"bg-amber-50",   border:"hover:border-amber-400",   nav:"cases" },
+    { label:"Data issues",       val: invalid,  sub:"Bad or unreadable data",         color:"text-red-700",     bg:"bg-red-50",     border:"hover:border-red-400",     nav:"cases" },
+    { label:"Unmatched bank",    val: uBank,    sub:"No ledger entry found",          color:"text-orange-700",  bg:"bg-orange-50",  border:"hover:border-orange-400",  nav:"cases" },
+    { label:"Unmatched ledger",  val: uLedger,  sub:"No bank transaction found",      color:"text-purple-700",  bg:"bg-purple-50",  border:"hover:border-purple-400",  nav:"cases" },
   ];
 
   if (loading) {
@@ -1005,7 +1005,7 @@ function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove
               </button>
             )}
             {exceptions > 0 && (
-              <button onClick={() => onNav("review")}
+              <button onClick={() => onNav("cases")}
                 className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                 <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
                 Review exceptions
@@ -2938,23 +2938,20 @@ export default function Engine() {
     setReconciling(false);
   }
 
-  const reviewCount = rows.filter(r =>
-    (r.status === "possible_match" || r.status === "manual_review" ||
-     r.status === "invalid_row" || r.status === "unmatched_bank" ||
-     r.status === "unmatched_ledger") && !r.userStatus
-  ).length;
-
   const pendingCases = hasData
     ? cases.filter(c => c.type !== "AUTO_MATCHED" && !c.userDecision).length
     : 0;
 
+  // Sidebar collapsed to the four views that map to distinct work
+  // surfaces: ingest → triage → summarize → audit. The old "Needs
+  // Review" tab was a row-level view of the same exceptions that
+  // Cases already surfaces via its needs_review smart-default tab,
+  // so removing it eliminates a redundant entry point.
   const NAV = [
     { id:"uploads"   as NavId, label:"Upload Files", icon:<Upload className="h-4 w-4"/>    },
     { id:"cases"     as NavId, label:"Cases",         icon:<Layers className="h-4 w-4"/>,
       badge: hasData && pendingCases > 0 ? pendingCases : undefined },
     { id:"dashboard" as NavId, label:"Overview",      icon:<BarChart3 className="h-4 w-4"/> },
-    { id:"review"    as NavId, label:"Needs Review",  icon:<AlertCircle className="h-4 w-4"/>,
-      badge: reviewCount > 0 ? reviewCount : undefined },
     { id:"audit"     as NavId, label:"Audit Trail",   icon:<ScrollText className="h-4 w-4"/> },
   ];
 
@@ -3133,7 +3130,6 @@ export default function Engine() {
             />}
           {nav === "uploads"   && <UploadsView onReconcile={handleReconcile} />}
           {nav === "jobs"      && <JobsView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} />}
-          {nav === "review"    && <ReviewQueueView rows={rows} setRows={setRows} addAudit={addAudit} jobId={jobId} bankInst={bankInst} loading={reconciling} />}
           {nav === "audit"     && <AuditLogView log={auditLog} jobId={jobId} onExport={() => {
               addAudit({ job_id:jobId, action:"export_json", target_id:jobId });
               exportJSON(rows, auditLog, company, bankData, ledgerData, jobId, period);
