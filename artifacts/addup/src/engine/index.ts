@@ -71,6 +71,8 @@ export {
   caseSummary,
   computeIntegrityChecks,
   computeReconciliationHealth,
+  computeSettlementAnalytics,
+  computeCaseIntegrity,
 } from "./caseEngine";
 export type {
   IntegrityStatus,
@@ -78,6 +80,9 @@ export type {
   IntegritySummary,
   ReconciliationHealthStatus,
   ReconciliationHealth,
+  SettlementAnalytics,
+  CaseIntegrityStatus,
+  CaseIntegrity,
 } from "./caseEngine";
 export { buildExplanation }             from "./explanationEngine";
 export { proposeAction }                from "./actionEngine";

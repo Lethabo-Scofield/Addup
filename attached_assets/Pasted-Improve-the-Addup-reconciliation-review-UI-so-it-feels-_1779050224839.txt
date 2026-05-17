@@ -1,0 +1,264 @@
+Improve the Addup reconciliation review UI so it feels enterprise-grade, accounting-aware, explainable, and audit-ready.
+
+Current direction is good:
+- deterministic matching
+- weighted confidence scoring
+- side-by-side review
+- posting lag analysis
+- transaction direction mapping
+- auto-clearing
+- explainability
+
+Now refine the UX and accounting intelligence layer.
+
+1. Replace conversational wording
+
+Current:
+"What we think happened"
+
+Replace with:
+- "Reconciliation assessment"
+or
+- "Match assessment"
+
+The UI should sound like a professional financial operations platform, not a chatbot.
+
+2. Remove duplicate reasoning
+
+Currently the UI repeats:
+- "Amount match EXACT"
+and later:
+- "Exact amount match"
+
+Do not duplicate the same reasoning twice.
+
+Keep:
+- one structured weighted scoring section
+
+Then convert "What we checked" into actual validation/integrity checks.
+
+Example:
+
+What we validated
+
+✓ Transaction direction consistency
+✓ Ledger-side bank extraction passed
+✓ Reference normalization passed
+✓ Settlement window validation passed
+✓ Duplicate detection passed
+✓ Confidence threshold exceeded
+✓ Accounting integrity checks passed
+
+3. Add integrity status
+
+At the top of every case add:
+
+Integrity status
+PASSED
+
+or if needed:
+
+Integrity status
+WARNING
+
+This should become a first-class concept in Addup.
+
+4. Improve transaction polarity visualization
+
+Incoming money:
+- green arrow inward
+- label: Incoming receipt
+
+Outgoing money:
+- red arrow outward
+- label: Outgoing payment
+
+Examples:
+
+Incoming receipt
++R 15,000.00
+
+Outgoing payment
+-R 22,000.00
+
+Do not display outgoing payments as positive amounts.
+
+5. Add confidence origin
+
+Show whether the confidence came from:
+- deterministic rules
+or
+- probabilistic heuristics
+
+Example:
+
+Confidence source
+Deterministic rules engine
+
+Later examples:
+- Probabilistic heuristic matching
+- AI-assisted fuzzy reconciliation
+
+6. Add reconciliation scope
+
+Show reconciliation window:
+
+Reconciliation window
+2026-05-01 → 2026-05-31
+
+This helps auditability and reporting.
+
+7. Add journal impact section
+
+Under the ledger-side transaction show the accounting effect.
+
+Example:
+
+Journal impact
+
+Debit
+Bank                         R15,000
+
+Credit
+Accounts Receivable          R15,000
+
+Or for expenses:
+
+Debit
+Salaries Expense             R22,000
+
+Credit
+Bank                         R22,000
+
+This is critical because Addup should explain accounting consequences, not just transaction matching.
+
+8. Improve "What we validated"
+
+Do not list duplicate signal explanations.
+
+Instead show:
+- accounting validations
+- integrity validations
+- reconciliation validations
+
+Example:
+
+✓ Amount within configured tolerance
+✓ Reference normalization passed
+✓ Date within settlement window
+✓ Description similarity threshold exceeded
+✓ Transaction polarity consistent
+✓ Duplicate detection passed
+✓ Journal integrity validated
+
+9. Improve match certainty messaging
+
+Current:
+"Deterministic match"
+
+Keep this, but visually separate:
+- deterministic
+- probabilistic
+- heuristic
+- fuzzy
+
+Possible levels:
+
+EXACT
+Deterministic
+
+STRONG
+High confidence
+
+PROBABLE
+Heuristic-assisted
+
+WEAK
+Manual review recommended
+
+10. Add top-level reconciliation completion state
+
+At top of reconciliation dashboard show:
+
+Reconciliation completed successfully
+
+11 of 11 reconcilable bank transactions cleared automatically.
+No unresolved discrepancies detected.
+No manual review required.
+
+11. Add top-level integrity validation summary
+
+Example:
+
+Integrity validation
+
+✓ No orphan bank entries
+✓ No duplicate bank movements
+✓ No unresolved ledger-side variances
+✓ Debit/credit consistency validated
+✓ Opening balances excluded correctly
+✓ Bank-side extraction rules passed
+
+12. Add candidate rejection reasoning
+
+When alternative candidates exist, explain why they were rejected.
+
+Example:
+
+Rejected candidate reasons
+
+- Amount variance exceeds configured threshold
+- Transaction direction inconsistent
+- Reference mismatch
+- Description similarity below threshold
+
+13. Add settlement analytics
+
+Add operational reconciliation metrics:
+
+Settlement analytics
+
+Average posting lag: 0.2 days
+Exact matches: 9
+Strong matches: 2
+Fuzzy matches: 0
+Manual reviews: 0
+
+14. Improve completion UX
+
+If everything reconciles successfully:
+- do not show review language
+- do not show action buttons
+- do not ask for approvals
+
+Instead show:
+
+✓ System-cleared
+Auto-approved by reconciliation engine
+
+15. Add audit-oriented framing
+
+Every reconciliation decision should feel:
+- explainable
+- reproducible
+- traceable
+- defensible during audit
+
+The product direction should feel like:
+"financial integrity and reconciliation infrastructure"
+
+not:
+"AI transaction matcher"
+
+16. Important UX principle
+
+The UI should reduce cognitive load.
+
+Finance users should immediately know:
+- what matched
+- why it matched
+- whether they can trust it
+- whether action is required
+- whether financial integrity passed
+
+Only real problems should demand human attention.

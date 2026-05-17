@@ -23,6 +23,8 @@ import {
   buildCases,
   computeIntegrityChecks,
   computeReconciliationHealth,
+  computeSettlementAnalytics,
+  computeCaseIntegrity,
   runReconciliation,
 } from "../index";
 import type { Tx } from "../index";
@@ -456,5 +458,73 @@ describe("reconciliation health", () => {
     const health = computeReconciliationHealth([], [] as Tx[]);
     expect(health.matchRatePct).toBe(100);
     expect(health.status).toBe("complete");
+  });
+});
+
+describe("settlement analytics", () => {
+  it("buckets matched cases by certainty band", () => {
+    const bank = [
+      bankRow("2026-01-05", "Client payment ALPHA",   0, 1000, 1000, "INV-1001"),
+      bankRow("2026-01-06", "Client payment BETA",    0, 2000, 3000, "INV-1002"),
+    ];
+    const ledger = [
+      ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001"),
+      ledgerRow("2026-01-06", "Bank", "Client payment INV-1002", 2000, 0, "INV-1002"),
+    ];
+    const { cases } = buildEngineState(bank, ledger);
+    const stats = computeSettlementAnalytics(cases);
+    expect(stats.exactMatches + stats.strongMatches + stats.probableMatches + stats.weakMatches)
+      .toBe(cases.filter(c => c.type === "AUTO_MATCHED" || c.type === "PROPOSED_MATCH" || c.type === "NEEDS_REVIEW").length);
+    expect(stats.avgPostingLagDays).toBe(0);
+    expect(stats.timedPairCount).toBe(2);
+  });
+
+  it("returns zeroes when there are no matched pairs", () => {
+    const stats = computeSettlementAnalytics([]);
+    expect(stats).toEqual({
+      timedPairCount: 0,
+      avgPostingLagDays: 0,
+      exactMatches: 0,
+      strongMatches: 0,
+      probableMatches: 0,
+      weakMatches: 0,
+    });
+  });
+});
+
+describe("per-case integrity", () => {
+  it("marks AUTO_MATCHED cases as passed", () => {
+    const bank = [bankRow("2026-01-05", "Client payment", 0, 1000, 1000, "INV-1001")];
+    const ledger = [ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001")];
+    const { cases } = buildEngineState(bank, ledger);
+    const auto = cases.find(c => c.type === "AUTO_MATCHED");
+    expect(auto).toBeDefined();
+    expect(computeCaseIntegrity(auto!).status).toBe("passed");
+  });
+
+  it("marks duplicate cases as warning with a duplicate reason", () => {
+    const bank = [
+      bankRow("2026-01-05", "Client payment", 0, 1000, 1000, "INV-1001"),
+      bankRow("2026-01-05", "Client payment", 0, 1000, 2000, "INV-1001"),
+    ];
+    const ledger = [ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001")];
+    const { cases } = buildEngineState(bank, ledger);
+    const dup = cases.find(c => c.type === "DUPLICATE_BANK_TRANSACTION");
+    expect(dup).toBeDefined();
+    const integrity = computeCaseIntegrity(dup!);
+    expect(integrity.status).toBe("warning");
+    expect(integrity.reasons.some(r => /duplicate/i.test(r))).toBe(true);
+  });
+
+  it("marks missing-ledger cases as warning", () => {
+    const bank = [
+      bankRow("2026-01-05", "Client payment", 0, 1000, 1000, "INV-1001"),
+      bankRow("2026-01-06", "Mystery deposit", 0, 500, 1500, "MYST-1"),
+    ];
+    const ledger = [ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001")];
+    const { cases } = buildEngineState(bank, ledger);
+    const missing = cases.find(c => c.type === "MISSING_LEDGER_ENTRY");
+    expect(missing).toBeDefined();
+    expect(computeCaseIntegrity(missing!).status).toBe("warning");
   });
 });

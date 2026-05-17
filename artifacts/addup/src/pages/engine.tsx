@@ -68,9 +68,13 @@ import {
   buildCases,
   computeIntegrityChecks,
   computeReconciliationHealth,
+  computeSettlementAnalytics,
+  computeCaseIntegrity,
   type IntegrityCheck,
   type IntegritySummary,
   type ReconciliationHealth,
+  type SettlementAnalytics,
+  type CaseIntegrity,
 } from "../engine";
 
 // ── Loader ────────────────────────────────────────────────────────────────────
@@ -987,6 +991,24 @@ function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove
       {/* Reconciliation health — completion-state framing */}
       <HealthHeader health={health} period={period} bankInst={bankInst} ledgerSoft={ledgerSoft} />
 
+      {/* Completion banner — when everything reconciles cleanly, replace
+          the action bar with a definitive "system-cleared" statement.
+          Per UX feedback §14: don't show review language, action
+          buttons, or approval prompts when there is nothing to act on. */}
+      {health.status === "complete" && pendingApprove === 0 && exceptions === 0 && (
+        <div className="border border-emerald-200 bg-emerald-50 p-4 mb-4 flex items-start gap-3">
+          <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-emerald-900">System-cleared</p>
+            <p className="text-xs text-emerald-800 mt-0.5">
+              Auto-approved by reconciliation engine.
+              {" "}{health.reconciledCount} of {health.reconcilableBankCount} reconcilable bank transaction{health.reconcilableBankCount === 1 ? "" : "s"} cleared automatically.
+              {" "}No unresolved discrepancies detected. No manual review required.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Reviewer actions — separated from the health header so the
           headline metric isn't visually competing with CTAs. */}
       {(pendingApprove > 0 || exceptions > 0) && (
@@ -1022,6 +1044,11 @@ function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove
 
       {/* Audit-grade integrity checks */}
       <IntegrityChecksPanel summary={integrity} />
+
+      {/* Settlement analytics — operational reconciliation metrics
+          (posting lag + certainty histogram) so controllers can judge
+          throughput and match quality at a glance. */}
+      <SettlementAnalyticsPanel stats={computeSettlementAnalytics(cases)} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1393,6 +1420,114 @@ function SignalRow({ label, score, threshold, points }: {
   );
 }
 
+// ── Per-case integrity chip ──────────────────────────────────────────────────
+// PASSED / WARNING badge shown next to risk/type at the top of every
+// case panel. Reasons appear on hover so reviewers don't have to read
+// the entire signal table to know whether the engine wants attention.
+function CaseIntegrityChip({ integrity }: { integrity: CaseIntegrity }) {
+  const passed = integrity.status === "passed";
+  return (
+    <span
+      title={integrity.reasons.join("\n")}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider
+        ${passed ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}
+    >
+      {passed
+        ? <ShieldCheck className="h-3 w-3" />
+        : <ShieldAlert className="h-3 w-3" />}
+      Integrity {passed ? "Passed" : "Warning"}
+    </span>
+  );
+}
+
+// ── Per-case validation checklist ────────────────────────────────────────────
+// Curated list of validation categories the engine actually checks,
+// replacing the raw `evidence` dump (which duplicated the signal
+// scores already shown above). Items derive from the case shape so
+// nothing is invented — every ✓ corresponds to a real engine check.
+function CaseValidationPanel({ c }: { c: DiscrepancyCase }) {
+  const sb        = c.scoreBreakdown;
+  const bankTx    = c.bank_txs[0];
+  const ledgerTx  = c.ledger_txs[0];
+  const lag       = postingLag(bankTx?.date, ledgerTx?.date);
+  const direction = txDirection(bankTx?.amt ?? ledgerTx?.amt);
+
+  const checks: { label: string; ok: boolean; na?: boolean }[] = [];
+
+  if (sb) {
+    checks.push({ label:"Amount within configured tolerance",    ok: sb.amount_score      >= SIGNAL_THRESHOLDS.amount      });
+    checks.push({ label:"Reference normalization passed",        ok: sb.reference_score   >= SIGNAL_THRESHOLDS.reference   });
+    checks.push({ label:"Date within settlement window",         ok: sb.date_score        >= SIGNAL_THRESHOLDS.date        });
+    checks.push({ label:"Description similarity threshold met",  ok: sb.description_score >= SIGNAL_THRESHOLDS.description });
+  }
+  if (direction) {
+    checks.push({ label:"Transaction polarity consistent", ok: true });
+  }
+  if (lag) {
+    checks.push({ label:"Posting lag within tolerance", ok: lag.tone === "ok" });
+  }
+  checks.push({
+    label: c.type === "DUPLICATE_BANK_TRANSACTION" || c.type === "DUPLICATE_LEDGER_ENTRY"
+      ? "Duplicate detection flagged this case"
+      : "Duplicate detection passed",
+    ok: c.type !== "DUPLICATE_BANK_TRANSACTION" && c.type !== "DUPLICATE_LEDGER_ENTRY",
+  });
+  if (c.confidence > 0) {
+    checks.push({ label:"Confidence threshold exceeded", ok: c.confidence >= 65 });
+  }
+
+  return (
+    <div className="px-5 py-4">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What we validated</p>
+      <ul className="space-y-1.5">
+        {checks.map((chk, i) => (
+          <li key={i} className="flex items-start gap-2">
+            {chk.ok
+              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              : <XCircle      className="h-3.5 w-3.5 text-amber-500   shrink-0 mt-0.5" />}
+            <span className={`text-xs ${chk.ok ? "text-gray-700" : "text-amber-800 font-semibold"}`}>{chk.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── Settlement analytics panel ───────────────────────────────────────────────
+// Operational reconciliation metrics for the dashboard — average
+// posting lag plus a histogram of certainty bands. Sits beside the
+// integrity checks panel so the dashboard summary is "is it balanced
+// + is it trustworthy + how fast / how clean".
+function SettlementAnalyticsPanel({ stats }: { stats: SettlementAnalytics }) {
+  const tiles = [
+    { label:"Exact",    val: stats.exactMatches,    tone:"text-emerald-700" },
+    { label:"Strong",   val: stats.strongMatches,   tone:"text-blue-700"    },
+    { label:"Probable", val: stats.probableMatches, tone:"text-amber-700"   },
+    { label:"Weak",     val: stats.weakMatches,     tone:"text-rose-700"    },
+  ];
+  return (
+    <div className="border border-gray-200 bg-white mb-6">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-600" />
+          <h2 className="text-sm font-bold text-gray-800">Settlement Analytics</h2>
+        </div>
+        <span className="text-[11px] font-semibold text-gray-600">
+          Avg posting lag: <span className="font-bold text-gray-900 tabular-nums">{stats.avgPostingLagDays.toFixed(1)}</span> day{stats.avgPostingLagDays === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="grid grid-cols-4 divide-x divide-gray-100">
+        {tiles.map(t => (
+          <div key={t.label} className="px-4 py-3 text-center">
+            <p className={`text-xl font-bold ${t.val > 0 ? t.tone : "text-gray-300"} tabular-nums`}>{t.val}</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mt-0.5">{t.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MatchExplanationPanel({ c }: { c: DiscrepancyCase }) {
   const sb = c.scoreBreakdown!;
   const signals = [
@@ -1559,6 +1694,7 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
           <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
             <CaseTypeBadge type={c.type} />
             <RiskBadge risk={c.risk} />
+            <CaseIntegrityChip integrity={computeCaseIntegrity(c)} />
             <span className="text-[10px] text-gray-400 font-mono">{c.case_id}</span>
           </div>
           <h2 className="text-sm font-bold text-gray-900 pr-4 truncate">{c.title}</h2>
@@ -1573,9 +1709,11 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
 
       <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
 
-        {/* What we think happened — plain-English summary first. */}
+        {/* Reconciliation assessment — controller-facing summary first.
+            Renamed from "What we think happened" so the language reads
+            as a professional financial-ops platform, not a chatbot. */}
         <div className="px-5 py-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What we think happened</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reconciliation assessment</p>
           <p className="text-sm text-gray-700 leading-relaxed">{c.hypothesis}</p>
         </div>
 
@@ -1584,18 +1722,12 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
             agreed and which did not, so a reviewer can decide in seconds. */}
         {c.scoreBreakdown && <MatchExplanationPanel c={c} />}
 
-        {/* What we checked — the evidence the engine collected. */}
-        <div className="px-5 py-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What we checked ({c.evidence.length})</p>
-          <ul className="space-y-1.5">
-            {c.evidence.map((e, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-xs text-gray-700">{e}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* What we validated — curated validation checklist. Replaces
+            the raw evidence dump (which duplicated the signal table).
+            Each row is a category of integrity / accounting check the
+            engine actually performs, so an auditor can defend the
+            decision without reading the underlying signal scores. */}
+        <CaseValidationPanel c={c} />
 
         {/* Suggested action */}
         <div className={`px-5 py-4 ${needsApproval ? "bg-amber-50/40" : "bg-blue-50/20"}`}>

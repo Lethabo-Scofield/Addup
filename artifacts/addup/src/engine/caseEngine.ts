@@ -640,6 +640,112 @@ export function computeReconciliationHealth(
   };
 }
 
+// ── Settlement analytics ──────────────────────────────────────────────────────
+//
+// Operational metrics that give controllers a sense of the engine's
+// throughput and quality at a glance: average posting lag (bank vs
+// ledger date) and a histogram of confidence bands. Buckets match
+// the certainty labels surfaced on each case (Exact / Strong /
+// Probable / Weak) so the dashboard tile and the per-case chip tell
+// the same story.
+
+export interface SettlementAnalytics {
+  /** Pairs the engine had enough info to time (both dates present). */
+  timedPairCount: number;
+  /** Mean absolute days between bank-side and ledger-side post dates. */
+  avgPostingLagDays: number;
+  exactMatches:    number;  // confidence >= 98
+  strongMatches:   number;  // 85-97
+  probableMatches: number;  // 65-84
+  weakMatches:     number;  // < 65 — needs human eyes
+}
+
+export function computeSettlementAnalytics(cases: DiscrepancyCase[]): SettlementAnalytics {
+  // Only matched pairs (auto + proposed + needs-review) contribute —
+  // duplicates / missing / opening cases have no meaningful lag.
+  const paired = cases.filter(c =>
+    (c.type === "AUTO_MATCHED" || c.type === "PROPOSED_MATCH" || c.type === "NEEDS_REVIEW")
+    && c.bank_txs.length > 0 && c.ledger_txs.length > 0
+  );
+
+  let lagSum = 0;
+  let timedPairCount = 0;
+  for (const c of paired) {
+    const b = Date.parse(c.bank_txs[0].date);
+    const l = Date.parse(c.ledger_txs[0].date);
+    if (!isFinite(b) || !isFinite(l)) continue;
+    lagSum += Math.abs(b - l) / 86_400_000;
+    timedPairCount++;
+  }
+  const avgPostingLagDays = timedPairCount === 0 ? 0 : lagSum / timedPairCount;
+
+  let exact = 0, strong = 0, probable = 0, weak = 0;
+  for (const c of paired) {
+    if      (c.confidence >= 98) exact++;
+    else if (c.confidence >= 85) strong++;
+    else if (c.confidence >= 65) probable++;
+    else                         weak++;
+  }
+
+  return {
+    timedPairCount,
+    avgPostingLagDays: Math.round(avgPostingLagDays * 10) / 10,
+    exactMatches:    exact,
+    strongMatches:   strong,
+    probableMatches: probable,
+    weakMatches:     weak,
+  };
+}
+
+// ── Per-case integrity status ─────────────────────────────────────────────────
+//
+// The case-level analogue of the global IntegritySummary. Lets the
+// case detail panel show a "PASSED / WARNING" chip at the top so a
+// reviewer can decide at a glance whether the engine is signalling
+// structural confidence or asking for human eyes. Pure function of
+// the case itself — does not consult cross-case state.
+
+export type CaseIntegrityStatus = "passed" | "warning";
+
+export interface CaseIntegrity {
+  status:  CaseIntegrityStatus;
+  reasons: string[];
+}
+
+export function computeCaseIntegrity(c: DiscrepancyCase): CaseIntegrity {
+  // Cases the engine already considers closed.
+  if (c.type === "AUTO_MATCHED")     return { status:"passed", reasons:["Engine cleared automatically — all signals exact."] };
+  if (c.type === "OPENING_BALANCE")  return { status:"passed", reasons:["Opening balance — correctly excluded from matching."] };
+  if (c.userDecision === "approved") return { status:"passed", reasons:["Reviewer-approved — counted as reconciled."] };
+
+  const reasons: string[] = [];
+
+  // Structural exception types always warrant a warning.
+  if (c.type === "DUPLICATE_BANK_TRANSACTION")   reasons.push("Possible duplicate bank entry.");
+  if (c.type === "DUPLICATE_LEDGER_ENTRY")       reasons.push("Possible duplicate ledger posting.");
+  if (c.type === "MISSING_LEDGER_ENTRY")         reasons.push("No matching ledger entry found.");
+  if (c.type === "MISSING_BANK_ENTRY")           reasons.push("No matching bank transaction found.");
+  if (c.type === "AMOUNT_VARIANCE")              reasons.push("Amount variance between bank and ledger sides.");
+  if (c.type === "TIMING_DIFFERENCE")            reasons.push("Posting dates differ beyond the typical settlement window.");
+
+  if (c.risk === "high")                         reasons.push("Flagged high-risk by the engine.");
+  if (c.confidence < 65)                         reasons.push(`Confidence below threshold (${c.confidence}%).`);
+
+  // Surface failing signals on PROPOSED / NEEDS_REVIEW so reviewers
+  // know exactly which dimension didn't agree.
+  const sb = c.scoreBreakdown;
+  if (sb) {
+    if (sb.amount_score      < 0.95) reasons.push("Amount signal below match threshold.");
+    if (sb.reference_score   < 0.85) reasons.push("Reference signal below match threshold.");
+    if (sb.date_score        < 0.70) reasons.push("Date signal below match threshold.");
+    if (sb.description_score < 0.60) reasons.push("Description similarity below match threshold.");
+  }
+
+  return reasons.length === 0
+    ? { status:"passed",  reasons:["All structural checks passed."] }
+    : { status:"warning", reasons };
+}
+
 export function caseSummary(cases: DiscrepancyCase[]) {
   const autoResolved    = cases.filter(c => c.type === "AUTO_MATCHED");
   const needsAttention  = cases.filter(c => c.type !== "AUTO_MATCHED" && c.type !== "OPENING_BALANCE" && !c.userDecision);
