@@ -66,7 +66,19 @@ export { derivePeriod, runReconciliation } from "./reconciliation";
 
 // ── Case engine ───────────────────────────────────────────────────────────────
 
-export { buildCases, caseSummary }      from "./caseEngine";
+export {
+  buildCases,
+  caseSummary,
+  computeIntegrityChecks,
+  computeReconciliationHealth,
+} from "./caseEngine";
+export type {
+  IntegrityStatus,
+  IntegrityCheck,
+  IntegritySummary,
+  ReconciliationHealthStatus,
+  ReconciliationHealth,
+} from "./caseEngine";
 export { buildExplanation }             from "./explanationEngine";
 export { proposeAction }                from "./actionEngine";
 export { caseAuditTrail }               from "./auditTrail";

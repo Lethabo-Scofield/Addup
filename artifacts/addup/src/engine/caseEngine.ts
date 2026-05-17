@@ -388,6 +388,258 @@ export function buildCases(
 
 // ── Case summary helpers ──────────────────────────────────────────────────────
 
+// ── Integrity checks ──────────────────────────────────────────────────────────
+//
+// These are the audit-grade "did the books balance, and is the data
+// trustworthy?" assertions a controller would want to verify before
+// signing off on a reconciliation. Each check is binary (pass / fail)
+// with a human-readable detail string. We deliberately surface these
+// as a separate concern from the case stream — cases describe *what
+// happened*, integrity checks describe *whether the file itself is
+// structurally sound*.
+//
+// Tolerance: matched-totals comparison uses a 1% relative tolerance
+// (or $1.00 absolute, whichever is larger). This absorbs floating
+// point + currency-conversion rounding without masking real variance.
+// $1.00 is the conventional reconciliation floor in industry tooling
+// — tightening below that produces false positives on multi-currency
+// books where penny-level FX drift across many transactions easily
+// exceeds 10c.
+//
+// TODO (future integrity check): sign / polarity consistency. If a
+// user uploads files where bank debits / credits have been swapped
+// (or where the ledger account convention is inverted), the matcher
+// will silently pair money-in with money-out. Detection idea:
+// for matched pairs, the dominant relationship between sign(bank.amt)
+// and sign(ledger.amt) should be consistent across the file; if a
+// significant minority of pairs flip polarity vs the majority, flag
+// it. Requires deciding on the expected sign convention per side.
+
+export type IntegrityStatus = "pass" | "fail" | "info";
+
+export interface IntegrityCheck {
+  id:      string;
+  label:   string;
+  status:  IntegrityStatus;
+  detail:  string;
+  /** Auditor-facing rationale: *why* this check matters. */
+  rationale: string;
+}
+
+export interface IntegritySummary {
+  checks:        IntegrityCheck[];
+  passCount:     number;
+  failCount:     number;
+  overallStatus: IntegrityStatus;
+}
+
+export function computeIntegrityChecks(
+  cases:     DiscrepancyCase[],
+  bankTxs:   Tx[],
+  ledgerTxs: Tx[],
+): IntegritySummary {
+  const checks: IntegrityCheck[] = [];
+
+  // 1. Matched-totals balance — for cases the engine paired up
+  //    (AUTO_MATCHED / PROPOSED_MATCH / NEEDS_REVIEW), the sum of
+  //    bank-side amounts should equal the sum of ledger-side amounts
+  //    within tolerance. If it doesn't, the matching is internally
+  //    inconsistent and downstream accounting will be off.
+  const matchedCases = cases.filter(c =>
+    (c.type === "AUTO_MATCHED" || c.type === "PROPOSED_MATCH" || c.type === "NEEDS_REVIEW")
+    && c.bank_txs.length > 0 && c.ledger_txs.length > 0
+  );
+  const matchedBankTotal   = matchedCases.reduce((s, c) => s + sumAmt(c.bank_txs),   0);
+  const matchedLedgerTotal = matchedCases.reduce((s, c) => s + sumAmt(c.ledger_txs), 0);
+  const matchedDiff        = Math.abs(matchedBankTotal - matchedLedgerTotal);
+  const matchedTolerance   = Math.max(1.00, matchedBankTotal * 0.01);
+  checks.push({
+    id:        "matched_totals_balance",
+    label:     "Matched totals balance",
+    status:    matchedCases.length === 0 ? "info"
+             : matchedDiff <= matchedTolerance ? "pass" : "fail",
+    detail:    matchedCases.length === 0
+               ? "No matched pairs yet."
+               : matchedDiff <= matchedTolerance
+                 ? `Bank and ledger sides agree across ${matchedCases.length} matched pair${matchedCases.length === 1 ? "" : "s"}.`
+                 : `Bank-side total $${matchedBankTotal.toFixed(2)} vs ledger-side $${matchedLedgerTotal.toFixed(2)} — $${matchedDiff.toFixed(2)} variance.`,
+    rationale: "Matched pairs must reconcile down to the dollar — any divergence means one side was paired with the wrong counterparty.",
+  });
+
+  // 2. No duplicate bank transactions detected
+  const dupBank = cases.filter(c => c.type === "DUPLICATE_BANK_TRANSACTION").length;
+  checks.push({
+    id:        "no_duplicate_bank",
+    label:     "No duplicate bank transactions",
+    status:    dupBank === 0 ? "pass" : "fail",
+    detail:    dupBank === 0
+               ? "Bank statement contains no duplicates."
+               : `${dupBank} duplicate bank transaction${dupBank === 1 ? "" : "s"} detected — likely double-imported.`,
+    rationale: "Duplicate bank entries inflate reconciled totals and corrupt period-end balances.",
+  });
+
+  // 3. No duplicate ledger postings
+  const dupLedger = cases.filter(c => c.type === "DUPLICATE_LEDGER_ENTRY").length;
+  checks.push({
+    id:        "no_duplicate_ledger",
+    label:     "No duplicate ledger postings",
+    status:    dupLedger === 0 ? "pass" : "fail",
+    detail:    dupLedger === 0
+               ? "Ledger contains no duplicate postings."
+               : `${dupLedger} duplicate ledger posting${dupLedger === 1 ? "" : "s"} detected — likely double-recorded.`,
+    rationale: "Duplicate ledger postings overstate expenses or revenue and must be reversed before close.",
+  });
+
+  // 4. All bank transactions accounted for (every bank tx appears in
+  //    exactly one case — either matched, duplicate-flagged, opening
+  //    balance, or missing-ledger). Anything missing is a coverage
+  //    gap that suggests the engine dropped a row.
+  const accountedBankIds = new Set<string>();
+  for (const c of cases) for (const t of c.bank_txs) accountedBankIds.add(t.id);
+  const orphanedBankCount = bankTxs.filter(t => !accountedBankIds.has(t.id)).length;
+  checks.push({
+    id:        "bank_coverage",
+    label:     "All bank transactions accounted for",
+    status:    orphanedBankCount === 0 ? "pass" : "fail",
+    detail:    orphanedBankCount === 0
+               ? `All ${bankTxs.length} bank transaction${bankTxs.length === 1 ? "" : "s"} appear in a case.`
+               : `${orphanedBankCount} bank transaction${orphanedBankCount === 1 ? "" : "s"} not represented in any case.`,
+    rationale: "Every bank line must be classified — silently dropping rows would understate reconciled activity.",
+  });
+
+  // 5. All ledger entries accounted for (mirror of #4 for the ledger side)
+  const accountedLedgerIds = new Set<string>();
+  for (const c of cases) for (const t of c.ledger_txs) accountedLedgerIds.add(t.id);
+  const orphanedLedgerCount = ledgerTxs.filter(t => !accountedLedgerIds.has(t.id)).length;
+  checks.push({
+    id:        "ledger_coverage",
+    label:     "All ledger entries accounted for",
+    status:    orphanedLedgerCount === 0 ? "pass" : "fail",
+    detail:    orphanedLedgerCount === 0
+               ? `All ${ledgerTxs.length} ledger entr${ledgerTxs.length === 1 ? "y" : "ies"} appear in a case.`
+               : `${orphanedLedgerCount} ledger entr${orphanedLedgerCount === 1 ? "y" : "ies"} not represented in any case.`,
+    rationale: "Every ledger posting must be classified — silently dropping rows would mask un-reconciled activity.",
+  });
+
+  // 6. Opening / carry-forward balances correctly excluded (informational —
+  //    presence is normal, we just want auditors to see we recognised
+  //    and isolated them rather than reconciling them as transactions).
+  const openingCount = cases.filter(c => c.type === "OPENING_BALANCE").length;
+  checks.push({
+    id:        "opening_balance_isolated",
+    label:     "Opening balances correctly isolated",
+    status:    "info",
+    detail:    openingCount === 0
+               ? "No opening or carry-forward balances detected."
+               : `${openingCount} opening / carry-forward balance${openingCount === 1 ? "" : "s"} excluded from matching.`,
+    rationale: "Opening balances are not transactions — counting them as reconcilable would distort the match rate.",
+  });
+
+  const passCount = checks.filter(c => c.status === "pass").length;
+  const failCount = checks.filter(c => c.status === "fail").length;
+  const overallStatus: IntegrityStatus = failCount > 0 ? "fail"
+                                       : checks.some(c => c.status === "pass") ? "pass"
+                                       : "info";
+  return { checks, passCount, failCount, overallStatus };
+}
+
+// ── Reconciliation health (completion state) ──────────────────────────────────
+//
+// Audit-grade summary of where the period stands. "Match rate" is
+// computed against *reconcilable* bank transactions only — i.e.
+// excluding opening / carry-forward balances — so the number can't be
+// gamed by ignoring real movement. Status tiers (Complete / In Progress
+// / Has Discrepancies) replace the old "engine automation rate"
+// framing, which conflated engine performance with reconciliation
+// closeness.
+
+export type ReconciliationHealthStatus = "complete" | "in_progress" | "has_discrepancies";
+
+export interface ReconciliationHealth {
+  status:                 ReconciliationHealthStatus;
+  /** Bank-side count, excluding opening/carry-forward balances. */
+  reconcilableBankCount:  number;
+  /** Bank-side txs that landed in a closed matched pair (auto or user-approved). */
+  reconciledCount:        number;
+  /** Open items still pending a human decision. */
+  unresolvedCount:        number;
+  /** Opening/carry-forward txs explicitly excluded from matching. */
+  excludedCount:          number;
+  /** High-risk discrepancies (missing entries, duplicates, large variance). */
+  discrepancyCount:       number;
+  /** 0–100, reconciled / reconcilable. 100 if nothing is reconcilable. */
+  matchRatePct:           number;
+}
+
+export function computeReconciliationHealth(
+  cases:    DiscrepancyCase[],
+  bankTxs:  Tx[],
+): ReconciliationHealth {
+  const excludedBankIds = new Set<string>();
+  for (const c of cases.filter(x => x.type === "OPENING_BALANCE")) {
+    for (const t of c.bank_txs) excludedBankIds.add(t.id);
+  }
+  const reconcilableBankCount = bankTxs.filter(t => !excludedBankIds.has(t.id)).length;
+
+  // A bank tx is "reconciled" if it appears in an AUTO_MATCHED case
+  // OR in any case the user has explicitly approved. The
+  // userDecision === "approved" branch deliberately catches more than
+  // just PROPOSED_MATCH / NEEDS_REVIEW — approving a BANK_FEES,
+  // MISSING_LEDGER_ENTRY (with a "create journal entry" action), or
+  // TIMING_DIFFERENCE case all genuinely close out the underlying
+  // bank tx from the controller's perspective.
+  //
+  // We intentionally do NOT count "rejected" or "escalated" cases as
+  // reconciled. From an accounting standpoint, rejecting a
+  // missing-ledger case ("I don't have a ledger entry for this and
+  // I'm not going to record one") leaves the bank vs ledger
+  // balances unequal — the books are not reconciled. Surfacing this
+  // as "in_progress" is correct behaviour, not a bug.
+  const reconciledBankIds = new Set<string>();
+  for (const c of cases) {
+    const isClosed = c.type === "AUTO_MATCHED" || c.userDecision === "approved";
+    if (!isClosed) continue;
+    for (const t of c.bank_txs) {
+      if (!excludedBankIds.has(t.id)) reconciledBankIds.add(t.id);
+    }
+  }
+  const reconciledCount = reconciledBankIds.size;
+
+  const unresolvedCount = cases.filter(c =>
+    c.type !== "AUTO_MATCHED"
+    && c.type !== "OPENING_BALANCE"
+    && !c.userDecision
+  ).length;
+
+  const discrepancyCount = cases.filter(c =>
+    (c.type === "MISSING_LEDGER_ENTRY"
+      || c.type === "MISSING_BANK_ENTRY"
+      || c.type === "DUPLICATE_BANK_TRANSACTION"
+      || c.type === "DUPLICATE_LEDGER_ENTRY"
+      || c.type === "AMOUNT_VARIANCE")
+    && !c.userDecision
+  ).length;
+
+  const matchRatePct = reconcilableBankCount === 0
+    ? 100
+    : Math.round((reconciledCount / reconcilableBankCount) * 100);
+
+  const status: ReconciliationHealthStatus =
+    discrepancyCount > 0                                  ? "has_discrepancies"
+    : unresolvedCount > 0 || reconciledCount < reconcilableBankCount ? "in_progress"
+    :                                                       "complete";
+
+  return {
+    status,
+    reconcilableBankCount,
+    reconciledCount,
+    unresolvedCount,
+    excludedCount: excludedBankIds.size,
+    discrepancyCount,
+    matchRatePct,
+  };
+}
+
 export function caseSummary(cases: DiscrepancyCase[]) {
   const autoResolved    = cases.filter(c => c.type === "AUTO_MATCHED");
   const needsAttention  = cases.filter(c => c.type !== "AUTO_MATCHED" && c.type !== "OPENING_BALANCE" && !c.userDecision);

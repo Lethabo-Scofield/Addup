@@ -17,7 +17,15 @@
 //  14.  Duplicate bank ledger rows are flagged
 
 import { describe, it, expect } from "vitest";
-import { reconcile, csvToTx } from "../index";
+import {
+  reconcile,
+  csvToTx,
+  buildCases,
+  computeIntegrityChecks,
+  computeReconciliationHealth,
+  runReconciliation,
+} from "../index";
+import type { Tx } from "../index";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -334,5 +342,119 @@ describe("regression: monthly bank charges journal", () => {
     expect(byType("needs_review").length).toBe(0);
     expect(byType("proposed_match").length).toBe(0);
     expect(result.summary.high_risk).toBe(0);
+  });
+});
+
+// ── Integrity & Health helpers ───────────────────────────────────────────────
+//
+// These helpers underpin the Dashboard's audit-grade framing. The
+// tests guard the contract the UI relies on: every bank row must be
+// accounted for in a case, matched-pair totals must balance, and the
+// reconciliation-health match rate must exclude opening balances.
+
+function buildEngineState(bank: Row[], ledger: Row[]) {
+  const bankTx   = csvToTx(bank,   "B", "bank").txns;
+  const ledgerTx = csvToTx(ledger, "L", "ledger").txns;
+  const rows     = runReconciliation(bankTx, ledgerTx);
+  const cases    = buildCases(rows, { allBank: bankTx, allLedger: ledgerTx });
+  return { bankTx, ledgerTx, cases };
+}
+
+describe("integrity checks", () => {
+  it("passes the coverage check when every bank row appears in a case", () => {
+    const bank   = [bankRow("2026-01-05", "Client payment", 0, 1000, 1000, "INV-1001")];
+    const ledger = [ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001")];
+    const { bankTx, ledgerTx, cases } = buildEngineState(bank, ledger);
+    const integrity = computeIntegrityChecks(cases, bankTx, ledgerTx);
+    const bankCov = integrity.checks.find(c => c.id === "bank_coverage")!;
+    const ledgerCov = integrity.checks.find(c => c.id === "ledger_coverage")!;
+    expect(bankCov.status).toBe("pass");
+    expect(ledgerCov.status).toBe("pass");
+    expect(integrity.failCount).toBe(0);
+  });
+
+  it("flags duplicate bank transactions through the dedicated check", () => {
+    // Mirrors the shape of test 13 (debit-side duplicate that the
+    // engine's duplicate detector recognises).
+    const bank = [
+      bankRow("2026-07-05", "Internet sub APR", 499, 0, -499,  "ISP-1"),
+      bankRow("2026-07-05", "Internet sub APR", 499, 0, -998,  "ISP-1"),
+      bankRow("2026-07-10", "Client payment",   0, 5000, 4002, "INV-9001"),
+    ];
+    const ledger = [
+      ledgerRow("2026-07-05", "Bank", "Internet sub APR", 0, 499,  "ISP-1"),
+      ledgerRow("2026-07-10", "Bank", "Client payment",   5000, 0, "INV-9001"),
+    ];
+    const { bankTx, ledgerTx, cases } = buildEngineState(bank, ledger);
+    const integrity = computeIntegrityChecks(cases, bankTx, ledgerTx);
+    const dup = integrity.checks.find(c => c.id === "no_duplicate_bank")!;
+    expect(dup.status).toBe("fail");
+    expect(integrity.overallStatus).toBe("fail");
+  });
+
+  it("passes matched-totals balance when sides agree", () => {
+    const bank   = [bankRow("2026-01-05", "Client payment", 0, 1000, 1000, "INV-1001")];
+    const ledger = [ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001")];
+    const { bankTx, ledgerTx, cases } = buildEngineState(bank, ledger);
+    const integrity = computeIntegrityChecks(cases, bankTx, ledgerTx);
+    const totals = integrity.checks.find(c => c.id === "matched_totals_balance")!;
+    expect(totals.status).toBe("pass");
+  });
+
+  it("isolates opening balances as info, not fail", () => {
+    const bank = [
+      bankRow("2026-01-01", "Opening Balance",      0,    0,    5000, ""),
+      bankRow("2026-01-05", "Client payment",       0,    1000, 6000, "INV-1001"),
+    ];
+    const ledger = [
+      ledgerRow("2026-01-01", "Bank", "Balance Brought Forward", 5000, 0, ""),
+      ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001"),
+    ];
+    const { bankTx, ledgerTx, cases } = buildEngineState(bank, ledger);
+    const integrity = computeIntegrityChecks(cases, bankTx, ledgerTx);
+    const opening = integrity.checks.find(c => c.id === "opening_balance_isolated")!;
+    expect(opening.status).toBe("info");
+    expect(opening.detail).toMatch(/excluded from matching/);
+  });
+});
+
+describe("reconciliation health", () => {
+  it("excludes opening balances from the reconcilable denominator", () => {
+    const bank = [
+      bankRow("2026-01-01", "Opening Balance",      0,    0,    5000, ""),
+      bankRow("2026-01-05", "Client payment",       0,    1000, 6000, "INV-1001"),
+    ];
+    const ledger = [
+      ledgerRow("2026-01-01", "Bank", "Balance Brought Forward", 5000, 0, ""),
+      ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001"),
+    ];
+    const { bankTx, cases } = buildEngineState(bank, ledger);
+    const health = computeReconciliationHealth(cases, bankTx);
+    // 2 bank rows total, 1 is an opening balance → 1 reconcilable
+    expect(health.reconcilableBankCount).toBe(1);
+    expect(health.excludedCount).toBe(1);
+    expect(health.reconciledCount).toBe(1);
+    expect(health.matchRatePct).toBe(100);
+    expect(health.status).toBe("complete");
+  });
+
+  it("reports has_discrepancies when there is a missing-ledger case", () => {
+    const bank = [
+      bankRow("2026-01-05", "Client payment",      0, 1000, 1000, "INV-1001"),
+      bankRow("2026-01-06", "Mystery deposit",     0, 500,  1500, "MYST-1"),
+    ];
+    const ledger = [
+      ledgerRow("2026-01-05", "Bank", "Client payment INV-1001", 1000, 0, "INV-1001"),
+    ];
+    const { bankTx, cases } = buildEngineState(bank, ledger);
+    const health = computeReconciliationHealth(cases, bankTx);
+    expect(health.status).toBe("has_discrepancies");
+    expect(health.discrepancyCount).toBeGreaterThan(0);
+  });
+
+  it("returns 100% match rate when there is nothing reconcilable", () => {
+    const health = computeReconciliationHealth([], [] as Tx[]);
+    expect(health.matchRatePct).toBe(100);
+    expect(health.status).toBe("complete");
   });
 });

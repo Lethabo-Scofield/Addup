@@ -66,6 +66,11 @@ import {
   normalizeDesc, hasOcrArtifacts,
   runReconciliation, derivePeriod,
   buildCases,
+  computeIntegrityChecks,
+  computeReconciliationHealth,
+  type IntegrityCheck,
+  type IntegritySummary,
+  type ReconciliationHealth,
 } from "../engine";
 
 // ── Loader ────────────────────────────────────────────────────────────────────
@@ -832,8 +837,113 @@ function ReconTable({
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 
-function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overallConf, jobId, period, bankInst, ledgerSoft, loading }: {
+// ── Reconciliation Health header ─────────────────────────────────────────────
+//
+// Audit-grade completion-state header. Replaces the old "engine
+// automation rate" framing (which sold engine performance, not the
+// books' actual state). Match-rate is computed against *reconcilable*
+// bank transactions only (opening balances excluded), so the headline
+// number cannot be inflated by ignoring real movement.
+function HealthHeader({ health, period, bankInst, ledgerSoft }: {
+  health: ReconciliationHealth; period: string; bankInst: string; ledgerSoft: string;
+}) {
+  const tier =
+    health.status === "complete"          ? { label:"Reconciliation Complete",      bar:"bg-emerald-500", chipBg:"bg-emerald-50", chipText:"text-emerald-700", chipBorder:"border-emerald-200", icon:<ShieldCheck className="h-4 w-4" /> }
+  : health.status === "in_progress"       ? { label:"Reconciliation In Progress",    bar:"bg-blue-500",    chipBg:"bg-blue-50",    chipText:"text-blue-700",    chipBorder:"border-blue-200",    icon:<Shield className="h-4 w-4" /> }
+  :                                         { label:"Reconciliation Has Discrepancies", bar:"bg-amber-500", chipBg:"bg-amber-50", chipText:"text-amber-800",   chipBorder:"border-amber-200",   icon:<ShieldAlert className="h-4 w-4" /> };
+
+  return (
+    <div className="border border-gray-200 bg-white p-5 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${tier.chipBg} ${tier.chipText} border ${tier.chipBorder}`}>
+              {tier.icon}{tier.label}
+            </span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{health.matchRatePct}%</p>
+          <p className="text-xs text-gray-500 mt-1">
+            <span className="font-semibold text-gray-800">{health.reconciledCount} of {health.reconcilableBankCount}</span> reconcilable bank transactions matched
+            {health.excludedCount > 0 && <> <span className="text-gray-400">·</span> <span className="text-gray-500">{health.excludedCount} opening / carry-forward excluded</span></>}
+          </p>
+        </div>
+        <div className="text-right space-y-1">
+          <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">{period}</p>
+          {(bankInst || ledgerSoft) && <p className="text-[10px] text-gray-400">{bankInst}{bankInst && ledgerSoft && " · "}{ledgerSoft}</p>}
+        </div>
+      </div>
+      <div className="h-2 bg-gray-100 w-full mb-4">
+        <div className={`h-full ${tier.bar} transition-all`} style={{ width:`${health.matchRatePct}%` }} />
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-center pt-2 border-t border-gray-100">
+        <div>
+          <p className="text-xl font-bold text-emerald-700">{health.reconciledCount}</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mt-0.5">Reconciled</p>
+        </div>
+        <div>
+          <p className={`text-xl font-bold ${health.unresolvedCount > 0 ? "text-amber-700" : "text-gray-400"}`}>{health.unresolvedCount}</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mt-0.5">Unresolved</p>
+        </div>
+        <div>
+          <p className={`text-xl font-bold ${health.discrepancyCount > 0 ? "text-rose-700" : "text-gray-400"}`}>{health.discrepancyCount}</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mt-0.5">Discrepancies</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Integrity Checks panel ────────────────────────────────────────────────────
+//
+// Surfaces the binary audit assertions returned by
+// computeIntegrityChecks() in a controller-friendly checklist format.
+// Each row shows status icon · label · short detail; hovering the
+// label exposes the rationale tooltip. Failing checks are pinned to
+// the top so reviewers see breakages first.
+function IntegrityChecksPanel({ summary }: { summary: IntegritySummary }) {
+  const ordered = [...summary.checks].sort((a, b) => {
+    const rank = (s: IntegrityCheck["status"]) => s === "fail" ? 0 : s === "info" ? 2 : 1;
+    return rank(a.status) - rank(b.status);
+  });
+  const headerTone =
+    summary.overallStatus === "fail" ? { bg:"bg-rose-50",    text:"text-rose-800",    border:"border-rose-200",    icon:<ShieldAlert className="h-4 w-4" />, label:`${summary.failCount} integrity check${summary.failCount === 1 ? "" : "s"} failed` }
+  : summary.overallStatus === "pass" ? { bg:"bg-emerald-50", text:"text-emerald-800", border:"border-emerald-200", icon:<ShieldCheck className="h-4 w-4" />, label:`All ${summary.passCount} integrity checks passed` }
+  :                                    { bg:"bg-gray-50",    text:"text-gray-700",    border:"border-gray-200",    icon:<Shield className="h-4 w-4" />,      label:"Integrity checks pending data" };
+
+  return (
+    <div className="border border-gray-200 bg-white mb-6">
+      <div className={`flex items-center justify-between px-5 py-3 border-b ${headerTone.border} ${headerTone.bg}`}>
+        <div className="flex items-center gap-2">
+          <span className={headerTone.text}>{headerTone.icon}</span>
+          <h2 className={`text-sm font-bold ${headerTone.text}`}>Integrity Checks</h2>
+        </div>
+        <span className={`text-[11px] font-semibold ${headerTone.text}`}>{headerTone.label}</span>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {ordered.map(check => {
+          const tone = check.status === "fail" ? { icon:<XCircle    className="h-4 w-4 text-rose-600" />,    label:"text-gray-900" }
+                     : check.status === "pass" ? { icon:<CheckCircle2 className="h-4 w-4 text-emerald-600" />, label:"text-gray-900" }
+                     :                           { icon:<Info       className="h-4 w-4 text-gray-400" />,    label:"text-gray-700" };
+          return (
+            <li key={check.id} className="px-5 py-3 flex items-start gap-3" title={check.rationale}>
+              <span className="mt-0.5 shrink-0">{tone.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${tone.label}`}>{check.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{check.detail}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove, bankLen, ledgerLen, overallConf, jobId, period, bankInst, ledgerSoft, loading }: {
   rows: ReconRow[];
+  cases: DiscrepancyCase[];
+  bankData: Tx[];
+  ledgerData: Tx[];
   onNav: (v: NavId) => void;
   onBulkApprove: () => void;
   bankLen: number; ledgerLen: number; overallConf: number;
@@ -875,6 +985,11 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
     );
   }
 
+  // Audit-grade summaries — derived from the case stream so the
+  // dashboard tells the same story as the case detail panels.
+  const health    = computeReconciliationHealth(cases, bankData);
+  const integrity = computeIntegrityChecks(cases, bankData, ledgerData);
+
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
       <div className="mb-6">
@@ -882,43 +997,44 @@ function DashboardView({ rows, onNav, onBulkApprove, bankLen, ledgerLen, overall
         <p className="text-sm text-gray-400 mt-1">{period}{bankInst ? ` · ${bankInst}` : ""}{ledgerSoft ? ` · ${ledgerSoft}` : ""}</p>
       </div>
 
-      {/* Automation summary */}
-      <div className="border border-gray-200 p-5 mb-6 bg-white">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Engine automation rate</p>
-            <p className="text-3xl font-bold text-gray-900">{overallConf}%</p>
-            <p className="text-xs text-gray-400 mt-1">
-              <span className="font-semibold text-blue-600">{matched} of {bankLen}</span> transactions handled automatically — no manual admin needed
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            {pendingApprove > 0 ? (
-              <button
-                onClick={onBulkApprove}
-                className="flex items-center gap-2 h-10 px-5 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors shrink-0">
+      {/* Reconciliation health — completion-state framing */}
+      <HealthHeader health={health} period={period} bankInst={bankInst} ledgerSoft={ledgerSoft} />
+
+      {/* Reviewer actions — separated from the health header so the
+          headline metric isn't visually competing with CTAs. */}
+      {(pendingApprove > 0 || exceptions > 0) && (
+        <div className="border border-gray-200 bg-white p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-xs text-gray-600">
+            {pendingApprove > 0 && <><span className="font-semibold text-gray-800">{pendingApprove}</span> engine match{pendingApprove === 1 ? "" : "es"} awaiting sign-off</>}
+            {pendingApprove > 0 && exceptions > 0 && " · "}
+            {exceptions > 0 && <><span className="font-semibold text-gray-800">{exceptions}</span> exception{exceptions === 1 ? "" : "s"} need review</>}
+          </p>
+          <div className="flex gap-2">
+            {pendingApprove > 0 && (
+              <button onClick={onBulkApprove}
+                className="flex items-center gap-2 h-9 px-4 bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-colors shrink-0">
                 <ThumbsUp className="h-3.5 w-3.5" />
-                Sign off on all {pendingApprove} engine matches
+                Sign off on {pendingApprove} match{pendingApprove === 1 ? "" : "es"}
               </button>
-            ) : (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
-                <CheckCircle2 className="h-3.5 w-3.5" /> All engine matches signed off
-              </span>
             )}
             {exceptions > 0 && (
               <button onClick={() => onNav("review")}
-                className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-                <AlertCircle className="h-3.5 w-3.5 text-blue-500" />
-                {exceptions} exception{exceptions !== 1 && "s"} need sign-off
+                className="flex items-center gap-2 h-9 px-4 border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                Review exceptions
               </button>
             )}
-            <p className="text-[10px] text-gray-400">{bankInst} · {ledgerSoft}</p>
           </div>
         </div>
-        <div className="h-2 bg-gray-100 w-full">
-          <div className="h-full bg-blue-500 transition-all" style={{ width:`${overallConf}%` }} />
+      )}
+      {pendingApprove === 0 && exceptions === 0 && (
+        <div className="border border-emerald-200 bg-emerald-50 p-3 mb-4 flex items-center gap-2 text-emerald-800 text-xs font-semibold">
+          <CheckCircle2 className="h-4 w-4" /> All engine matches signed off and no exceptions outstanding.
         </div>
-      </div>
+      )}
+
+      {/* Audit-grade integrity checks */}
+      <IntegrityChecksPanel summary={integrity} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -3016,6 +3132,8 @@ export default function Engine() {
             />}
           {nav === "dashboard" && <DashboardView
               rows={rows} onNav={setNav}
+              cases={cases}
+              bankData={bankData} ledgerData={ledgerData}
               loading={reconciling}
               bankLen={bankData.length} ledgerLen={ledgerData.length}
               overallConf={overallConf} jobId={jobId} period={period}
