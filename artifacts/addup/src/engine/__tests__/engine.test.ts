@@ -301,3 +301,38 @@ describe("signed amount convention", () => {
     expect(txns[1].amt).toBe(-500);
   });
 });
+
+// ── Regression: Monthly Bank Charges journal must not double-up ──────────────
+//
+// A standard bank-fee journal posts BOTH sides:
+//   Dr  Bank Charges Expense   150
+//   Cr  Bank                   150
+//
+// Before the word-boundary filter fix, the "Bank Charges Expense" line was
+// accepted as a bank account (substring "bank" matched), so it surfaced as
+// an Unmatched Ledger / Missing Bank case alongside the legitimate match.
+//
+// After the fix, only the Bank-side credit should reconcile.
+
+describe("regression: monthly bank charges journal", () => {
+  it("matches only the bank-side leg; expense leg never creates a case", () => {
+    const bank = [
+      bankRow("2026-01-31", "Monthly Bank Charges", 150, 0, -150, "BANKFEE001"),
+    ];
+    const ledger = [
+      ledgerRow("2026-01-31", "Bank Charges Expense", "Monthly bank charges", 150, 0, "BANKFEE001"),
+      ledgerRow("2026-01-31", "Bank",                 "Monthly bank charges", 0, 150, "BANKFEE001"),
+    ];
+
+    const result = reconcile(bank, ledger);
+
+    const byType = (t: string) => result.cases.filter(c => c.case_type === t);
+
+    expect(byType("auto_matched").length).toBe(1);
+    expect(byType("missing_bank").length).toBe(0);
+    expect(byType("missing_ledger").length).toBe(0);
+    expect(byType("needs_review").length).toBe(0);
+    expect(byType("proposed_match").length).toBe(0);
+    expect(result.summary.high_risk).toBe(0);
+  });
+});

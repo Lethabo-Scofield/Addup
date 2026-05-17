@@ -1,0 +1,89 @@
+This is much better. The first big bug is fixed.
+
+Now the remaining issue is **duplicate/incorrect ledger-side handling for Monthly Bank Charges**.
+
+Addup shows:
+
+* `B007 / L014` matched at **99%**
+* but also shows `L013 Monthly Bank Charges` as **Unmatched Ledger**
+* and creates a **Missing Bank** case for the same R150
+
+So the engine is likely seeing **both sides of the journal**:
+
+```text
+Bank Charges Expense   Debit 150
+Bank                  Credit 150
+```
+
+But only this row should reconcile:
+
+```text
+Bank Credit 150
+```
+
+The expense row must be excluded.
+
+## What to tell Replit
+
+```text
+The reconciliation is now mostly correct, but there is still a bug with Monthly Bank Charges.
+
+Current issue:
+The system correctly matches B007 with L014 for Monthly Bank Charges, but it also creates an unmatched ledger / missing bank case for L013.
+
+This means the engine is still allowing the non-bank side of the journal into the exception logic.
+
+Fix:
+After extracting bank-side ledger rows, all downstream logic must use only that filtered dataset.
+
+Rules:
+1. Only ledger rows where account is a configured bank account may enter:
+   - matching
+   - missing bank detection
+   - unmatched ledger detection
+   - case review generation
+
+2. Non-bank ledger rows such as:
+   - Bank Charges Expense
+   - Office Supplies
+   - Rent Expense
+   - Salaries Expense
+   - Accounts Receivable
+   - Sales Revenue
+   - Interest Income
+
+must never create:
+   - Missing Bank
+   - Unmatched Ledger
+   - Needs Review
+
+3. Monthly Bank Charges should produce only one result:
+   - Matched: B007 / bank-side ledger row
+   - No extra Missing Bank case
+   - No extra Unmatched Ledger case
+
+4. Add a regression test:
+
+Given ledger rows:
+- Bank Charges Expense | Debit 150 | Ref BANKFEE001
+- Bank | Credit 150 | Ref BANKFEE001
+
+And bank statement row:
+- Monthly Bank Charges | Debit 150 | Ref BANKFEE001
+
+Expected:
+- 1 matched case
+- 0 missing_bank cases
+- 0 unmatched_ledger cases
+- 0 high_risk cases
+- 0 needs_review cases
+
+Acceptance:
+The final case review should show:
+- 11 auto-resolved
+- 0 needs attention
+- 0 high risk
+unless there is a real unmatched bank-account transaction.
+```
+
+Main point: **filter once, then use the filtered bank-ledger rows everywhere**.

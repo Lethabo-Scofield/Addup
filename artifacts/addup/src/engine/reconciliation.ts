@@ -14,13 +14,50 @@ const DEFAULT_BANK_ACCOUNT_NAMES = [
   "main bank",
 ];
 
+// Tokens that mark an account as an income-statement (expense / revenue / tax)
+// line rather than an actual cash/bank asset account. If the account name
+// contains any of these as a whole word, it is NEVER treated as a bank
+// account — even if the rest of the name happens to contain "bank".
+//
+// This is what stops the engine confusing "Bank Charges Expense" with the
+// "Bank" asset account when one journal posts both sides.
+const NON_BANK_ACCOUNT_KEYWORDS = [
+  "charge", "charges",
+  "fee", "fees",
+  "expense", "expenses",
+  "income",
+  "revenue",
+  "cost", "costs",
+  "interest",   // e.g. "Interest on Bank Deposits"
+  "tax", "vat",
+  "payable", "receivable",
+  "salary", "salaries",
+  "rent",
+  "supplies",
+];
+
+function hasWord(text: string, word: string): boolean {
+  // Escape regex metachars in `word` and require word boundaries on both sides.
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(text);
+}
+
 function isBankAccountName(account: string | undefined, names: string[]): boolean {
   if (!account) return false;
   const norm = account.trim().toLowerCase();
   if (!norm) return false;
+
+  // Hard reject: any account name containing an expense/revenue/tax keyword
+  // is treated as a non-bank account, regardless of whether it also contains
+  // the word "bank".
+  if (NON_BANK_ACCOUNT_KEYWORDS.some(k => hasWord(norm, k))) return false;
+
   return names.some(n => {
     const a = n.trim().toLowerCase();
-    return !!a && (norm === a || norm.includes(a));
+    if (!a) return false;
+    // Exact match, or the configured name appears as a whole word inside
+    // the account label (e.g. "ABSA Main Bank" matches "bank").
+    return norm === a || hasWord(norm, a);
   });
 }
 
