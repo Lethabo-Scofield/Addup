@@ -10,6 +10,9 @@
       "path": "./lib/api-client-react"
     },
     {
+      "path": "./lib/integrations-openrouter-ai"
+    },
+    {
       "path": "./lib/api-zod"
     }
   ]

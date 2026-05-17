@@ -1,0 +1,230 @@
+Build and fix the Addup reconciliation engine so it follows correct accounting reconciliation rules.
+
+Problem:
+The current system appears to compare the entire ledger against the bank statement. This is wrong. Addup must only reconcile bank statement transactions against ledger rows that affect the bank account.
+
+Core rule:
+Do not reconcile the full ledger.
+Only reconcile ledger rows where the account is Bank, Cash at Bank, Business Bank Account, or another configured bank account.
+
+Required behavior:
+
+1. File validation
+Validate both uploaded CSV files before reconciliation.
+
+Bank statement required columns:
+- date
+- description
+- debit
+- credit
+- balance
+- reference
+
+Ledger required columns:
+- date
+- account
+- description
+- debit
+- credit
+- reference
+
+If required columns are missing, return a clear validation error.
+
+2. Opening balance handling
+Detect opening balance rows using terms like:
+- Opening Balance
+- Balance Brought Forward
+- B/F
+- Brought Forward
+
+Opening balances must not be classified as “Missing Bank”.
+They must be classified as:
+
+{
+  "case_type": "opening_balance",
+  "status": "excluded_from_matching",
+  "reconciliation_required": false,
+  "risk": "low"
+}
+
+3. Extract only bank-side ledger rows
+From the ledger, only send bank-account rows into the matching engine.
+
+Example:
+Office Supplies Expense | Debit 2500
+Bank | Credit 2500
+
+Only the Bank row should be matched against the bank statement.
+The expense row must be ignored for bank reconciliation.
+
+4. Debit and credit direction logic
+The system must correctly map bank statement movement to ledger bank movement.
+
+Rules:
+- Bank statement debit/payment out should match ledger Bank credit.
+- Bank statement credit/money in should match ledger Bank debit.
+
+Use signed amounts internally:
+- Bank statement debit = negative amount
+- Bank statement credit = positive amount
+- Ledger Bank debit = positive amount
+- Ledger Bank credit = negative amount
+
+5. Matching algorithm
+Match bank statement rows to extracted bank-ledger rows using:
+
+Priority 1:
+- Same amount
+- Same reference
+- Same date
+
+Priority 2:
+- Same amount
+- Same reference
+- Date within tolerance of 0 to 3 days
+
+Priority 3:
+- Same amount
+- Similar description using fuzzy matching
+- Date within tolerance
+
+Priority 4:
+- Same amount only
+- Mark as proposed match, not auto-resolved
+
+Use open-source tools where helpful:
+- pandas for CSV processing
+- rapidfuzz for fuzzy description matching
+- pytest for automated tests
+- pandera or pydantic for schema validation
+
+6. Confidence scoring
+Do not use static confidence values like 55% for every unresolved case.
+
+Confidence must be dynamic.
+
+Suggested scoring:
+- Amount match: 45%
+- Reference match: 25%
+- Date score: 15%
+- Description similarity: 15%
+
+Classification:
+- confidence >= 0.90: auto_matched, low risk
+- confidence >= 0.70: proposed_match, medium risk
+- confidence >= 0.50: needs_review, medium risk
+- confidence < 0.50: unknown_discrepancy or missing case, high/medium risk depending on context
+
+7. Case classification
+The system must output cases like:
+
+- auto_matched
+- proposed_match
+- needs_review
+- missing_bank
+- missing_ledger
+- duplicate_ledger_entry
+- duplicate_bank_transaction
+- opening_balance
+- unknown_discrepancy
+
+Rules:
+- missing_bank applies only when a bank-account ledger row has no matching bank statement transaction.
+- missing_ledger applies when a bank statement transaction has no matching bank-account ledger row.
+- opening_balance must be excluded from matching.
+- non-bank ledger rows must not create reconciliation cases.
+
+8. Duplicate detection
+Detect duplicates in both files using:
+- same date
+- same amount
+- same reference
+- highly similar description
+
+Flag duplicate cases as high risk if they affect the bank account.
+
+9. Output format
+Return a structured reconciliation result:
+
+{
+  "status": "completed",
+  "validation": {
+    "passed": true,
+    "issues": []
+  },
+  "summary": {
+    "total_cases": 0,
+    "auto_matched": 0,
+    "proposed": 0,
+    "needs_review": 0,
+    "missing_bank": 0,
+    "missing_ledger": 0,
+    "duplicates": 0,
+    "opening_balances_excluded": 0,
+    "high_risk": 0
+  },
+  "cases": []
+}
+
+Each case should include:
+- case_type
+- risk
+- confidence
+- amount
+- bank_reference if available
+- ledger_reference if available
+- bank_description if available
+- ledger_description if available
+- explanation
+- recommended_action
+
+10. Required tests
+Add automated pytest tests for:
+
+Test 1:
+Valid bank statement and ledger schema passes.
+
+Test 2:
+Missing required columns fail validation.
+
+Test 3:
+Opening balance is excluded and never becomes Missing Bank.
+
+Test 4:
+Non-bank ledger rows are excluded from reconciliation.
+
+Test 5:
+Only Bank ledger rows are matched.
+
+Test 6:
+Exact amount, date, and reference produces auto_matched.
+
+Test 7:
+Date tolerance of up to 3 days still produces proposed_match or auto_matched.
+
+Test 8:
+Fuzzy description match works when wording differs.
+
+Test 9:
+Missing bank is only created from unmatched bank-account ledger rows.
+
+Test 10:
+Missing ledger is created from unmatched bank statement rows.
+
+Test 11:
+Confidence scores are not all the same value.
+
+Test 12:
+Clean files should not produce many high-risk cases.
+
+Test 13:
+Duplicate bank transactions are flagged.
+
+Test 14:
+Duplicate bank ledger rows are flagged.
+
+Important expected outcome:
+If the ledger contains normal accounting journal lines like expense, revenue, VAT, accounts receivable, or accounts payable, those rows must not be directly reconciled against the bank statement unless their account is a configured bank account.
+
+Main bug to fix:
+The system is currently producing too many “Missing Bank” cases because it is likely reconciling every ledger row. Fix the reconciliation pipeline so only bank-side ledger movements enter the matching engine.

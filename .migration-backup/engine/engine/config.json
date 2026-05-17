@@ -1,8 +1,0 @@
-{
-    "thresholds": {
-        "description_similarity": 0.4,
-        "date_tolerance_days": 2,
-        "amount_relative_tolerance": 0.05
-    },
-    "engine_version": "1.0.0"
-}
