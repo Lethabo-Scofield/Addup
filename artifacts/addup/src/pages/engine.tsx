@@ -77,6 +77,44 @@ import {
 
 const LOAD_MS = 2200;
 
+// Shared brand loader visual — the spinning Addup mark with status
+// line. Used both for the full-screen workspace splash and for any
+// in-page loading state (e.g. the dashboard while a reconciliation
+// is computing), so the loading affordance is consistent across the
+// app and reads as "the same product is working".
+function LoaderVisual({ statusText = "Preparing your workspace" }: { statusText?: string }) {
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative flex items-center justify-center mb-8"
+        style={{ width: 140, height: 140 }}
+      >
+        <motion.svg
+          viewBox="0 0 100 100"
+          className="absolute inset-0 w-full h-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+        >
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#e5e7eb" strokeWidth="2" />
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeDasharray="72 289" />
+        </motion.svg>
+        <img src={addupMark} alt="Addup" className="h-16 w-auto relative z-10" />
+      </motion.div>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+        className="text-[11px] font-medium text-gray-400 tracking-wide"
+      >
+        {statusText}
+      </motion.p>
+    </>
+  );
+}
+
 function Loader({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, LOAD_MS);
@@ -89,53 +127,7 @@ function Loader({ onDone }: { onDone: () => void }) {
       exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
       className="fixed inset-0 z-[999] bg-white flex flex-col items-center justify-center"
     >
-      {/* Logo with spinning ring */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative flex items-center justify-center mb-8"
-        style={{ width: 140, height: 140 }}
-      >
-        {/* Spinning ring around the logo */}
-        <motion.svg
-          viewBox="0 0 100 100"
-          className="absolute inset-0 w-full h-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
-        >
-          <circle
-            cx="50" cy="50" r="46"
-            fill="none"
-            stroke="#e5e7eb"
-            strokeWidth="2"
-          />
-          <circle
-            cx="50" cy="50" r="46"
-            fill="none"
-            stroke="#111827"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray="72 289"
-          />
-        </motion.svg>
-
-        <img
-          src={addupMark}
-          alt="Addup"
-          className="h-16 w-auto relative z-10"
-        />
-      </motion.div>
-
-      {/* Status line */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.4 }}
-        className="text-[11px] font-medium text-gray-400 tracking-wide"
-      >
-        Preparing your workspace
-      </motion.p>
+      <LoaderVisual />
     </motion.div>
   );
 }
@@ -969,18 +961,13 @@ function DashboardView({ rows, cases, bankData, ledgerData, onNav, onBulkApprove
   ];
 
   if (loading) {
+    // Use the same brand loader as the workspace splash so the
+    // dashboard's loading state reads as "the product is working"
+    // rather than a generic skeleton — important because the
+    // reconciliation engine is the product's headline value.
     return (
-      <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full">
-        <div className="mb-6 space-y-2">
-          <Skeleton className="h-6 w-56" />
-          <Skeleton className="h-4 w-80" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-          {Array.from({ length: 6 }).map((_, i) => <SkeletonStatCard key={i} />)}
-        </div>
-        <div className="border border-gray-100 bg-white divide-y divide-gray-100">
-          {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full">
+        <LoaderVisual statusText="Reconciling your books" />
       </div>
     );
   }
