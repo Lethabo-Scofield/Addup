@@ -1009,11 +1009,6 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   onSelectCase: (c: DiscrepancyCase) => void;
   onNav: (n: NavId) => void;
 }) {
-  // Default to "Needs Review" so finance teams land directly on the
-  // work that requires their attention — auto-cleared cases are kept
-  // collapsed in their own tab. Principle: reduce cognitive load.
-  const [filter, setFilter] = useState<CaseFilter>("needs_review");
-
   const auto       = cases.filter(c => c.type === "AUTO_MATCHED");
   const opening    = cases.filter(c => c.type === "OPENING_BALANCE");
   const actionable = cases.filter(c => c.type !== "AUTO_MATCHED" && c.type !== "OPENING_BALANCE");
@@ -1022,6 +1017,17 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
   const pending    = actionable.filter(c => !c.userDecision);
   const highRisk   = actionable.filter(c => c.risk === "high" && !c.userDecision);
   const decided    = actionable.filter(c => !!c.userDecision);
+
+  // Pick the most useful default tab for this job's actual contents.
+  // Priority: needs review → proposed → all open → cleared. This way a
+  // user never lands on an empty tab when other tabs have results.
+  const defaultFilter: CaseFilter =
+    needsReview.length   > 0 ? "needs_review"
+    : proposed.length    > 0 ? "proposed"
+    : actionable.length  > 0 ? "all"
+    : auto.length        > 0 ? "auto"
+    :                          "needs_review";
+  const [filter, setFilter] = useState<CaseFilter>(defaultFilter);
 
   const filtered = filter === "auto"
     ? auto
@@ -1032,6 +1038,17 @@ function CaseDashboardView({ cases, loading, onSelectCase, onNav }: {
     : filter === "resolved"
     ? decided
     : actionable;
+
+  // If the current tab has zero items but other tabs have content,
+  // snap to the recommended default. This handles two cases without
+  // ever yanking the user off a tab they intentionally chose:
+  //   1. A new job loads (initial state was based on stale counts).
+  //   2. They emptied the current tab by approving/rejecting cases.
+  useEffect(() => {
+    if (filtered.length === 0 && cases.length > 0 && filter !== defaultFilter) {
+      setFilter(defaultFilter);
+    }
+  }, [filtered.length, cases.length, filter, defaultFilter]);
 
   const tabs: { key: CaseFilter; label: string; count: number; tone?: "warn" | "ok" }[] = [
     { key:"needs_review", label:"Needs review",  count: needsReview.length, tone: needsReview.length ? "warn" : undefined },
