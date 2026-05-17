@@ -210,6 +210,93 @@ export function buildExplanation(
       };
     }
 
+    case "PROPOSED_MATCH": {
+      const evidence: string[] = [
+        ...(row?.reasons ?? []),
+        bank   ? `Bank: "${bank.desc}" — ${fmt(bank.amt)} on ${bank.date}` : "",
+        ledger ? `Ledger: "${ledger.desc}" — ${fmt(ledger.amt)} on ${ledger.date}` : "",
+        `Confidence: ${conf}%`,
+      ].filter(Boolean);
+      return {
+        hypothesis:
+          "Strong-but-not-perfect match. Amount and at least one secondary signal (reference, description, or date) align. Recommended for human approval before posting.",
+        evidence,
+        confidence: Math.max(conf, 70),
+        audit_narrative: `Proposed match at ${conf}% confidence. Review and approve if the pairing is correct.`,
+      };
+    }
+
+    case "NEEDS_REVIEW": {
+      const evidence: string[] = [
+        ...(row?.reasons ?? []),
+        ...(row?.warnings ?? []),
+        `Confidence: ${conf}%`,
+      ];
+      return {
+        hypothesis:
+          "Possible match with weaker secondary signals. The system has identified a candidate but cannot confidently auto-resolve it.",
+        evidence,
+        confidence: Math.max(conf, 50),
+        audit_narrative: `Match requires human review at ${conf}% confidence.`,
+      };
+    }
+
+    case "OPENING_BALANCE": {
+      const tx = bank ?? ledger;
+      return {
+        hypothesis:
+          "This row is an opening balance (or balance brought forward) marker. It is excluded from reconciliation by accounting convention — only period movements are reconciled.",
+        evidence: [
+          tx ? `Description: "${tx.desc}"` : "Opening balance row",
+          tx ? `Date: ${tx.date}` : "",
+          tx?.balance !== undefined ? `Reported balance: ${fmt(tx.balance)}` : "",
+        ].filter(Boolean),
+        confidence: 100,
+        audit_narrative: "Opening balance excluded from matching. No reconciliation action required.",
+      };
+    }
+
+    case "DUPLICATE_BANK_TRANSACTION": {
+      return {
+        hypothesis:
+          "Two or more bank statement rows share the same date, amount, reference and a highly similar description. This is very likely a duplicate posting on the bank side.",
+        evidence: [
+          `${rows.length} bank rows share date / amount / reference`,
+          rows[0]?.bank ? `Amount: ${fmt(Math.abs(rows[0].bank.amt))}` : "",
+          rows[0]?.bank ? `Reference: "${rows[0].bank.reference ?? "N/A"}"` : "",
+        ].filter(Boolean),
+        confidence: 85,
+        audit_narrative: `Potential bank-side duplicate: ${rows.length} rows. Verify with the bank before any correction.`,
+      };
+    }
+
+    case "DUPLICATE_LEDGER_ENTRY": {
+      return {
+        hypothesis:
+          "Two or more ledger rows share the same date, amount, reference and a highly similar description. This is very likely a duplicate journal posting.",
+        evidence: [
+          `${rows.length} ledger rows share date / amount / reference`,
+          rows[0]?.ledger ? `Amount: ${fmt(Math.abs(rows[0].ledger.amt))}` : "",
+          rows[0]?.ledger ? `Reference: "${rows[0].ledger.reference ?? "N/A"}"` : "",
+        ].filter(Boolean),
+        confidence: 85,
+        audit_narrative: `Potential ledger-side duplicate: ${rows.length} rows. Escalate for reversal review.`,
+      };
+    }
+
+    case "UNKNOWN_DISCREPANCY": {
+      return {
+        hypothesis:
+          "No confident matching candidate was found. This may indicate missing data on either side, or signals too weak to classify automatically.",
+        evidence: [
+          ...(row?.reasons ?? []),
+          ...(row?.warnings ?? []),
+        ],
+        confidence: 30,
+        audit_narrative: `Unclassified discrepancy for ${bank?.desc ?? ledger?.desc ?? row?.id ?? "unknown"}. Manual review required.`,
+      };
+    }
+
     default: {
       const evidence = [
         ...(row?.reasons ?? []),

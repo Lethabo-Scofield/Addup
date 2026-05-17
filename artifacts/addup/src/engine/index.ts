@@ -26,6 +26,14 @@ export type {
   SuggestedAction,
   DiscrepancyCase,
   CaseAuditEntry,
+  // Structured result schema
+  ValidationIssue,
+  ValidationResult,
+  StructuredCase,
+  SnakeCaseType,
+  ReconciliationSummary,
+  ReconciliationResult,
+  ReconcileOptions,
 } from "./types";
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -44,7 +52,12 @@ export {
   xlsxToRows,
   normalizeDate,
   csvToTx,
+  validateSchema,
 } from "./parser";
+
+// ── Structured top-level API ─────────────────────────────────────────────────
+
+export { reconcile } from "./reconcile";
 
 // ── Matching engine ───────────────────────────────────────────────────────────
 

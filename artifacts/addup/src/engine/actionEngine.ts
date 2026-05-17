@@ -112,6 +112,59 @@ export function proposeAction(type: CaseType, amount: number): SuggestedAction {
         reason: "Minor variance consistent with FX conversion or system rounding",
       };
 
+    case "PROPOSED_MATCH":
+      return {
+        action_type: "approve_match",
+        description: "Strong candidate match — review and approve to post the reconciliation.",
+        requires_approval: true,
+        amount,
+        reason: "Amount matches and at least one secondary signal aligns",
+      };
+
+    case "NEEDS_REVIEW":
+      return {
+        action_type: "request_human_review",
+        description: "Weaker match — a finance team member must confirm before approving.",
+        requires_approval: true,
+        amount,
+        reason: "Confidence below auto-match threshold but above unknown threshold",
+      };
+
+    case "OPENING_BALANCE":
+      return {
+        action_type: "no_action_required",
+        description: "Opening balance row — excluded from reconciliation by accounting convention.",
+        requires_approval: false,
+        reason: "Opening balances are not period movements and are not reconciled",
+      };
+
+    case "DUPLICATE_BANK_TRANSACTION":
+      return {
+        action_type: "flag_duplicate",
+        description: "Potential duplicate posting on the bank side. Verify with the bank before any correction.",
+        requires_approval: true,
+        amount,
+        reason: "Multiple bank rows share date, amount, reference and similar description",
+      };
+
+    case "DUPLICATE_LEDGER_ENTRY":
+      return {
+        action_type: "flag_duplicate",
+        description: "Potential duplicate journal posting. Escalate for reversal review before any correction.",
+        requires_approval: true,
+        amount,
+        reason: "Multiple ledger rows share date, amount, reference and similar description",
+      };
+
+    case "UNKNOWN_DISCREPANCY":
+      return {
+        action_type: "request_human_review",
+        description: "No confident matching candidate was found. A finance team member must review and determine the correct resolution.",
+        requires_approval: true,
+        amount,
+        reason: "Insufficient matching signals for automated classification",
+      };
+
     default:
       return {
         action_type: "request_human_review",

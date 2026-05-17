@@ -203,6 +203,12 @@ const CASE_TYPE_CFG: Record<CaseType, { label: string; bg: string; text: string;
   ONE_TO_MANY_MATCH:          { label:"Split Match",     bg:"bg-teal-50",     text:"text-teal-700",    border:"border-teal-200",    icon:<GitMerge className="h-3 w-3"/>       },
   FX_OR_ROUNDING_DIFFERENCE:  { label:"Rounding",        bg:"bg-cyan-50",     text:"text-cyan-700",    border:"border-cyan-200",    icon:<ArrowLeftRight className="h-3 w-3"/> },
   UNKNOWN:                    { label:"Unknown",         bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
+  PROPOSED_MATCH:             { label:"Proposed Match",  bg:"bg-blue-50",     text:"text-blue-700",    border:"border-blue-200",    icon:<ShieldCheck className="h-3 w-3"/>    },
+  NEEDS_REVIEW:               { label:"Needs Review",    bg:"bg-amber-50",    text:"text-amber-700",   border:"border-amber-200",   icon:<AlertCircle className="h-3 w-3"/>    },
+  DUPLICATE_BANK_TRANSACTION: { label:"Duplicate Bank",  bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  DUPLICATE_LEDGER_ENTRY:     { label:"Duplicate Ledger",bg:"bg-red-50",      text:"text-red-700",     border:"border-red-200",     icon:<XCircle className="h-3 w-3"/>        },
+  OPENING_BALANCE:            { label:"Opening Balance", bg:"bg-slate-50",    text:"text-slate-700",   border:"border-slate-200",   icon:<Info className="h-3 w-3"/>           },
+  UNKNOWN_DISCREPANCY:        { label:"Unknown",         bg:"bg-gray-100",    text:"text-gray-600",    border:"border-gray-200",    icon:<HelpCircle className="h-3 w-3"/>     },
 };
 
 function CaseTypeBadge({ type }: { type: CaseType }) {
@@ -1401,8 +1407,20 @@ function UploadsView({ onReconcile }: {
       ]);
       if (!bankRows.length)   throw new Error(`Bank statement is empty or could not be parsed. Make sure the file has a header row. (${bankFile.name})`);
       if (!ledgerRows.length) throw new Error(`General ledger is empty or could not be parsed. Make sure the file has a header row. (${ledgerFile.name})`);
-      const { txns: bankTxns,   invalid: bankInv   } = csvToTx(bankRows,   "B");
-      const { txns: ledgerTxns, invalid: ledgerInv } = csvToTx(ledgerRows, "L");
+      const bankParsed   = csvToTx(bankRows,   "B", "bank");
+      const ledgerParsed = csvToTx(ledgerRows, "L", "ledger");
+      const validationIssues = [
+        ...bankParsed.validation.issues,
+        ...ledgerParsed.validation.issues,
+      ];
+      if (validationIssues.length) {
+        const lines = validationIssues
+          .map(v => `• [${v.file}] ${v.message}`)
+          .join("\n");
+        throw new Error(`Required columns are missing:\n${lines}`);
+      }
+      const { txns: bankTxns,   invalid: bankInv   } = bankParsed;
+      const { txns: ledgerTxns, invalid: ledgerInv } = ledgerParsed;
       onReconcile([...bankTxns, ...bankInv], [...ledgerTxns, ...ledgerInv], bankFile.name, ledgerFile.name);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong parsing your files.");

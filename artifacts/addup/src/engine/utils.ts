@@ -35,6 +35,7 @@ export const STATUS_CFG: Record<
   invalid_row:      { label: "Invalid Row",      short: "Invalid",   bg: "bg-red-50",      text: "text-red-700",     border: "border-red-200",     dot: "bg-red-500"      },
   unmatched_bank:   { label: "Unmatched Bank",   short: "No Ledger", bg: "bg-orange-50",   text: "text-orange-700",  border: "border-orange-200",  dot: "bg-orange-500"   },
   unmatched_ledger: { label: "Unmatched Ledger", short: "No Bank",   bg: "bg-purple-50",   text: "text-purple-700",  border: "border-purple-200",  dot: "bg-purple-500"   },
+  excluded_from_matching: { label: "Excluded",   short: "Excluded",  bg: "bg-slate-50",    text: "text-slate-700",   border: "border-slate-200",   dot: "bg-slate-500"    },
 };
 
 export const ACTION_LABELS: Record<ActionType, string> = {
