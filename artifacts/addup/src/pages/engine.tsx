@@ -1374,10 +1374,17 @@ function CaseDetailPanel({ c, onClose, onApprove, onReject, onEscalate, bankInst
 
 // ── Uploads view ──────────────────────────────────────────────────────────────
 
-const ACCEPTED_EXTS = ".csv,.tsv,.txt,.xlsx,.xls,.ods,.numbers";
-const XLSX_EXTS = new Set([".xlsx", ".xls", ".ods", ".numbers"]);
+const ACCEPTED_EXTS =
+  ".csv,.tsv,.txt,.xlsx,.xls,.ods,.numbers," +
+  ".png,.jpg,.jpeg,.webp,.heic,.heif";
+const XLSX_EXTS  = new Set([".xlsx", ".xls", ".ods", ".numbers"]);
+const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"]);
 
 function getExt(name: string) { return name.slice(name.lastIndexOf(".")).toLowerCase(); }
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || IMAGE_EXTS.has(getExt(file.name));
+}
 
 function readFileAsText(file: File): Promise<string> {
   return new Promise((res, rej) => {
@@ -1397,7 +1404,38 @@ function readFileAsBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-async function parseAnyFile(file: File): Promise<Record<string, string>[]> {
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target?.result as string ?? "");
+    r.onerror = () => rej(new Error("Could not read image."));
+    r.readAsDataURL(file);
+  });
+}
+
+async function ocrImageToRows(file: File, kind: "bank" | "ledger"): Promise<Record<string, string>[]> {
+  const dataUrl = await readFileAsDataURL(file);
+  const res = await fetch("/api/ocr", {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ image: dataUrl, kind }),
+  });
+  if (!res.ok) {
+    let msg = `OCR failed (${res.status})`;
+    try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* noop */ }
+    throw new Error(msg);
+  }
+  const data = await res.json() as { rows?: Record<string, string>[] };
+  return Array.isArray(data.rows) ? data.rows : [];
+}
+
+async function parseAnyFile(
+  file: File,
+  kind: "bank" | "ledger",
+): Promise<Record<string, string>[]> {
+  if (isImageFile(file)) {
+    return ocrImageToRows(file, kind);
+  }
   const ext = getExt(file.name);
   if (XLSX_EXTS.has(ext)) {
     const buf = await readFileAsBuffer(file);
@@ -1422,11 +1460,19 @@ function UploadsView({ onReconcile }: {
     setParsing(true); setError(null);
     try {
       const [bankRows, ledgerRows] = await Promise.all([
-        parseAnyFile(bankFile),
-        parseAnyFile(ledgerFile),
+        parseAnyFile(bankFile,   "bank"),
+        parseAnyFile(ledgerFile, "ledger"),
       ]);
-      if (!bankRows.length)   throw new Error(`Bank statement is empty or could not be parsed. Make sure the file has a header row. (${bankFile.name})`);
-      if (!ledgerRows.length) throw new Error(`General ledger is empty or could not be parsed. Make sure the file has a header row. (${ledgerFile.name})`);
+      if (!bankRows.length) {
+        throw new Error(isImageFile(bankFile)
+          ? `Could not read any transactions from the bank statement image. Try a sharper photo or a CSV/Excel export. (${bankFile.name})`
+          : `Bank statement is empty or could not be parsed. Make sure the file has a header row. (${bankFile.name})`);
+      }
+      if (!ledgerRows.length) {
+        throw new Error(isImageFile(ledgerFile)
+          ? `Could not read any transactions from the ledger image. Try a sharper photo or a CSV/Excel export. (${ledgerFile.name})`
+          : `General ledger is empty or could not be parsed. Make sure the file has a header row. (${ledgerFile.name})`);
+      }
       const bankParsed   = csvToTx(bankRows,   "B", "bank");
       const ledgerParsed = csvToTx(ledgerRows, "L", "ledger");
       const validationIssues = [
@@ -1450,15 +1496,15 @@ function UploadsView({ onReconcile }: {
   }
 
   const slots = [
-    { label:"Bank Statement",  sub:"Any format — CSV, XLSX, TSV, ODS…",  ref:bankRef,   file:bankFile,   set:setBankFile   },
-    { label:"General Ledger",  sub:"Any format — CSV, XLSX, TSV, ODS…",  ref:ledgerRef, file:ledgerFile, set:setLedgerFile },
+    { label:"Bank Statement",  sub:"CSV, XLSX, TSV, ODS or a photo / scan",  ref:bankRef,   file:bankFile,   set:setBankFile   },
+    { label:"General Ledger",  sub:"CSV, XLSX, TSV, ODS or a photo / scan",  ref:ledgerRef, file:ledgerFile, set:setLedgerFile },
   ] as const;
 
   return (
     <div className="p-6 sm:p-8 max-w-2xl mx-auto w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Upload Files</h1>
       <p className="text-sm text-gray-400 mb-6">
-        Upload your bank statement and general ledger. CSV, XLSX, TSV, ODS, TXT — any tabular format works.
+        Upload your bank statement and general ledger. CSV, XLSX, TSV, ODS, TXT — or even a photo / scan (PNG, JPG, HEIC) and we'll read it for you.
       </p>
 
       <div className="space-y-4">
@@ -1491,7 +1537,7 @@ function UploadsView({ onReconcile }: {
                     className="w-full flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-200 hover:border-gray-400 transition-colors group">
                     <Upload className="h-7 w-7 text-gray-300 group-hover:text-gray-500 mb-2.5" />
                     <p className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">Click to upload</p>
-                    <p className="text-[11px] text-gray-300 mt-1">CSV · XLSX · TSV · ODS · TXT · up to 50 MB</p>
+                    <p className="text-[11px] text-gray-300 mt-1">CSV · XLSX · TSV · ODS · TXT · PNG / JPG photo or scan · up to 25 MB</p>
                   </button>
               }
               <input ref={ref} type="file" accept={ACCEPTED_EXTS} className="hidden"
